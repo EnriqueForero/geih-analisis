@@ -1,0 +1,106 @@
+# ══════════════════════════════════════════════════════════════════════
+# .gitignore — geih-analisis
+# ══════════════════════════════════════════════════════════════════════
+#
+# REGLA GENERAL: solo van al repositorio los archivos de CÓDIGO.
+# Los DATOS del DANE y los RESULTADOS generados NUNCA van a git.
+#
+# ══════════════════════════════════════════════════════════════════════
+
+
+# ── Python ────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+
+
+# ── Datos DANE — NUNCA subir microdatos ───────────────────────────────
+# Parquets consolidados (raíz y cualquier subcarpeta)
+*.parquet
+!tests/golden_set.parquet
+
+# CSVs del DANE y outputs
+*.csv
+!requirements.txt
+
+# Otros formatos de datos
+*.zip
+*.xlsx
+*.xls
+
+
+# ── Carpetas mensuales del DANE (CSV raw) ─────────────────────────────
+# Patrón: "Mes Año/" — las 13 carpetas que tienes
+Enero*/
+Febrero*/
+Marzo*/
+Abril*/
+Mayo*/
+Junio*/
+Julio*/
+Agosto*/
+Septiembre*/
+Octubre*/
+Noviembre*/
+Diciembre*/
+
+
+# ── Outputs generados por el pipeline ─────────────────────────────────
+resultados_geih*/
+dashboard/
+*.png
+*.pdf
+metadata.json
+geih_pipeline.log
+BoxPlot_*.csv
+
+
+# ── Notebooks Jupyter/Colab (.ipynb) ──────────────────────────────────
+# Se usan los .py (descargados como scripts) — no los .ipynb
+# porque los .ipynb incluyen outputs con posibles datos sensibles
+*.ipynb
+.ipynb_checkpoints/
+
+
+# ── Carpetas de trabajo personal / backups ────────────────────────────
+# Las que empiezan con "z." en tu Drive
+z. */
+z.*/
+"z. "*
+
+
+# ── Artefactos de Google Colab / sistema ──────────────────────────────
+mnt/
+.config/
+drive/
+
+
+# ── IDE y editores ────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+
+# ── Entornos virtuales ────────────────────────────────────────────────
+venv/
+.venv/
+env/
+.env
+
+
+# ── Credenciales y secretos — NUNCA en git ────────────────────────────
+.env.local
+secrets.json
+*_token.txt
+*.pem
+*.key

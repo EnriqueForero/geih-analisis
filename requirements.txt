@@ -1,0 +1,20 @@
+# ══════════════════════════════════════════════════════════════
+# geih_2025 v4.3.0 — Dependencias
+# ══════════════════════════════════════════════════════════════
+
+# ── Core (obligatorias) ──────────────────────────────────────
+pandas>=1.5
+numpy>=1.21
+matplotlib>=3.5
+openpyxl>=3.0
+
+# ── Rendimiento (recomendadas) ───────────────────────────────
+psutil>=5.9
+pyarrow>=10.0
+
+# ── Interactividad (opcionales) ──────────────────────────────
+# plotly>=5.0               # Gráficos interactivos Plotly
+# streamlit>=1.28           # Dashboard web interactivo
+
+# ── Testing (solo desarrollo) ────────────────────────────────
+# pytest>=7.0

@@ -1,0 +1,66 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "geih-analisis"
+version = "5.0.0"
+description = "Análisis de microdatos GEIH del DANE — Colombia. 70+ clases: TD, TGP, TO, Gini, Mincer, ICE, ICI, brecha de género, 32 ciudades y más."
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.9"
+authors = [
+    {name = "Néstor Enrique Forero Herrera", email = "nforero@procolombia.co"},
+]
+keywords = [
+    "GEIH", "DANE", "Colombia", "mercado laboral", "desempleo",
+    "empleo", "microdatos", "encuesta hogares", "estadistica",
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+    "Operating System :: OS Independent",
+    "Natural Language :: Spanish",
+]
+dependencies = [
+    "pandas>=1.5",
+    "numpy>=1.21",
+    "openpyxl>=3.0",
+    "pyarrow>=10.0",
+]
+
+[project.optional-dependencies]
+viz       = ["matplotlib>=3.5", "plotly>=5.0"]
+dashboard = ["streamlit>=1.20", "plotly>=5.0"]
+colab     = ["psutil>=5.9", "matplotlib>=3.5"]
+dev       = ["pytest>=7.0", "pytest-cov>=4.0", "psutil>=5.9"]
+all       = ["matplotlib>=3.5", "plotly>=5.0", "streamlit>=1.20",
+             "psutil>=5.9", "pytest>=7.0"]
+
+[project.urls]
+Homepage      = "https://github.com/EnriqueForero/geih-analisis"
+Repository    = "https://github.com/EnriqueForero/geih-analisis"
+"Bug Tracker" = "https://github.com/EnriqueForero/geih-analisis/issues"
+Documentation = "https://github.com/EnriqueForero/geih-analisis#readme"
+
+[tool.setuptools.packages.find]
+where   = ["."]
+include = ["geih*", "geih_2025*"]
+exclude = ["tests*", "notebooks*", "docs*", "resultados*"]
+
+[tool.setuptools.package-data]
+"geih" = ["py.typed"]
+"geih_2025"    = ["py.typed"]
+
+[tool.pytest.ini_options]
+testpaths    = ["tests"]
+python_files = ["test_*.py"]
+addopts      = "-v --tb=short"
