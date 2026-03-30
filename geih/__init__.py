@@ -47,7 +47,7 @@ Módulos del paquete (17 archivos):
   dashboard.py             → Dashboard Streamlit
 """
 
-__version__ = "5.0.0"
+__version__ = "0.1.0"
 __author__  = "Néstor Enrique Forero Herrera"
 __email__   = "nforero@procolombia.co"
 __url__     = "https://github.com/enriqueforero/geih-analisis"

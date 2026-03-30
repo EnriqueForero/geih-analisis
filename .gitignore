@@ -2,9 +2,12 @@
 # .gitignore — geih-analisis
 # ══════════════════════════════════════════════════════════════════════
 #
-# REGLA GENERAL: solo van al repositorio los archivos de CÓDIGO.
-# Los DATOS del DANE y los RESULTADOS generados NUNCA van a git.
+# PRINCIPIO: solo va a git el CÓDIGO.
+# Datos del DANE, resultados y artefactos de Colab nunca.
 #
+# Este .gitignore es redundante con la lógica _debe_incluir() del
+# notebook de publicación, que aplica las mismas reglas al copiar
+# desde Drive. La doble protección garantiza que nunca se escapen datos.
 # ══════════════════════════════════════════════════════════════════════
 
 
@@ -20,23 +23,18 @@ build/
 .eggs/
 
 
-# ── Datos DANE — NUNCA subir microdatos ───────────────────────────────
-# Parquets consolidados (raíz y cualquier subcarpeta)
+# ── Datos del DANE — NUNCA en git ─────────────────────────────────────
+GEIH_*.parquet
 *.parquet
 !tests/golden_set.parquet
-
-# CSVs del DANE y outputs
 *.csv
 !requirements.txt
-
-# Otros formatos de datos
 *.zip
 *.xlsx
 *.xls
 
 
-# ── Carpetas mensuales del DANE (CSV raw) ─────────────────────────────
-# Patrón: "Mes Año/" — las 13 carpetas que tienes
+# ── Carpetas mensuales del DANE ───────────────────────────────────────
 Enero*/
 Febrero*/
 Marzo*/
@@ -51,7 +49,7 @@ Noviembre*/
 Diciembre*/
 
 
-# ── Outputs generados por el pipeline ─────────────────────────────────
+# ── Outputs generados ─────────────────────────────────────────────────
 resultados_geih*/
 dashboard/
 *.png
@@ -61,27 +59,21 @@ geih_pipeline.log
 BoxPlot_*.csv
 
 
-# ── Notebooks Jupyter/Colab (.ipynb) ──────────────────────────────────
-# Se usan los .py (descargados como scripts) — no los .ipynb
-# porque los .ipynb incluyen outputs con posibles datos sensibles
+# ── Notebooks Jupyter ─────────────────────────────────────────────────
 *.ipynb
 .ipynb_checkpoints/
 
 
-# ── Carpetas de trabajo personal / backups ────────────────────────────
-# Las que empiezan con "z." en tu Drive
+# ── Carpetas de trabajo personal ──────────────────────────────────────
 z. */
 z.*/
-"z. "*
 
 
-# ── Artefactos de Google Colab / sistema ──────────────────────────────
+# ── Artefactos de Google Colab ────────────────────────────────────────
 mnt/
-.config/
-drive/
 
 
-# ── IDE y editores ────────────────────────────────────────────────────
+# ── IDE ───────────────────────────────────────────────────────────────
 .vscode/
 .idea/
 *.swp
@@ -98,7 +90,7 @@ env/
 .env
 
 
-# ── Credenciales y secretos — NUNCA en git ────────────────────────────
+# ── Credenciales ──────────────────────────────────────────────────────
 .env.local
 secrets.json
 *_token.txt
