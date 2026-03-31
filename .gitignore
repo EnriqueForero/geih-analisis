@@ -1,67 +1,151 @@
-# ══════════════════════════════════════════════════════════════════════
+# ════════════════════════════════════════════════════════════════════
 # .gitignore — geih-analisis
-# ══════════════════════════════════════════════════════════════════════
-#
+# Generado automáticamente por el notebook de publicación.
 # PRINCIPIO: solo va a git el CÓDIGO.
-# Datos del DANE, resultados y artefactos de Colab nunca.
-#
-# Este .gitignore es redundante con la lógica _debe_incluir() del
-# notebook de publicación, que aplica las mismas reglas al copiar
-# desde Drive. La doble protección garantiza que nunca se escapen datos.
-# ══════════════════════════════════════════════════════════════════════
+# ════════════════════════════════════════════════════════════════════
 
 
 # ── Python ────────────────────────────────────────────────────────────
-__pycache__/
 *.py[cod]
 *$py.class
 *.so
 *.egg
 *.egg-info/
-dist/
-build/
-.eggs/
 
 
-# ── Datos del DANE — NUNCA en git ─────────────────────────────────────
-GEIH_*.parquet
-*.parquet
-!tests/golden_set.parquet
+# ── Datos y archivos binarios ─────────────────────────────────────────
 *.csv
-!requirements.txt
-*.zip
-*.xlsx
-*.xls
-
-
-# ── Carpetas mensuales del DANE ───────────────────────────────────────
-Enero*/
-Febrero*/
-Marzo*/
-Abril*/
-Mayo*/
-Junio*/
-Julio*/
-Agosto*/
-Septiembre*/
-Octubre*/
-Noviembre*/
-Diciembre*/
-
-
-# ── Outputs generados ─────────────────────────────────────────────────
-resultados_geih*/
-dashboard/
-*.png
-*.pdf
-metadata.json
-geih_pipeline.log
-BoxPlot_*.csv
-
-
-# ── Notebooks Jupyter ─────────────────────────────────────────────────
+*.gif
 *.ipynb
+*.jpeg
+*.jpg
+*.parquet
+*.pdf
+*.png
+*.xls
+*.xlsx
+*.zip
+
+
+# ── Carpetas excluidas ────────────────────────────────────────────────
+.eggs/
+.git/
 .ipynb_checkpoints/
+.venv/
+Abril 2022/
+Abril 2023/
+Abril 2024/
+Abril 2025/
+Abril 2026/
+Abril 2027/
+Abril 2028/
+Abril 2029/
+Agosto 2022/
+Agosto 2023/
+Agosto 2024/
+Agosto 2025/
+Agosto 2026/
+Agosto 2027/
+Agosto 2028/
+Agosto 2029/
+Diciembre 2022/
+Diciembre 2023/
+Diciembre 2024/
+Diciembre 2025/
+Diciembre 2026/
+Diciembre 2027/
+Diciembre 2028/
+Diciembre 2029/
+Enero 2022/
+Enero 2023/
+Enero 2024/
+Enero 2025/
+Enero 2026/
+Enero 2027/
+Enero 2028/
+Enero 2029/
+Febrero 2022/
+Febrero 2023/
+Febrero 2024/
+Febrero 2025/
+Febrero 2026/
+Febrero 2027/
+Febrero 2028/
+Febrero 2029/
+Julio 2022/
+Julio 2023/
+Julio 2024/
+Julio 2025/
+Julio 2026/
+Julio 2027/
+Julio 2028/
+Julio 2029/
+Junio 2022/
+Junio 2023/
+Junio 2024/
+Junio 2025/
+Junio 2026/
+Junio 2027/
+Junio 2028/
+Junio 2029/
+Marzo 2022/
+Marzo 2023/
+Marzo 2024/
+Marzo 2025/
+Marzo 2026/
+Marzo 2027/
+Marzo 2028/
+Marzo 2029/
+Mayo 2022/
+Mayo 2023/
+Mayo 2024/
+Mayo 2025/
+Mayo 2026/
+Mayo 2027/
+Mayo 2028/
+Mayo 2029/
+Noviembre 2022/
+Noviembre 2023/
+Noviembre 2024/
+Noviembre 2025/
+Noviembre 2026/
+Noviembre 2027/
+Noviembre 2028/
+Noviembre 2029/
+Octubre 2022/
+Octubre 2023/
+Octubre 2024/
+Octubre 2025/
+Octubre 2026/
+Octubre 2027/
+Octubre 2028/
+Octubre 2029/
+Septiembre 2022/
+Septiembre 2023/
+Septiembre 2024/
+Septiembre 2025/
+Septiembre 2026/
+Septiembre 2027/
+Septiembre 2028/
+Septiembre 2029/
+__pycache__/
+build/
+dashboard/
+dist/
+env/
+mnt/
+resultados_geih_2025/
+resultados_geih_2026/
+resultados_geih_2027/
+venv/
+z. Archivos/
+z. Backup/
+z. Cosas antiguas/
+
+
+# ── Archivos específicos excluidos ────────────────────────────────────
+geih_pipeline.log
+metadata.json
 
 
 # ── Carpetas de trabajo personal ──────────────────────────────────────
@@ -69,30 +153,27 @@ z. */
 z.*/
 
 
-# ── Artefactos de Google Colab ────────────────────────────────────────
-mnt/
-
-
 # ── IDE ───────────────────────────────────────────────────────────────
 .vscode/
 .idea/
 *.swp
-*.swo
 *~
 .DS_Store
 Thumbs.db
 
 
-# ── Entornos virtuales ────────────────────────────────────────────────
-venv/
-.venv/
-env/
-.env
-
-
 # ── Credenciales ──────────────────────────────────────────────────────
+.env
 .env.local
 secrets.json
 *_token.txt
 *.pem
 *.key
+
+
+# ── Excepciones (siempre incluir) ────────────────────────────────
+# Estas reglas DEBEN ser las últimas del archivo.
+# En .gitignore la última coincidencia gana; si una regla
+# de exclusión aparece después de una excepción, la anula.
+!requirements.txt
+!tests/golden_set.parquet
