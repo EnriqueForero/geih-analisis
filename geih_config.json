@@ -1,0 +1,41 @@
+{
+  "_meta": {
+    "descripcion": "Configuración externa para geih-analisis. Permite actualizar SMMLV y referencias DANE sin lanzar un nuevo release a PyPI.",
+    "instrucciones": "Coloque este archivo en la misma carpeta raíz del proyecto (junto a los datos GEIH) o en ~/.geih/geih_config.json",
+    "version_formato": "1.0",
+    "documentacion": "https://github.com/enriqueforero/geih-analisis"
+  },
+  "smmlv_por_anio": {
+    "2022": 1000000,
+    "2023": 1160000,
+    "2024": 1300000,
+    "2025": 1423500,
+    "2026": 1750905
+  },
+  "ref_dane": {
+    "2025": {
+      "pea_anual_m": 26.3,
+      "ocupados_anual_m": 23.8,
+      "desocupados_anual_m": 2.1,
+      "td_anual_pct": 8.9,
+      "tgp_anual_pct": 64.3,
+      "to_anual_pct": 58.6,
+      "pea_dic_m": 26.3,
+      "ocupados_dic_m": 24.2,
+      "desocupados_dic_m": 2.1,
+      "td_dic_pct": 8.0,
+      "tgp_dic_pct": 64.3,
+      "to_dic_pct": 59.2
+    }
+  },
+  "carga_prestacional": 0.54,
+  "muestreo": {
+    "deff_default": 2.5,
+    "cv_preciso_pct": 7.0,
+    "cv_aceptable_pct": 15.0,
+    "cv_poco_preciso_pct": 20.0,
+    "muestra_minima_registros": 100,
+    "muestra_minima_expandida": 50000,
+    "nivel_confianza": 0.95
+  }
+}

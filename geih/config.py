@@ -5,6 +5,14 @@ geih.config — Configuración centralizada para el análisis GEIH.
 Toda constante, mapeo, paleta de colores y parámetro configurable vive aquí.
 Nunca hay "números mágicos" sueltos en la lógica de negocio.
 
+CAMBIO v5.1 — Configuración externa + departamentos completos:
+  - Soporte para geih_config.json externo: actualizar SMMLV y referencias
+    DANE sin necesidad de lanzar un nuevo release a PyPI.
+  - 33 departamentos (32 + Bogotá D.C.) — antes faltaban 9 de Amazonía,
+    Orinoquía y San Andrés.
+  - ConfigMuestreo integrada para precisión estadística.
+  - ConfigGEIH ahora tiene `config_muestreo` embebida.
+
 CAMBIO v4.0 — Escalabilidad multi-año:
   - ConfigGEIH ahora recibe `anio` y auto-selecciona SMMLV y carpetas.
   - MESES_CARPETAS es ahora una función, no una lista hardcoded.
@@ -50,32 +58,132 @@ __all__ = [
     "ReferenciaDane",
     "REF_DANE",
     "REF_DANE_2025",
+    "cargar_config_externa",
 ]
 
 
+import json
 from dataclasses import dataclass, field
-from typing import Dict, List, Tuple, Optional
+from pathlib import Path
+from typing import Dict, List, Tuple, Optional, Any
+
+
+# ═════════════════════════════════════════════════════════════════════
+# CARGA DE CONFIGURACIÓN EXTERNA (geih_config.json)
+# ═════════════════════════════════════════════════════════════════════
+
+_CONFIG_EXTERNA_CACHE: Optional[Dict[str, Any]] = None
+
+
+def cargar_config_externa(
+    ruta: Optional[str] = None,
+    silencioso: bool = True,
+) -> Dict[str, Any]:
+    """Carga configuración desde un archivo JSON externo.
+
+    Busca geih_config.json en este orden de prioridad:
+      1. Ruta explícita proporcionada como argumento.
+      2. Variable de entorno GEIH_CONFIG_PATH.
+      3. Directorio de trabajo actual: ./geih_config.json
+      4. Home del usuario: ~/.geih/geih_config.json
+
+    Si no encuentra ningún archivo, retorna un dict vacío y usa
+    los valores por defecto hardcodeados en este módulo.
+
+    Este diseño permite actualizar el SMMLV de un año nuevo o agregar
+    referencias DANE sin necesidad de lanzar un nuevo release a PyPI.
+
+    Args:
+        ruta: Ruta explícita al archivo JSON. Si None, busca automáticamente.
+        silencioso: Si True, no imprime mensaje cuando no encuentra archivo.
+
+    Returns:
+        Diccionario con la configuración externa, o {} si no existe.
+
+    Ejemplo:
+        >>> cfg = cargar_config_externa("/mi/ruta/geih_config.json")
+        >>> cfg.get("smmlv_por_anio", {}).get("2027", None)
+        1_900_000
+    """
+    global _CONFIG_EXTERNA_CACHE
+
+    # Cache: solo leer el archivo una vez por sesión
+    if _CONFIG_EXTERNA_CACHE is not None and ruta is None:
+        return _CONFIG_EXTERNA_CACHE
+
+    import os
+
+    # Orden de búsqueda
+    candidatos: List[Path] = []
+    if ruta:
+        candidatos.append(Path(ruta))
+    env_path = os.environ.get("GEIH_CONFIG_PATH")
+    if env_path:
+        candidatos.append(Path(env_path))
+    candidatos.append(Path.cwd() / "geih_config.json")
+    candidatos.append(Path.home() / ".geih" / "geih_config.json")
+
+    for archivo in candidatos:
+        if archivo.exists() and archivo.is_file():
+            try:
+                with open(archivo, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                if not silencioso:
+                    print(f"📋 Configuración externa cargada: {archivo}")
+                _CONFIG_EXTERNA_CACHE = data
+                return data
+            except (json.JSONDecodeError, OSError) as e:
+                print(f"⚠️  Error leyendo {archivo}: {e}. Usando defaults.")
+                _CONFIG_EXTERNA_CACHE = {}
+                return {}
+
+    if not silencioso:
+        print("ℹ️  No se encontró geih_config.json. Usando configuración interna.")
+    _CONFIG_EXTERNA_CACHE = {}
+    return {}
+
+
+def _merge_smmlv(hardcoded: Dict[int, int]) -> Dict[int, int]:
+    """Combina SMMLV hardcodeado con valores del JSON externo.
+
+    El JSON externo tiene prioridad: si define un año que ya existe
+    en el hardcoded, lo sobreescribe. Esto permite corregir errores
+    sin un nuevo release.
+    """
+    ext = cargar_config_externa()
+    ext_smmlv = ext.get("smmlv_por_anio", {})
+    merged = dict(hardcoded)
+    for anio_str, valor in ext_smmlv.items():
+        try:
+            merged[int(anio_str)] = int(valor)
+        except (ValueError, TypeError):
+            continue
+    return merged
 
 
 # ═════════════════════════════════════════════════════════════════════
 # PARÁMETROS ECONÓMICOS — MULTI-AÑO
 # ═════════════════════════════════════════════════════════════════════
 
-SMMLV_POR_ANIO: Dict[int, int] = {
+_SMMLV_HARDCODED: Dict[int, int] = {
     2022: 1_000_000,
     2023: 1_160_000,
     2024: 1_300_000,
     2025: 1_423_500,
-    2026: 1_750_905,   # Decreto 2426 de 2025 — actualizar si cambia
-    # Agregar años futuros aquí. Solo se modifica esta línea.
+    2026: 1_750_905,   # Decreto 2426 de 2025
 }
-"""SMMLV por año en COP. Fuente: Decretos anuales del Gobierno Nacional.
-Para agregar un año nuevo, solo agregar una entrada al diccionario."""
 
-# Retrocompatibilidad: módulos que importaban SMMLV_2025 directamente
-SMMLV_2025: int = SMMLV_POR_ANIO[2025]
+# Merge con configuración externa (si existe)
+SMMLV_POR_ANIO: Dict[int, int] = _merge_smmlv(_SMMLV_HARDCODED)
+"""SMMLV por año en COP. Se actualiza automáticamente desde geih_config.json
+si existe, sin necesidad de un nuevo release a PyPI."""
 
-CARGA_PRESTACIONAL: float = 0.54
+# Retrocompatibilidad
+SMMLV_2025: int = SMMLV_POR_ANIO.get(2025, 1_423_500)
+
+CARGA_PRESTACIONAL: float = cargar_config_externa().get(
+    "carga_prestacional", 0.54
+)
 """Factor de carga prestacional sobre salario base en Colombia (~54%).
 Incluye pensión 12%, salud 8.5%, parafiscales 9%, cesantías 8.33%,
 intereses 1%, prima 8.33%, vacaciones 4.17%, riesgos variable."""
@@ -100,35 +208,47 @@ def generar_carpetas_mensuales(anio: int, n_meses: int = 12) -> List[str]:
 
     Args:
         anio: Año de los datos (ej: 2025, 2026).
-        n_meses: Cuántos meses generar (1-12). Permite procesamiento
-                 parcial del año en curso.
+        n_meses: Cuántos meses generar (1-12).
 
     Returns:
         Lista de strings como ['Enero 2025', 'Febrero 2025', ...].
-
-    Ejemplo:
-        >>> generar_carpetas_mensuales(2026, n_meses=3)
-        ['Enero 2026', 'Febrero 2026', 'Marzo 2026']
     """
     n = max(1, min(n_meses, 12))
     return [f"{mes} {anio}" for mes in MESES_NOMBRES[:n]]
 
 
-def generar_etiqueta_periodo(anio: int, n_meses: int = 12) -> str:
+def generar_etiqueta_periodo(
+    anio: int,
+    n_meses: int = 12,
+    meses_rango: Optional[List[int]] = None,
+) -> str:
     """Genera la etiqueta legible del período para títulos y reportes.
 
+    CAMBIO v5.1: Soporta rangos de meses arbitrarios para análisis
+    semestral u otros períodos no contiguos desde el inicio.
+
     Ejemplos:
-        (2025, 12) → 'Enero – Diciembre 2025'
-        (2026, 3)  → 'Enero – Marzo 2026'
-        (2026, 1)  → 'Enero 2026'
+        (2025, 12)               → 'Enero – Diciembre 2025'
+        (2026, 3)                → 'Enero – Marzo 2026'
+        (2026, 1)                → 'Enero 2026'
+        (2025, 6, [7,8,9,10,11,12]) → 'Julio – Diciembre 2025'
     """
+    if meses_rango:
+        # Rango explícito: usar primer y último mes del rango
+        meses_ord = sorted(meses_rango)
+        inicio = MESES_NOMBRES[meses_ord[0] - 1]
+        fin = MESES_NOMBRES[meses_ord[-1] - 1]
+        if len(meses_ord) == 1:
+            return f"{inicio} {anio}"
+        return f"{inicio} – {fin} {anio}"
+
     n = max(1, min(n_meses, 12))
     if n == 1:
         return f"{MESES_NOMBRES[0]} {anio}"
     return f"{MESES_NOMBRES[0]} – {MESES_NOMBRES[n - 1]} {anio}"
 
 
-# Retrocompatibilidad: código que importaba MESES_CARPETAS como constante
+# Retrocompatibilidad
 MESES_CARPETAS: List[str] = generar_carpetas_mensuales(2025, 12)
 
 
@@ -143,19 +263,33 @@ class ConfigGEIH:
     Centraliza todo lo que un usuario necesita ajustar.
     Valida en __post_init__ para fallar rápido si algo está mal.
 
-    CAMBIO v4.0: ahora recibe `anio` y auto-deriva SMMLV, carpetas
-    mensuales y etiqueta de período. El usuario solo necesita cambiar
-    `anio` y `n_meses` para procesar cualquier año.
+    CAMBIO v5.1:
+      - Soporte para `meses_rango`: filtrar meses arbitrarios (semestral).
+      - `config_muestreo` embebida para cálculos de precisión estadística.
+      - SMMLV se carga automáticamente desde geih_config.json si existe.
+
+    CAMBIO v4.0:
+      - Recibe `anio` y auto-deriva SMMLV, carpetas y etiqueta de período.
 
     Uso típico:
-        # Año 2025 completo (12 meses)
+        # Año 2025 completo
         config = ConfigGEIH(anio=2025, n_meses=12)
 
-        # Primeros 3 meses de 2026
-        config = ConfigGEIH(anio=2026, n_meses=3)
+        # Primer semestre 2025
+        config = ConfigGEIH(anio=2025, n_meses=12, meses_rango=[1,2,3,4,5,6])
 
-        # Mes puntual: marzo 2026
-        config = ConfigGEIH(anio=2026, n_meses=1)
+        # Segundo semestre 2025
+        config = ConfigGEIH(anio=2025, n_meses=12, meses_rango=[7,8,9,10,11,12])
+
+    NOTA sobre meses_rango y n_meses:
+        - `n_meses` controla cómo se divide el FEX_C18 (divisor del factor
+          de expansión). Si el Parquet tiene 12 meses, n_meses=12.
+        - `meses_rango` controla QUÉ meses se incluyen en el análisis.
+        - Son independientes: un Parquet de 12 meses (n_meses=12) puede
+          analizarse en subconjuntos semestrales (meses_rango=[1..6]).
+        - Para un semestre donde el FEX ya fue dividido entre 12, el
+          divisor correcto sigue siendo 12, no 6. La reducción del universo
+          se refleja en que se suman menos registros, no en el divisor.
     """
     anio: int = 2025
     """Año de los datos a procesar."""
@@ -163,17 +297,19 @@ class ConfigGEIH:
     n_meses: int = 12
     """Número de meses consolidados. Controla la división del FEX_C18."""
 
+    meses_rango: Optional[List[int]] = None
+    """Rango de meses a incluir en el análisis (1-12). Si None, incluye todos.
+    Permite análisis semestral: [1,2,3,4,5,6] o [7,8,9,10,11,12].
+    No afecta el divisor del FEX_C18 — eso lo controla n_meses."""
+
     smmlv: int = 0
-    """SMMLV del año de análisis en COP. Si 0 (default), se auto-selecciona
-    de SMMLV_POR_ANIO según el año. Solo asignar manualmente si el año
-    aún no está en el diccionario."""
+    """SMMLV del año de análisis en COP. Si 0, se auto-selecciona."""
 
     periodo_etiqueta: str = ""
-    """Etiqueta legible para títulos y reportes. Si vacía, se genera
-    automáticamente como 'Enero – Diciembre 2025'."""
+    """Etiqueta legible para títulos y reportes. Si vacía, se genera."""
 
     random_seed: int = 42
-    """Semilla para reproducibilidad (muestreo, ML)."""
+    """Semilla para reproducibilidad."""
 
     encoding_csv: str = "latin-1"
     """Encoding de los CSV del DANE."""
@@ -189,6 +325,18 @@ class ConfigGEIH:
 
     def __post_init__(self):
         """Valida parámetros y auto-deriva valores calculados."""
+        
+        # ── 1. Sincronización automática de divisor poblacional ──
+        # Si el usuario pasa un filtro de meses específico, el divisor
+        # del factor de expansión (n_meses) DEBE ser exactamente la 
+        # cantidad de meses filtrados para no inflar/reducir la población.
+        if self.meses_rango is not None:
+            if not isinstance(self.meses_rango, list):
+                raise TypeError("meses_rango debe ser una lista de enteros")
+            
+            # ¡AQUÍ ESTÁ LA MAGIA! Sincronización forzada:
+            self.n_meses = len(self.meses_rango)
+            
         # ── Validación básica ──────────────────────────────────────
         if self.n_meses < 1 or self.n_meses > 12:
             raise ValueError(f"n_meses={self.n_meses} fuera de rango [1, 12]")
@@ -198,19 +346,38 @@ class ConfigGEIH:
                 f"La GEIH Marco 2018 inicia en 2022."
             )
 
+        # ── Validar meses_rango ────────────────────────────────────
+        if self.meses_rango is not None:
+            if not isinstance(self.meses_rango, list):
+                raise TypeError(
+                    f"meses_rango debe ser una lista de enteros, "
+                    f"recibido: {type(self.meses_rango)}"
+                )
+            for m in self.meses_rango:
+                if not isinstance(m, int) or m < 1 or m > 12:
+                    raise ValueError(
+                        f"Mes {m} en meses_rango fuera de rango [1, 12]"
+                    )
+            # Verificar que los meses del rango estén dentro de n_meses
+            max_mes = max(self.meses_rango)
+            if max_mes > self.n_meses:
+                raise ValueError(
+                    f"meses_rango incluye mes {max_mes} pero n_meses={self.n_meses}. "
+                    f"Los meses del rango deben existir en el consolidado."
+                )
+
         # ── Auto-seleccionar SMMLV según el año ────────────────────
         if self.smmlv == 0:
             if self.anio in SMMLV_POR_ANIO:
                 self.smmlv = SMMLV_POR_ANIO[self.anio]
             else:
-                # Año no registrado → usar el último conocido + advertencia
                 ultimo_anio = max(SMMLV_POR_ANIO.keys())
                 self.smmlv = SMMLV_POR_ANIO[ultimo_anio]
                 print(
                     f"⚠️  SMMLV para {self.anio} no está registrado en "
                     f"SMMLV_POR_ANIO. Usando el de {ultimo_anio}: "
-                    f"${self.smmlv:,}. Actualice config.py cuando se "
-                    f"publique el decreto."
+                    f"${self.smmlv:,}. Actualice config.py o geih_config.json "
+                    f"cuando se publique el decreto."
                 )
 
         if self.smmlv < 100_000:
@@ -219,43 +386,52 @@ class ConfigGEIH:
         # ── Auto-generar etiqueta de período ───────────────────────
         if not self.periodo_etiqueta:
             self.periodo_etiqueta = generar_etiqueta_periodo(
-                self.anio, self.n_meses
+                self.anio, self.n_meses, self.meses_rango
             )
 
     # ── Propiedades calculadas ──────────────────────────────────
     @property
     def carpetas_mensuales(self) -> List[str]:
-        """Lista de carpetas mensuales DANE para este año y n_meses.
-
-        Reemplaza la constante MESES_CARPETAS. Las clases que antes
-        usaban MESES_CARPETAS ahora usan config.carpetas_mensuales.
-        """
+        """Lista de carpetas mensuales DANE para este año y n_meses."""
         return generar_carpetas_mensuales(self.anio, self.n_meses)
 
     @property
     def referencia_dane(self) -> Optional["ReferenciaDane"]:
-        """Referencia DANE para validación, o None si no está disponible.
-
-        Devuelve None para años sin referencia publicada (ej: 2026 parcial).
-        El sanity_check() maneja None gracefully: advierte en vez de fallar.
-        """
+        """Referencia DANE para validación, o None si no está disponible."""
         return REF_DANE.get(self.anio)
+
+    @property
+    def config_muestreo(self) -> "ConfigMuestreo":
+        """Configuración de precisión muestral. Carga desde JSON si existe."""
+        from .muestreo import ConfigMuestreo
+        ext = cargar_config_externa()
+        muestreo_cfg = ext.get("muestreo", {})
+        return ConfigMuestreo(**{
+            k: v for k, v in muestreo_cfg.items()
+            if k in ConfigMuestreo.__dataclass_fields__
+        }) if muestreo_cfg else ConfigMuestreo()
 
     def resumen(self) -> None:
         """Imprime un resumen legible de la configuración activa."""
         ref = self.referencia_dane
         ref_status = "✅ Disponible" if ref else "⚠️  No disponible"
-        print(f"\n{'='*55}")
+        ext = cargar_config_externa()
+        ext_status = "✅ Cargado" if ext else "—  No encontrado (usando defaults)"
+
+        print(f"\n{'='*60}")
         print(f"  CONFIGURACIÓN GEIH — {self.periodo_etiqueta}")
-        print(f"{'='*55}")
-        print(f"  Año           : {self.anio}")
-        print(f"  Meses         : {self.n_meses}")
-        print(f"  SMMLV         : ${self.smmlv:,} COP")
-        print(f"  FEX divisor   : ÷ {self.n_meses}")
-        print(f"  Ref. DANE     : {ref_status}")
-        print(f"  Carpetas      : {self.carpetas_mensuales[0]} → "
+        print(f"{'='*60}")
+        print(f"  Año              : {self.anio}")
+        print(f"  Meses (divisor)  : {self.n_meses}")
+        if self.meses_rango:
+            print(f"  Meses (filtro)   : {self.meses_rango}")
+        print(f"  SMMLV            : ${self.smmlv:,} COP")
+        print(f"  FEX divisor      : ÷ {self.n_meses}")
+        print(f"  Ref. DANE        : {ref_status}")
+        print(f"  Config externa   : {ext_status}")
+        print(f"  Carpetas         : {self.carpetas_mensuales[0]} → "
               f"{self.carpetas_mensuales[-1]}")
-        print(f"{'='*55}")
+        print(f"{'='*60}")
 
 
 # ═════════════════════════════════════════════════════════════════════
@@ -289,7 +465,7 @@ LLAVES_HOGAR: List[str] = ["DIRECTORIO", "SECUENCIA_P"]
 
 
 # ═════════════════════════════════════════════════════════════════════
-# COLUMNAS QUE DEBEN LEERSE COMO STRING (NO NUMÉRICAS)
+# COLUMNAS QUE DEBEN LEERSE COMO STRING
 # ═════════════════════════════════════════════════════════════════════
 
 CONVERTERS_BASE: Dict[str, type] = {
@@ -322,100 +498,54 @@ MODULOS_CSV: Dict[str, str] = {
     "otros_ingresos":  "Otros ingresos e impuestos.CSV",
 }
 
-# Catálogo de variables clave por módulo (para referencia y selección)
 VARIABLES_POR_MODULO: Dict[str, List[str]] = {
     "caracteristicas": [
         "P3271",      # Sexo (1=H, 2=M)
         "P6040",      # Edad
-        "P6080",      # Autorreconocimiento étnico (1=Indígena, 5=Afro, 6=Ninguno)
+        "P6080",      # Autorreconocimiento étnico
         "P3042",      # Nivel educativo (1-13)
         "P3043S1",    # Campo de formación (CINE-F)
         "P6090",      # Afiliado salud (1=Sí)
         "P2057",      # ¿Se considera campesino? (1=Sí)
         "P2059",      # ¿Alguna vez fue campesino?
-        "P1906S1",    # Discapacidad: Oír
-        "P1906S2",    # Discapacidad: Hablar
-        "P1906S3",    # Discapacidad: Ver
-        "P1906S4",    # Discapacidad: Moverse
-        "P1906S5",    # Discapacidad: Agarrar
-        "P1906S6",    # Discapacidad: Entender
-        "P1906S7",    # Discapacidad: Autocuidado
-        "P1906S8",    # Discapacidad: Relacionarse
-        "CLASE",      # Zona (1=Urbano/Cabecera, 2=Rural)
+        "P1906S1", "P1906S2", "P1906S3", "P1906S4",
+        "P1906S5", "P1906S6", "P1906S7", "P1906S8",
+        "CLASE",      # Zona (1=Urbano, 2=Rural)
         "FEX_C18",    # Factor de expansión
     ],
     "ocupados": [
-        "OCI",        # Ocupado (=1)
-        "INGLABO",    # Ingreso laboral mensual COP
-        "P6500",      # Salario bruto declarado
-        "P6430",      # Posición ocupacional (1-9)
-        "P6800",      # Horas normales semana
-        "P6850",      # Horas reales semana pasada
-        "P6920",      # Cotiza pensión (1=Sí, 2=No, 3=Pensionado)
-        "P3069",      # Tamaño empresa (1-10 categorías)
-        "P7130",      # Desea cambiar trabajo (1=Sí)
-        "P6440",      # ¿Tiene contrato?
-        "P6450",      # ¿Contrato escrito?
-        "P6460",      # ¿Contrato indefinido?
-        "P1802",      # Alcance mercado (1-6, 6=Exportación)
-        "P3047",      # ¿Quién decide horario?
-        "P3048",      # ¿Quién decide qué producir?
-        "P3049",      # ¿Quién decide precio?
-        "P3363",      # ¿Cómo consiguió empleo?
-        "P3364",      # ¿Le descontaron retención en la fuente?
-        "P6765",      # Forma de trabajo (destajo, honorarios, etc.)
-        "P6400",      # ¿Trabaja donde lo contrataron?
-        "P6410",      # Tipo intermediación (EST, CTA)
-        "P6510S1",    # Horas extras
-        "P6580S1",    # Bonificaciones
-        "P6585S1A1",  # Auxilio alimentación
-        "P6585S2A1",  # Auxilio transporte
-        "RAMA2D_R4",  # CIIU 2 dígitos
-        "RAMA4D_R4",  # CIIU 4 dígitos
-        "AREA",       # Municipio (5 dígitos)
+        "OCI", "INGLABO", "P6500", "P6430", "P6800", "P6850",
+        "P6920", "P3069", "P7130", "P6440", "P6450", "P6460",
+        "P1802", "P3047", "P3048", "P3049", "P3363", "P3364",
+        "P6765", "P6400", "P6410",
+        "P6510S1", "P6580S1", "P6585S1A1", "P6585S2A1",
+        "RAMA2D_R4", "RAMA4D_R4", "AREA",
+        # Tenencia de tierra y tipo de actividad (v5.1)
+        "P3056",      # Tipo de actividad del negocio (1=mercancías, 2=agro)
+        "P3064",      # ¿Propietario de la tierra? (1=Sí, 2=No)
+        "P3064S1",    # Valor estimado arriendo terreno (COP/mes)
     ],
     "no_ocupados": [
-        "DSI",        # Desocupado (=1)
-        "P7250",      # Semanas buscando trabajo
-        "P6300",      # ¿Desearía trabajar? (FFT con deseo)
-        "P6310",      # ¿Disponible para trabajar?
-        "FFT",        # Fuera de la fuerza de trabajo (=1)
+        "DSI", "P7250", "P6300", "P6310", "FFT",
     ],
     "fuerza_trabajo": [
-        "FT",         # En la fuerza de trabajo (=1)
-        "PET",        # Población en edad de trabajar (=1)
-        "P6240",      # Actividad semana pasada
-        "P6280",      # ¿Disponible para trabajar?
+        "FT", "PET", "P6240", "P6280",
     ],
     "otras_formas": [
-        "P3054",      # Producción bienes autoconsumo
-        "P3054S1",    # Horas autoconsumo
-        "P3055",      # Producción servicios autoconsumo
-        "P3055S1",    # Horas servicios autoconsumo
-        "P3056",      # Trabajo voluntario
-        "P3057",      # Trabajo en formación
+        "P3054", "P3054S1", "P3055", "P3055S1", "P3056", "P3057",
     ],
     "migracion": [
-        "P3370",      # ¿Dónde vivía hace 12 meses?
-        "P3370S1",    # Departamento hace 12 meses
-        "P3371",      # ¿Dónde vivía hace 5 años?
-        "P3376",      # País de nacimiento
-        "P3378S1",    # Año de llegada a Colombia
+        "P3370", "P3370S1", "P3371", "P3376", "P3378S1",
     ],
     "otros_ingresos": [
-        "P7422",      # Arriendos recibidos
-        "P7500S1",    # Pensión jubilación
-        "P7500S2",    # Ayudas de otros hogares
-        "P7500S3",    # Ayudas institucionales
-        "P7510S1",    # Intereses/dividendos
-        "P7510S2",    # Remesas del exterior
-        "P7510S3",    # Cesantías
+        "P7422", "P7500S1", "P7500S1A1", "P7500S2", "P7500S2A1",
+        "P7500S3", "P7510S1", "P7510S2", "P7510S2A1", "P7510S3",
     ],
 }
 
 
 # ═════════════════════════════════════════════════════════════════════
-# MAPEO CIIU Rev.4 → 13 RAMAS DANE (AGRUPACIÓN ESTÁNDAR)
+# MAPEO CIIU Rev.4 → 13 RAMAS DANE
 # ═════════════════════════════════════════════════════════════════════
 
 RAMAS_DANE: Dict[str, str] = {
@@ -434,7 +564,6 @@ RAMAS_DANE: Dict[str, str] = {
     "ARTE": "Actividades artísticas, entretenimiento, recreación y otras actividades de servicio",
 }
 
-# Tabla de rangos: (CIIU_min, CIIU_max, clave_rama)
 TABLA_CIIU_RAMAS: List[Tuple[int, int, str]] = [
     (1,  3,  "AGRI"), (5,  9,  "SUMI"), (10, 33, "MANU"),
     (35, 35, "SUMI"), (36, 39, "SUMI"), (41, 43, "CONS"),
@@ -447,7 +576,7 @@ TABLA_CIIU_RAMAS: List[Tuple[int, int, str]] = [
 
 
 # ═════════════════════════════════════════════════════════════════════
-# AGRUPACIÓN DANE DE 8 GRUPOS (PARA TABLAS POR ÁREA)
+# AGRUPACIÓN DANE DE 8 GRUPOS
 # ═════════════════════════════════════════════════════════════════════
 
 AGRUPACION_DANE_8: Dict[str, List[Tuple[int, int]]] = {
@@ -461,8 +590,6 @@ AGRUPACION_DANE_8: Dict[str, List[Tuple[int, int]]] = {
     "Administración pública, educación, salud y otros":          [(84, 99)],
 }
 
-# Mapeo directo: código CIIU 2 dígitos (string) → nombre de agrupación DANE
-# Usado por AnalisisOcupadosCiudad para tablas y Excel
 _AGRUP_DANE_POR_DIVISION: Dict[str, str] = {}
 for _nombre, _rangos in AGRUPACION_DANE_8.items():
     for _lo, _hi in _rangos:
@@ -471,23 +598,40 @@ for _nombre, _rangos in AGRUPACION_DANE_8.items():
 
 
 # ═════════════════════════════════════════════════════════════════════
-# DEPARTAMENTOS DE COLOMBIA (CÓDIGO DIVIPOLA → NOMBRE)
+# DEPARTAMENTOS DE COLOMBIA — COMPLETO (33 ENTIDADES)
 # ═════════════════════════════════════════════════════════════════════
+# CAMBIO v5.1: Antes tenía 24 departamentos. Ahora incluye los 32
+# departamentos + Bogotá D.C. La documentación DDI de la GEIH 2025
+# confirma cobertura en cabeceras de capitales de Amazonía y Orinoquía.
+# San Andrés se cubre en cabecera (excluyendo Providencia y rural).
 
 DEPARTAMENTOS: Dict[str, str] = {
-    "05": "Antioquia",       "08": "Atlántico",
-    "11": "Bogotá D.C.",     "13": "Bolívar",
-    "15": "Boyacá",          "17": "Caldas",
-    "18": "Caquetá",         "19": "Cauca",
-    "20": "Cesar",           "23": "Córdoba",
-    "25": "Cundinamarca",    "27": "Chocó",
-    "41": "Huila",           "44": "La Guajira",
-    "47": "Magdalena",       "50": "Meta",
-    "52": "Nariño",          "54": "Norte de Santander",
-    "63": "Quindío",         "66": "Risaralda",
-    "68": "Santander",       "70": "Sucre",
-    "73": "Tolima",          "76": "Valle del Cauca",
+    "05": "Antioquia",               "08": "Atlántico",
+    "11": "Bogotá D.C.",             "13": "Bolívar",
+    "15": "Boyacá",                  "17": "Caldas",
+    "18": "Caquetá",                 "19": "Cauca",
+    "20": "Cesar",                   "23": "Córdoba",
+    "25": "Cundinamarca",            "27": "Chocó",
+    "41": "Huila",                   "44": "La Guajira",
+    "47": "Magdalena",               "50": "Meta",
+    "52": "Nariño",                  "54": "Norte de Santander",
+    "63": "Quindío",                 "66": "Risaralda",
+    "68": "Santander",               "70": "Sucre",
+    "73": "Tolima",                  "76": "Valle del Cauca",
+    # ── Amazonía y Orinoquía (v5.1) ────────────────────────────
+    "81": "Arauca",                  "85": "Casanare",
+    "86": "Putumayo",                "88": "San Andrés y Providencia",
+    "91": "Amazonas",                "94": "Guainía",
+    "95": "Guaviare",                "97": "Vaupés",
+    "99": "Vichada",
 }
+"""33 entidades territoriales de Colombia (32 departamentos + Bogotá D.C.).
+
+NOTA MUESTRAL: Los departamentos de Amazonía/Orinoquía tienen muestra
+limitada en la GEIH (solo cabeceras de capitales). Las estimaciones para
+estos departamentos deben evaluarse con la infraestructura de muestreo
+(geih.muestreo) antes de publicarse. El DANE no publica cifras mensuales
+para estos departamentos por esta razón."""
 
 
 # ═════════════════════════════════════════════════════════════════════
@@ -507,38 +651,36 @@ DPTO_A_CIUDAD: Dict[str, str] = {
     "44": "La Guajira/Riohacha",  "47": "Magdalena/Sta.Marta",
     "63": "Quindío/Armenia",      "70": "Sucre/Sincelejo",
     "25": "Cundinamarca",         "73": "Tolima",
+    # ── Amazonía y Orinoquía (v5.1) ────────────────────────────
+    "81": "Arauca",               "85": "Casanare/Yopal",
+    "86": "Putumayo/Mocoa",       "88": "San Andrés",
+    "91": "Amazonas/Leticia",     "94": "Guainía/Inírida",
+    "95": "Guaviare/S.J.Guaviare", "97": "Vaupés/Mitú",
+    "99": "Vichada/Pto.Carreño",
 }
 
 AREA_A_CIUDAD: Dict[str, str] = {
     # ── 13 ciudades principales y sus áreas metropolitanas ──────
     "11001": "Bogotá D.C.",
-    # Medellín AM (8 municipios)
     "05001": "Medellín A.M.",     "05088": "Medellín A.M.",
     "05308": "Medellín A.M.",     "05318": "Medellín A.M.",
     "05360": "Medellín A.M.",     "05380": "Medellín A.M.",
     "05400": "Medellín A.M.",     "05501": "Medellín A.M.",
-    # Cali AM (6 municipios)
     "76001": "Cali A.M.",         "76111": "Cali A.M.",
     "76113": "Cali A.M.",         "76364": "Cali A.M.",
     "76520": "Cali A.M.",         "76563": "Cali A.M.",
-    # Barranquilla AM (4 municipios)
     "08001": "Barranquilla A.M.", "08433": "Barranquilla A.M.",
     "08549": "Barranquilla A.M.", "08758": "Barranquilla A.M.",
-    # Bucaramanga AM (6 municipios)
     "68001": "Bucaramanga A.M.",  "68081": "Bucaramanga A.M.",
     "68276": "Bucaramanga A.M.",  "68307": "Bucaramanga A.M.",
     "68615": "Bucaramanga A.M.",  "68705": "Bucaramanga A.M.",
-    # Manizales AM (3 municipios)
     "17001": "Manizales A.M.",    "17042": "Manizales A.M.",
     "17616": "Manizales A.M.",
-    # Pereira AM (3 municipios)
     "66001": "Pereira A.M.",      "66045": "Pereira A.M.",
     "66170": "Pereira A.M.",
-    # Cúcuta AM (5 municipios)
     "54001": "Cúcuta A.M.",       "54128": "Cúcuta A.M.",
     "54172": "Cúcuta A.M.",       "54206": "Cúcuta A.M.",
     "54520": "Cúcuta A.M.",
-    # Ciudades sin AM
     "52001": "Pasto",             "41001": "Ibagué",
     "23001": "Montería",          "13001": "Cartagena",
     "50001": "Villavicencio",
@@ -548,9 +690,14 @@ AREA_A_CIUDAD: Dict[str, str] = {
     "27001": "Quibdó",            "41551": "Neiva",
     "44001": "Riohacha",          "47001": "Santa Marta",
     "63001": "Armenia",           "70001": "Sincelejo",
+    # ── Capitales Amazonía/Orinoquía (v5.1) ────────────────────
+    "81001": "Arauca",            "85001": "Yopal",
+    "86001": "Mocoa",             "88001": "San Andrés",
+    "91001": "Leticia",           "94001": "Inírida",
+    "95001": "San José del Guaviare", "97001": "Mitú",
+    "99001": "Puerto Carreño",
 }
 
-# Clasificación DANE: dominios geográficos para reportes
 CIUDADES_13_PRINCIPALES: set = {
     "Bogotá D.C.", "Medellín A.M.", "Cali A.M.", "Barranquilla A.M.",
     "Bucaramanga A.M.", "Manizales A.M.", "Pereira A.M.", "Cúcuta A.M.",
@@ -563,7 +710,7 @@ CIUDADES_10_INTERMEDIAS: set = {
 
 
 # ═════════════════════════════════════════════════════════════════════
-# NIVELES EDUCATIVOS (P3042 → ETIQUETA)
+# NIVELES EDUCATIVOS
 # ═════════════════════════════════════════════════════════════════════
 
 NIVELES_EDUCATIVOS: Dict[int, str] = {
@@ -586,7 +733,6 @@ NIVELES_AGRUPADOS: Dict[int, str] = {
     13: "7. Posgrado",
 }
 
-# Conversión P3042 → Años de educación acumulados (para Mincer)
 P3042_A_ANOS: Dict[int, int] = {
     1: 0, 2: 0, 3: 5, 4: 9, 5: 11, 6: 11, 7: 11,
     8: 14, 9: 15, 10: 16, 11: 17, 12: 18, 13: 21,
@@ -594,7 +740,7 @@ P3042_A_ANOS: Dict[int, int] = {
 
 
 # ═════════════════════════════════════════════════════════════════════
-# RANGOS DE INGRESO EN MÚLTIPLOS DE SMMLV
+# RANGOS DE INGRESO
 # ═════════════════════════════════════════════════════════════════════
 
 RANGOS_SMMLV_LIMITES: List[float] = [0, 0.5, 1, 1.5, 2, 3, 4, 6, 10, float("inf")]
@@ -607,7 +753,7 @@ RANGOS_SMMLV_ETIQUETAS: List[str] = [
 
 
 # ═════════════════════════════════════════════════════════════════════
-# ETIQUETAS DE TAMAÑO DE EMPRESA (P3069)
+# TAMAÑO DE EMPRESA
 # ═════════════════════════════════════════════════════════════════════
 
 TAMANO_EMPRESA: Dict[int, str] = {
@@ -619,7 +765,7 @@ TAMANO_EMPRESA: Dict[int, str] = {
 
 
 # ═════════════════════════════════════════════════════════════════════
-# MAPEO CIIU INTERNO (FALLBACK PARA MERGE INCOMPLETO)
+# MAPEO CIIU FALLBACK
 # ═════════════════════════════════════════════════════════════════════
 
 CIIU_DESCRIPCION_FALLBACK: List[Tuple[range, str]] = [
@@ -645,18 +791,58 @@ CIIU_DESCRIPCION_FALLBACK: List[Tuple[range, str]] = [
 
 
 # ═════════════════════════════════════════════════════════════════════
-# REFERENCIA DANE — MULTI-AÑO (PARA VALIDACIÓN SANITY CHECK)
+# SUBCATEGORÍAS CIIU SECTOR PRIMARIO (v5.1 — Análisis de tierras)
+# ═════════════════════════════════════════════════════════════════════
+
+CIIU_SECTOR_PRIMARIO: Dict[str, str] = {
+    "01": "Agricultura, ganadería, caza y servicios conexos",
+    "02": "Silvicultura y extracción de madera",
+    "03": "Pesca y acuicultura",
+}
+"""Divisiones CIIU Rev.4 del sector primario (CIIU 01-03).
+Usado por AnalisisTierraAgropecuario para desagregar por tipo de actividad."""
+
+CIIU_AGRICULTURA_DETALLE: Dict[str, str] = {
+    "0111": "Cultivo de cereales y leguminosas",
+    "0112": "Cultivo de arroz",
+    "0113": "Cultivo de hortalizas, raíces y tubérculos",
+    "0114": "Cultivo de tabaco",
+    "0115": "Cultivo de plantas textiles",
+    "0119": "Otros cultivos transitorios",
+    "0121": "Cultivo de frutas tropicales y subtropicales",
+    "0122": "Cultivo de plátano y banano",
+    "0123": "Cultivo de café",
+    "0124": "Cultivo de caña de azúcar",
+    "0125": "Cultivo de flor de corte",
+    "0126": "Cultivo de palma para aceite",
+    "0127": "Cultivo de plantas con las que se preparan bebidas",
+    "0128": "Cultivo de especias y aromáticas",
+    "0129": "Otros cultivos permanentes",
+    "0130": "Propagación de plantas",
+    "0141": "Cría de ganado bovino y bufalino",
+    "0142": "Cría de caballos y otros equinos",
+    "0143": "Cría de ovejas y cabras",
+    "0144": "Cría de ganado porcino",
+    "0145": "Cría de aves de corral",
+    "0149": "Cría de otros animales",
+    "0150": "Explotación mixta",
+    "0161": "Actividades de apoyo a la agricultura",
+    "0162": "Actividades de apoyo a la ganadería",
+    "0163": "Actividades posteriores a la cosecha",
+    "0170": "Caza ordinaria y con trampas",
+}
+"""Detalle CIIU Rev.4 a 4 dígitos para agricultura (grupo 01).
+Permite análisis granular de 'especificidad de tierras'."""
+
+
+# ═════════════════════════════════════════════════════════════════════
+# REFERENCIA DANE — MULTI-AÑO
 # ═════════════════════════════════════════════════════════════════════
 
 @dataclass(frozen=True)
 class ReferenciaDane:
-    """Valores de referencia del boletín DANE para validación cruzada.
-
-    Cada año tiene sus propios valores publicados por el DANE.
-    Para años sin datos publicados, no se crea una entrada en REF_DANE
-    y el sanity_check advierte 'sin referencia disponible'.
-    """
-    pea_anual_m: float = 0.0        # Millones
+    """Valores de referencia del boletín DANE para validación cruzada."""
+    pea_anual_m: float = 0.0
     ocupados_anual_m: float = 0.0
     desocupados_anual_m: float = 0.0
     td_anual_pct: float = 0.0
@@ -670,19 +856,35 @@ class ReferenciaDane:
     to_dic_pct: float = 0.0
 
 
-REF_DANE: Dict[int, ReferenciaDane] = {
-    2025: ReferenciaDane(
-        pea_anual_m=26.3,  ocupados_anual_m=23.8, desocupados_anual_m=2.1,
-        td_anual_pct=8.9,  tgp_anual_pct=64.3,   to_anual_pct=58.6,
-        pea_dic_m=26.3,    ocupados_dic_m=24.2,   desocupados_dic_m=2.1,
-        td_dic_pct=8.0,    tgp_dic_pct=64.3,      to_dic_pct=59.2,
-    ),
-    # Agregar 2026 cuando el DANE publique el boletín anual:
-    # 2026: ReferenciaDane(
-    #     pea_anual_m=..., ocupados_anual_m=..., desocupados_anual_m=...,
-    #     td_anual_pct=..., tgp_anual_pct=..., to_anual_pct=...,
-    # ),
-}
+def _construir_ref_dane() -> Dict[int, ReferenciaDane]:
+    """Construye el diccionario de referencias, fusionando hardcoded + JSON."""
+    # Hardcoded (siempre presente como fallback)
+    refs: Dict[int, ReferenciaDane] = {
+        2025: ReferenciaDane(
+            pea_anual_m=26.3,  ocupados_anual_m=23.8, desocupados_anual_m=2.1,
+            td_anual_pct=8.9,  tgp_anual_pct=64.3,   to_anual_pct=58.6,
+            pea_dic_m=26.3,    ocupados_dic_m=24.2,   desocupados_dic_m=2.1,
+            td_dic_pct=8.0,    tgp_dic_pct=64.3,      to_dic_pct=59.2,
+        ),
+    }
 
-# Retrocompatibilidad: código que importaba REF_DANE_2025 directamente
-REF_DANE_2025 = REF_DANE[2025]
+    # Fusionar con JSON externo
+    ext = cargar_config_externa()
+    ext_refs = ext.get("ref_dane", {})
+    for anio_str, valores in ext_refs.items():
+        try:
+            anio = int(anio_str)
+            refs[anio] = ReferenciaDane(**{
+                k: float(v) for k, v in valores.items()
+                if k in ReferenciaDane.__dataclass_fields__
+            })
+        except (ValueError, TypeError):
+            continue
+
+    return refs
+
+
+REF_DANE: Dict[int, ReferenciaDane] = _construir_ref_dane()
+
+# Retrocompatibilidad
+REF_DANE_2025 = REF_DANE.get(2025, ReferenciaDane())

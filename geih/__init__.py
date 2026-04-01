@@ -1,124 +1,159 @@
 # -*- coding: utf-8 -*-
 """
-geih — Análisis de microdatos GEIH del DANE.
+geih — Paquete Python para análisis de microdatos GEIH (DANE, Colombia).
 
-Gran Encuesta Integrada de Hogares | DANE | Marco Muestral 2018
-Autor: Néstor Enrique Forero Herrera
-
-Paquete multi-año: soporta GEIH 2022–presente. No está atado a ningún
-año específico — el nombre 'geih_2025' era la versión anterior.
-
-Instalación:
-    pip install geih-analisis
-    # o desde GitHub:
-    pip install git+https://github.com/enriqueforero/geih-analisis.git
+Convierte los archivos CSV crudos del DANE en indicadores del mercado
+laboral listos para reportar: desempleo, salarios, brecha de género,
+formalidad, educación y más — con pocas líneas de código.
 
 Uso rápido:
-    from geih import ConfigGEIH, ConsolidadorGEIH, PreparadorGEIH
+    from geih import ConfigGEIH, ConsolidadorGEIH, PreparadorGEIH, IndicadoresLaborales
+
     config = ConfigGEIH(anio=2025, n_meses=12)
+    geih   = ConsolidadorGEIH.cargar('GEIH_2025_Consolidado.parquet')
+    df     = PreparadorGEIH(config=config).preparar_base(geih)
+    r      = IndicadoresLaborales(config=config).calcular(df)
 
-Compatibilidad hacia atrás:
-    'from geih_2025 import ...' sigue funcionando gracias al shim
-    incluido en este paquete. Recibirás un DeprecationWarning.
-
-CAMBIO v5.0 — Renombrado geih_2025 → geih:
-  El paquete ahora se llama 'geih' (nombre de importación) y
-  'geih-analisis' (nombre de distribución en PyPI).
-  El shim geih_2025/ garantiza compatibilidad durante la transición.
-
-Módulos del paquete (17 archivos):
-  config.py                → Constantes, mapeos, configuración centralizada
-  utils.py                 → Memoria, conversión de tipos, estadísticas ponderadas
-  consolidador.py          → Lectura y unión de módulos CSV mensuales
-  preparador.py            → Preparación de datos, merge con correlativas
-  diagnostico.py           → Diagnóstico de calidad de datos
-  indicadores.py           → Indicadores básicos (TD, TGP, TO, ingresos, rama)
-  analisis_avanzado.py     → Módulos avanzados (ICE, ICI, ITAT, Mincer, etc.)
-  analisis_area.py         → 32 ciudades × CIIU
-  analisis_poblacional.py  → Campesinos, discapacidad, migración
-  analisis_complementario.py → M8, M14, MX1–MX3
-  exportador.py            → Exportación organizada a carpetas
-  visualizacion.py         → Gráficos matplotlib
-  visualizacion_interactiva.py → Gráficos Plotly
-  comparativo.py           → Comparación inter-anual
-  descargador.py           → Descarga automática DANE
-  logger.py                → Logging centralizado
-  profiler.py              → Profiling de memoria
-  dashboard.py             → Dashboard Streamlit
+Autor: Néstor Enrique Forero Herrera
+Licencia: MIT
 """
 
-__version__ = "0.1.2"
-__author__  = "Néstor Enrique Forero Herrera"
-__email__   = "nforero@procolombia.co"
-__url__     = "https://github.com/enriqueforero/geih-analisis"
-__license__ = "MIT"
+__version__ = "0.1.3"
 
-# ── Configuración ──────────────────────────────────────────────────
+# ── Configuración ─────────────────────────────────────────────
 from .config import (
-    # Configuración principal
     ConfigGEIH,
-    # SMMLV
-    SMMLV_2025, SMMLV_POR_ANIO,
-    # Colores
+    SMMLV_POR_ANIO,
+    SMMLV_2025,
+    CARGA_PRESTACIONAL,
+    MESES_NOMBRES,
+    MESES_CARPETAS,
+    generar_carpetas_mensuales,
+    generar_etiqueta_periodo,
+    cargar_config_externa,
     COLORES,
-    # Períodos
-    MESES_CARPETAS, MESES_NOMBRES,
-    generar_carpetas_mensuales, generar_etiqueta_periodo,
-    # Geografía
-    DEPARTAMENTOS, DPTO_A_CIUDAD, AREA_A_CIUDAD,
-    CIUDADES_13_PRINCIPALES, CIUDADES_10_INTERMEDIAS,
-    # Clasificaciones económicas
-    RAMAS_DANE, TABLA_CIIU_RAMAS, AGRUPACION_DANE_8,
-    # Referencias DANE
-    REF_DANE_2025, REF_DANE, ReferenciaDane,
-    # Constantes laborales — antes faltaban, causaban ImportError
-    CARGA_PRESTACIONAL, TAMANO_EMPRESA,
-    RANGOS_SMMLV_LIMITES, RANGOS_SMMLV_ETIQUETAS,
-    # Educación — antes faltaban
-    NIVELES_AGRUPADOS, NIVELES_EDUCATIVOS, P3042_A_ANOS,
-    # Llaves y converters
-    LLAVES_PERSONA, LLAVES_HOGAR,
-    CONVERTERS_BASE, CONVERTERS_CON_AREA,
+    LLAVES_PERSONA,
+    LLAVES_HOGAR,
+    CONVERTERS_BASE,
+    CONVERTERS_CON_AREA,
     MODULOS_CSV,
+    VARIABLES_POR_MODULO,
+    RAMAS_DANE,
+    TABLA_CIIU_RAMAS,
+    AGRUPACION_DANE_8,
+    DEPARTAMENTOS,
+    DPTO_A_CIUDAD,
+    AREA_A_CIUDAD,
+    CIUDADES_13_PRINCIPALES,
+    CIUDADES_10_INTERMEDIAS,
+    NIVELES_EDUCATIVOS,
+    NIVELES_AGRUPADOS,
+    P3042_A_ANOS,
+    RANGOS_SMMLV_LIMITES,
+    RANGOS_SMMLV_ETIQUETAS,
+    TAMANO_EMPRESA,
+    CIIU_DESCRIPCION_FALLBACK,
+    CIIU_SECTOR_PRIMARIO,
+    CIIU_AGRICULTURA_DETALLE,
+    ReferenciaDane,
+    REF_DANE,
+    REF_DANE_2025,
 )
 
-# ── Utilidades ─────────────────────────────────────────────────────
-from .utils import GestorMemoria, ConversorTipos, EstadisticasPonderadas
+# ── Utilidades ────────────────────────────────────────────────
+from .utils import EstadisticasPonderadas, ConversorTipos, GestorMemoria
 
-# ── Consolidación ──────────────────────────────────────────────────
+# ── Muestreo (v5.1) ──────────────────────────────────────────
+from .muestreo import (
+    ConfigMuestreo,
+    PrecisionEstimacion,
+    evaluar_proporcion,
+    evaluar_media,
+    evaluar_total,
+    clasificar_precision,
+    advertencia_muestral,
+)
+
+# ── Pipeline principal ────────────────────────────────────────
 from .consolidador import ConsolidadorGEIH
-
-# ── Preparación ────────────────────────────────────────────────────
-from .preparador import PreparadorGEIH, MergeCorrelativas
-
-# ── Diagnóstico ────────────────────────────────────────────────────
-from .diagnostico import DiagnosticoCalidad, Top20Sectores
-
-# ── Exportación organizada ─────────────────────────────────────────
-from .exportador import Exportador
-
-# ── Indicadores básicos ────────────────────────────────────────────
+from .preparador import PreparadorGEIH, MergeCorrelativas, COLUMNAS_DEFAULT
 from .indicadores import (
-    IndicadoresLaborales, DistribucionIngresos, AnalisisRamaSexo,
-    AnalisisSalarios, BrechaGenero, AnalisisCruzado,
-    IndicesCompuestos, AnalisisArea,
+    IndicadoresLaborales,
+    DistribucionIngresos,
+    AnalisisRamaSexo,
+    AnalisisSalarios,
+    BrechaGenero,
+    AnalisisCruzado,
+    IndicesCompuestos,
+    AnalisisArea,
 )
 
-# ── Análisis por 32 ciudades ───────────────────────────────────────
-from .analisis_area import AnalisisOcupadosCiudad
-
-# ── Análisis avanzado ──────────────────────────────────────────────
+# ── Análisis avanzados ────────────────────────────────────────
 from .analisis_avanzado import (
-    CalidadEmpleo, FormalidadSectorial, VulnerabilidadLaboral,
-    CompetitividadLaboral, AnalisisSubempleo, AnalisisHoras,
-    Estacionalidad, FuerzaLaboralJoven, EtnicoRacial,
-    BonoDemografico, CostoLaboral, AnalisisFFT,
-    AnalisisUrbanoRural, ProductividadTamano,
-    ContribucionSectorial, MapaTalento, EcuacionMincer,
+    CalidadEmpleo,
+    FormalidadSectorial,
+    VulnerabilidadLaboral,
+    CompetitividadLaboral,
+    AnalisisSubempleo,
+    AnalisisHoras,
+    Estacionalidad,
+    FuerzaLaboralJoven,
+    EtnicoRacial,
+    BonoDemografico,
+    CostoLaboral,
+    AnalisisFFT,
+    AnalisisUrbanoRural,
+    ProductividadTamano,
+    ContribucionSectorial,
+    MapaTalento,
+    EcuacionMincer,
     ProxyBilinguismo,
 )
 
-# ── Visualización matplotlib ───────────────────────────────────────
+# ── Análisis complementarios ─────────────────────────────────
+from .analisis_complementario import (
+    DuracionDesempleo,
+    DashboardSectoresProColombia,
+    AnatomaSalario,
+    FormaPago,
+    CanalEmpleo,
+)
+
+# ── Análisis poblacionales ────────────────────────────────────
+from .analisis_poblacional import (
+    AnalisisCampesino,
+    AnalisisDiscapacidad,
+    AnalisisMigracion,
+    AnalisisSobrecalificacion,
+    AnalisisContractual,
+    AnalisisAutonomia,
+)
+
+# ── Análisis por área geográfica ──────────────────────────────
+from .analisis_area import AnalisisOcupadosCiudad
+
+# ── Análisis departamental consolidado (v5.1) ─────────────────
+from .analisis_departamental import AnalisisDepartamental
+
+# ── Análisis de tierras agropecuarias (v5.1) ──────────────────
+from .analisis_tierra import AnalisisTierraAgropecuario
+
+# ── Comparativo multi-año ─────────────────────────────────────
+from .comparativo import ComparadorMultiAnio
+
+# ── Exportación ───────────────────────────────────────────────
+from .exportador import Exportador
+
+# ── Descargador ───────────────────────────────────────────────
+from .descargador import DescargadorDANE
+
+# ── Diagnóstico ───────────────────────────────────────────────
+from .diagnostico import DiagnosticoCalidad, Top20Sectores
+
+# ── Profiler ──────────────────────────────────────────────────
+from .profiler import PerfilMemoria, medir_tiempo, tamano_objeto
+
+# ── Visualización ─────────────────────────────────────────────
 from .visualizacion import (
     GraficoDistribucionIngresos, GraficoBoxPlotSalarios,
     GraficoBrechaGenero, GraficoRamaSexo,
@@ -126,42 +161,9 @@ from .visualizacion import (
     GraficoEstacionalidad, GraficoContribucionHeatmap,
 )
 
-# ── Análisis poblacional ───────────────────────────────────────────
-from .analisis_poblacional import (
-    AnalisisCampesino, AnalisisDiscapacidad, AnalisisMigracion,
-    AnalisisOtrasFormas, AnalisisOtrosIngresos,
-    AnalisisSobrecalificacion, AnalisisContractual,
-    AnalisisAutonomia, AnalisisAlcanceMercado, AnalisisDesanimados,
-)
-
-# ── Análisis complementarios ───────────────────────────────────────
-from .analisis_complementario import (
-    DuracionDesempleo, DashboardSectoresProColombia,
-    AnatomaSalario, FormaPago, CanalEmpleo,
-)
-
-# ── Descarga automática DANE ───────────────────────────────────────
-from .descargador import DescargadorDANE
-
-# ── Comparativo multi-año ──────────────────────────────────────────
-from .comparativo import ComparadorMultiAnio
-
-# ── Visualización interactiva Plotly ───────────────────────────────
+# ── Dashboard (requiere extras) ───────────────────────────────
 try:
-    from .visualizacion_interactiva import (
-        PlotlyLorenz, PlotlyICIBubble, PlotlyEstacionalidad,
-        PlotlyDistribucionIngresos, PlotlyBrechaGenero,
-        PlotlyBoxPlotSalarios, PlotlySalarioRama,
-        PlotlyComparativoAnual,
-    )
+    from .dashboard import ejecutar_dashboard
 except ImportError:
-    pass  # plotly no instalado — instalar con: pip install geih-analisis[viz]
-
-# ── Logging centralizado ───────────────────────────────────────────
-from .logger import get_logger, configurar_logging, LoggerGEIH
-
-# ── Profiling de memoria ───────────────────────────────────────────
-from .profiler import PerfilMemoria, medir_tiempo, tamano_objeto
-
-# ── Dashboard Streamlit ────────────────────────────────────────────
-from .dashboard import ejecutar_dashboard
+    # streamlit no disponible → función no accesible, sin error
+    pass
