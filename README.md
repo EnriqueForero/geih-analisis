@@ -295,8 +295,7 @@ config = ConfigGEIH(anio=2026, n_meses=3)
 # Solo enero de 2026
 config = ConfigGEIH(anio=2026, n_meses=1)
 
-# Primer semestre (nuevo en v5.1)
-config = ConfigGEIH(anio=2025, n_meses=12, meses_rango=[1,2,3,4,5,6])
+# Primer semestreconfig = ConfigGEIH(anio=2025, n_meses=12, meses_rango=[1,2,3,4,5,6])
 ```
 
 `ConfigGEIH` selecciona automáticamente el SMMLV correcto, genera la lista de carpetas esperadas y controla cómo se calcula el factor de expansión. Cambiar `anio` y `n_meses` es todo lo que necesitas.
@@ -341,7 +340,7 @@ config = ConfigGEIH(anio=2025, n_meses=12, meses_rango=[1,2,3,4,5,6])
 - `DuracionDesempleo` — semanas buscando empleo (friccional, cíclico, estructural, largo plazo)
 - `DashboardSectoresProColombia` — 7 sectores estratégicos de actividad económica
 
-### Nuevos en v0.1.3
+### Nuevos en v0.1.4
 
 | Clase | Qué produce |
 |---|---|
@@ -498,7 +497,7 @@ reporte_s2 = AnalisisDepartamental(config=config_s2).calcular(df_s2)
 
 ### 33 departamentos (completo)
 
-La v5.1 incluye los 32 departamentos + Bogotá D.C. — antes faltaban Arauca, Casanare, Putumayo, San Andrés, Amazonas, Guainía, Guaviare, Vaupés y Vichada. Cada departamento lleva su evaluación de precisión muestral.
+La versión incluye los 32 departamentos + Bogotá D.C. — antes faltaban Arauca, Casanare, Putumayo, San Andrés, Amazonas, Guainía, Guaviare, Vaupés y Vichada. Cada departamento lleva su evaluación de precisión muestral.
 
 ### Indicadores por departamento
 
@@ -735,7 +734,7 @@ config = ConfigGEIH(anio=2026, n_meses=1)
 ```
 
 **¿Se pueden hacer análisis departamentales semestrales?**
-Sí, desde la v5.1. Use `meses_rango` en `ConfigGEIH` para filtrar meses. Cada departamento lleva su evaluación de precisión muestral. Para departamentos pequeños (Amazonía, Orinoquía), la muestra semestral puede ser insuficiente — el paquete lo advierte automáticamente.
+Sí. Use `meses_rango` en `ConfigGEIH` para filtrar meses. Cada departamento lleva su evaluación de precisión muestral. Para departamentos pequeños (Amazonía, Orinoquía), la muestra semestral puede ser insuficiente — el paquete lo advierte automáticamente.
 
 **¿Se puede analizar la distribución salarial por tenencia de tierra?**
 Sí, con `AnalisisTierraAgropecuario`. La GEIH incluye P3064 (propietario de la tierra) y P3064S1 (renta estimada) para trabajadores independientes del sector agropecuario. Cada resultado lleva su indicador de confiabilidad.
@@ -747,7 +746,7 @@ Sí. Use `columnas_extra` en `preparar_base()`. No necesita hacer fork ni modifi
 No. Use `geih_config.json` para actualizar SMMLV y referencias DANE externamente.
 
 **¿Los 33 departamentos están incluidos?**
-Sí, desde la v5.1. Los departamentos de Amazonía/Orinoquía (Arauca, Casanare, Putumayo, Amazonas, Guainía, Guaviare, Vaupés, Vichada) y San Andrés ahora están incluidos. El paquete advierte cuando la muestra es insuficiente para estimaciones confiables.
+Sí. Los departamentos de Amazonía/Orinoquía (Arauca, Casanare, Putumayo, Amazonas, Guainía, Guaviare, Vaupés, Vichada) y San Andrés ahora están incluidos. El paquete advierte cuando la muestra es insuficiente para estimaciones confiables.
 
 ---
 
@@ -762,7 +761,7 @@ Si usas este paquete en un trabajo académico o publicación, puedes citarlo as�
   author  = {Forero Herrera, Néstor Enrique},
   title   = {geih-analisis: Paquete Python para análisis de microdatos GEIH},
   year    = {2026},
-  version = {0.1.3},
+  version = {0.1.4},
   url     = {https://github.com/enriqueforero/geih-analisis},
   note    = {Datos fuente: Gran Encuesta Integrada de Hogares — DANE, Colombia}
 }
@@ -770,7 +769,7 @@ Si usas este paquete en un trabajo académico o publicación, puedes citarlo as�
 
 **Formato texto (APA):**
 
-> Forero Herrera, N. E. (2026). *geih-analisis* (v0.1.3) [Software]. GitHub. https://github.com/enriqueforero/geih-analisis
+> Forero Herrera, N. E. (2026). *geih-analisis* (v0.1.4) [Software]. GitHub. https://github.com/enriqueforero/geih-analisis
 
 ---
 
@@ -794,8 +793,5 @@ Se utilizaron modelos de IA generativa (Claude y Gemini) como asistencia técnic
 
 ## 18. Créditos y agradecimientos
 
-Este paquete es resultado de un esfuerzo acumulativo que comenzó con trabajo exploratorio y operativo previo dentro de la Gerencia de Inteligencia Comercial (GIC) de ProColombia.
+Se agradece a [Lina María Castro](https://co.linkedin.com/in/lina-maria-castro) por su trabajo analítico y técnico previo sobre el procesamiento de microdatos GEIH — incluyendo un enfoque de consolidación multi-módulo — que sirvió como referencia metodológica para el diseño de esta librería. También se agradece a [Nicolás Rivera](https://co.linkedin.com/in/nicol%C3%A1s-rivera-garz%C3%B3n-7a8b23201) por compartir una extensión posterior de ese trabajo.
 
-**Lina Castro y Nicolás Rivera** fueron los creadores del análisis pionero de ocupados por CIIU Rev 4 y área geográfica a partir de la GEIH 2023. Su notebook estableció el enfoque metodológico base del proyecto: la carga iterativa mes a mes del módulo de Ocupados, la selección de variables relevantes del módulo (`OCI`, `FEX_C18`, `RAMA4D_R4`, `AREA`, `DPTO`, `INGLABO`, `P6430`, entre otras), la aplicación del factor de expansión anual (`FEX_C18 / 12`) para estimar ocupados reales, y la construcción de tablas pivote desagregadas por agrupación DANE, división CIIU, área geográfica y sus cruces. También diseñaron el esquema de correlativas — DIVIPOLA, CIIU Rev4 y agrupaciones DANE — que permitió enriquecer semánticamente los códigos crudos del DANE. Los resultados fueron exportados a Excel multi-hoja para su uso operativo directo. Entre ambos participaron activamente en la definición del alcance analítico, la revisión de resultados y la validación de los cálculos, asegurando que los indicadores respondieran a las preguntas reales del equipo. Adicionalmente, Lina y Nicolás diseñaron y ejecutaron el proceso de consolidación completa de la GEIH 2025 (12 meses, Enero a Diciembre). Su aporte más técnico fue el desarrollo de la función `unir_modulos_sin_duplicados()`, que resolvió un problema central del proceso: el solapamiento de columnas entre los distintos módulos del DANE al hacer merges entre ellos. Esta función — que filtra las columnas del módulo derecho a las estrictamente nuevas antes del join — es el antecedente directo del `ConsolidadorGEIH` que hoy es el núcleo del paquete. También manejó las claves de cruce diferenciadas por módulo (`['DIRECTORIO', 'SECUENCIA_P', 'ORDEN']` para personas, `['DIRECTORIO', 'SECUENCIA_P']` para hogares) y exploró la integración posterior con las correlativas CIIU y DIVIPOLA.
-
-**Enrique Forero** fue responsable de la arquitectura del sistema, el diseño técnico, la implementación del paquete `geih/`, la suite de pruebas (71 tests), la documentación y la publicación en PyPI. El trabajo de Nicolás y Lina fue la fuente de referencia que orientó las decisiones de diseño: qué variables incluir, cómo manejar los módulos del DANE, qué correlativas enriquecen la base y qué indicadores tienen valor analítico real para el equipo.

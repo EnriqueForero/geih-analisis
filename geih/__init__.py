@@ -18,7 +18,7 @@ Autor: Néstor Enrique Forero Herrera
 Licencia: MIT
 """
 
-__version__ = "0.1.3"
+__version__ = "0.1.4"
 
 # ── Configuración ─────────────────────────────────────────────
 from .config import (

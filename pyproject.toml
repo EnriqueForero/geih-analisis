@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "geih-analisis"
-version = "0.1.3"
+version = "0.1.4"
 description = "Análisis de microdatos GEIH del DANE — Colombia. 70+ indicadores: TD, TGP, TO, Gini, Mincer, ICE, ICI, brecha de género, 33 departamentos, análisis de tierras y precisión muestral."
 readme = "README.md"
 license = {text = "MIT"}
