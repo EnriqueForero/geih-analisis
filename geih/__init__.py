@@ -18,7 +18,7 @@ Autor: Néstor Enrique Forero Herrera
 Licencia: MIT
 """
 
-__version__ = "0.1.4"
+__version__ = "0.1.5"
 
 # ── Configuración ─────────────────────────────────────────────
 from .config import (
@@ -63,7 +63,7 @@ from .config import (
 # ── Utilidades ────────────────────────────────────────────────
 from .utils import EstadisticasPonderadas, ConversorTipos, GestorMemoria
 
-# ── Muestreo (v5.1) ──────────────────────────────────────────
+# ── Muestreo ─────────────────────────────────────────────────
 from .muestreo import (
     ConfigMuestreo,
     PrecisionEstimacion,
@@ -132,10 +132,13 @@ from .analisis_poblacional import (
 # ── Análisis por área geográfica ──────────────────────────────
 from .analisis_area import AnalisisOcupadosCiudad
 
-# ── Análisis departamental consolidado (v5.1) ─────────────────
+# ── Análisis departamental consolidado ────────────────────────
 from .analisis_departamental import AnalisisDepartamental
 
-# ── Análisis de tierras agropecuarias (v5.1) ──────────────────
+# ── Análisis ocupados por depto y rama ────────────────────────
+from .analisis_dpto_rama import OcupadosDptoRama
+
+# ── Análisis de tierras agropecuarias ─────────────────────────
 from .analisis_tierra import AnalisisTierraAgropecuario
 
 # ── Comparativo multi-año ─────────────────────────────────────

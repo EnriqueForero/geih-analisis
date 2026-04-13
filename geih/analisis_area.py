@@ -38,6 +38,24 @@ from .config import (
 )
 from .utils import ConversorTipos
 
+try:
+    from .muestreo import evaluar_total, ConfigMuestreo
+except ImportError:
+    evaluar_total = None  # type: ignore
+    ConfigMuestreo = None  # type: ignore
+
+# Evaluación de calidad estadística
+_UMBRAL_CONFIABLE = 0.07
+_UMBRAL_ACEPTABLE = 0.15
+_ETIQUETAS_PUBLICABLES = ("Confiable", "Aceptable con reserva")
+
+_MAPEO_CLASIFICACION = {
+    "✅ Precisión alta": "Confiable",
+    "⚠️  Precisión aceptable": "Aceptable con reserva",
+    "⚠️⚠️ Precisión baja": "No publicable",
+    "❌ No confiable": "No publicable",
+}
+
 
 class AnalisisOcupadosCiudad:
     """Ocupados por actividad económica CIIU y 32 ciudades DANE.
@@ -58,8 +76,10 @@ class AnalisisOcupadosCiudad:
         fig = analisis.graficar(tablas)
     """
 
-    def __init__(self, config: Optional[ConfigGEIH] = None):
+    def __init__(self, config: Optional[ConfigGEIH] = None,
+                 config_muestreo: Optional["ConfigMuestreo"] = None):
         self.config = config or ConfigGEIH()
+        self.config_muestreo = config_muestreo
 
     # ═══════════════════════════════════════════════════════════════
     # MÉTODO PRINCIPAL
@@ -246,34 +266,204 @@ class AnalisisOcupadosCiudad:
         t["Dominio"] = t["Ciudad_AM"].apply(AnalisisOcupadosCiudad._asignar_dominio)
         return t
 
-    @staticmethod
-    def _tabla5_granular(df: pd.DataFrame) -> pd.DataFrame:
+    def _tabla5_granular(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Granular: Agrupación × División × CIIU × Ciudad con calidad muestral.
+
+        Evaluación de calidad (Cochran 1977):
+          Dominio = CIUDAD_AM (la GEIH tiene representatividad por ciudad/AM).
+          p = ocupados_celda / ocupados_ciudad
+          n_base = registros muestrales de la ciudad completa
+          Var(p̂) ≈ DEFF × p(1−p) / n_base
+          CV = SE / p
+
+        Columnas de calidad en la salida:
+          n_anual:        registros muestrales en la celda
+          n_base_ciudad:  registros muestrales en la ciudad (dominio)
+          Pct_Ciudad_%:   participación de la celda en la ciudad
+          cv_muestral:    CV bajo diseño complejo (fracción, no %)
+          calidad:        Confiable / Aceptable con reserva / No publicable
+        """
         cols = ["AGRUPACION_DANE", "DIVISION", "RAMA4D_STD", "CIUDAD_AM"]
         if "DESCRIPCION_CIIU" in df.columns:
             cols = ["AGRUPACION_DANE", "DIVISION", "RAMA4D_STD",
                     "DESCRIPCION_CIIU", "CIUDAD_AM"]
-        t = (
-            df[df["CIUDAD_AM"].notna() & df["DIVISION"].notna()]
-            .groupby(cols, dropna=True)["FEX_ADJ"]
-            .sum().reset_index()
-            .rename(columns={"FEX_ADJ": "Ocupados_miles"})
-        )
-        t["Ocupados_miles"] = (t["Ocupados_miles"] / 1_000).round(1)
-        return t.sort_values(["AGRUPACION_DANE", "Ocupados_miles"], ascending=[True, False])
 
-    @staticmethod
-    def _tabla6_nacional(df: pd.DataFrame) -> pd.DataFrame:
+        df_val = df[df["CIUDAD_AM"].notna() & df["DIVISION"].notna()]
+
+        t = (
+            df_val.groupby(cols, dropna=True)
+            .agg(Ocupados=("FEX_ADJ", "sum"),
+                 n_anual=("FEX_ADJ", "size"))
+            .reset_index()
+        )
+        t["Ocupados_miles"] = (t["Ocupados"] / 1_000).round(1)
+
+        # Estadísticas del dominio (ciudad)
+        ciudad_stats = (
+            df_val.groupby("CIUDAD_AM")
+            .agg(n_base_ciudad=("FEX_ADJ", "size"),
+                 ocu_ciudad=("FEX_ADJ", "sum"))
+        )
+
+        # Totales por ciudad en la tabla agregada
+        totales_ciudad = t.groupby("CIUDAD_AM")["Ocupados"].transform("sum")
+        celdas_por_ciudad = t.groupby("CIUDAD_AM")["Ocupados"].transform("count")
+        total_general = t["Ocupados"].sum()
+        n_general = int(ciudad_stats["n_base_ciudad"].sum())
+
+        cfg = self.config_muestreo or (ConfigMuestreo() if ConfigMuestreo else None)
+
+        calidades = []
+        cvs = []
+        pcts = []
+        n_bases = []
+
+        for i in range(len(t)):
+            row = t.iloc[i]
+            ciudad = row["CIUDAD_AM"]
+            n_celda = int(row["n_anual"])
+            ocu = float(row["Ocupados"])
+            ocu_cd = float(totales_ciudad.iloc[i])
+            n_celdas = int(celdas_por_ciudad.iloc[i])
+
+            if ocu <= 0 or n_celda <= 0:
+                calidades.append("Sin dato")
+                cvs.append(np.nan)
+                pcts.append(0.0)
+                n_bases.append(0)
+                continue
+
+            # Participación en la ciudad
+            pct_cd = ocu / ocu_cd * 100 if ocu_cd > 0 else 0
+            pcts.append(round(pct_cd, 2))
+
+            # Muestra mínima
+            if cfg and n_celda < cfg.muestra_minima_registros:
+                calidades.append("No publicable")
+                cvs.append(np.nan)
+                n_bases.append(
+                    int(ciudad_stats.loc[ciudad, "n_base_ciudad"])
+                    if ciudad in ciudad_stats.index else 0
+                )
+                continue
+
+            # Dominio: ciudad (fallback a general si celda única)
+            if (n_celdas > 1 and ocu_cd > 0
+                    and ciudad in ciudad_stats.index):
+                prop = ocu / ocu_cd
+                n_base = int(ciudad_stats.loc[ciudad, "n_base_ciudad"])
+                universo = ocu_cd
+            else:
+                prop = ocu / total_general
+                n_base = n_general
+                universo = total_general
+
+            n_bases.append(n_base)
+
+            if evaluar_total is not None and cfg is not None:
+                prec = evaluar_total(
+                    total_expandido=ocu,
+                    n_registros=n_base,
+                    n_expandido=universo,
+                    proporcion_universo=max(0.001, min(prop, 0.999)),
+                    config=cfg,
+                )
+                etiqueta = _MAPEO_CLASIFICACION.get(
+                    prec.clasificacion, "No publicable"
+                )
+                calidades.append(etiqueta)
+                cvs.append(
+                    prec.cv_pct / 100 if pd.notna(prec.cv_pct) else np.nan
+                )
+            else:
+                # Fallback sin módulo muestreo
+                calidades.append("Sin dato")
+                cvs.append(np.nan)
+
+        t["Pct_Ciudad_%"] = pcts
+        t["n_base_ciudad"] = n_bases
+        t["cv_muestral"] = cvs
+        t["calidad"] = calidades
+
+        return t.sort_values(
+            ["AGRUPACION_DANE", "Ocupados_miles"], ascending=[True, False]
+        ).reset_index(drop=True)
+
+    def _tabla6_nacional(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Nacional: Agrupación × División × CIIU con calidad muestral.
+
+        Dominio = total nacional de ocupados.
+        Misma metodología que tabla5 pero sin desagregación geográfica.
+        """
         cols = ["AGRUPACION_DANE", "DIVISION", "RAMA4D_STD"]
         if "DESCRIPCION_CIIU" in df.columns:
-            cols = ["AGRUPACION_DANE", "DIVISION", "RAMA4D_STD", "DESCRIPCION_CIIU"]
+            cols = ["AGRUPACION_DANE", "DIVISION", "RAMA4D_STD",
+                    "DESCRIPCION_CIIU"]
+
+        df_val = df[df["DIVISION"].notna()]
+
         t = (
-            df[df["DIVISION"].notna()]
-            .groupby(cols, dropna=True)["FEX_ADJ"]
-            .sum().reset_index()
-            .rename(columns={"FEX_ADJ": "Ocupados_miles"})
+            df_val.groupby(cols, dropna=True)
+            .agg(Ocupados=("FEX_ADJ", "sum"),
+                 n_anual=("FEX_ADJ", "size"))
+            .reset_index()
         )
-        t["Ocupados_miles"] = (t["Ocupados_miles"] / 1_000).round(1)
-        return t.sort_values("Ocupados_miles", ascending=False)
+        t["Ocupados_miles"] = (t["Ocupados"] / 1_000).round(1)
+
+        # CV muestral: dominio = total nacional
+        total_nacional = t["Ocupados"].sum()
+        n_nacional = len(df_val)
+
+        cfg = self.config_muestreo or (ConfigMuestreo() if ConfigMuestreo else None)
+
+        calidades = []
+        cvs = []
+
+        for i in range(len(t)):
+            row = t.iloc[i]
+            n_celda = int(row["n_anual"])
+            ocu = float(row["Ocupados"])
+
+            if ocu <= 0 or n_celda <= 0:
+                calidades.append("Sin dato")
+                cvs.append(np.nan)
+                continue
+
+            if cfg and n_celda < cfg.muestra_minima_registros:
+                calidades.append("No publicable")
+                cvs.append(np.nan)
+                continue
+
+            prop = ocu / total_nacional if total_nacional > 0 else 0
+
+            if evaluar_total is not None and cfg is not None:
+                prec = evaluar_total(
+                    total_expandido=ocu,
+                    n_registros=n_nacional,
+                    n_expandido=total_nacional,
+                    proporcion_universo=max(0.001, min(prop, 0.999)),
+                    config=cfg,
+                )
+                etiqueta = _MAPEO_CLASIFICACION.get(
+                    prec.clasificacion, "No publicable"
+                )
+                calidades.append(etiqueta)
+                cvs.append(
+                    prec.cv_pct / 100 if pd.notna(prec.cv_pct) else np.nan
+                )
+            else:
+                calidades.append("Sin dato")
+                cvs.append(np.nan)
+
+        t["Pct_Nacional_%"] = np.where(
+            total_nacional > 0,
+            np.round(t["Ocupados"] / total_nacional * 100, 2),
+            0.0,
+        )
+        t["cv_muestral"] = cvs
+        t["calidad"] = calidades
+
+        return t.sort_values("Ocupados_miles", ascending=False).reset_index(drop=True)
 
     # ═══════════════════════════════════════════════════════════════
     # IMPRESIÓN DE TABLAS
@@ -322,17 +512,33 @@ class AnalisisOcupadosCiudad:
             print(f"  {str(row['Ciudad_AM']):<35} {row['Ocupados_miles']:>7,} "
                   f"{row['Pct_%']:>5.1f}%  {row['Dominio']}")
 
-        # Tablas 5 y 6 (resumen)
+        # Tablas 5 y 6 (resumen con calidad)
+        t5 = tablas["tabla5"]
         print(f"\n{'─'*50}")
         print(f"  TABLA 5: Granular (Agrupación × CIIU × Ciudad)")
-        print(f"  {len(tablas['tabla5']):,} combinaciones únicas")
+        print(f"  {len(t5):,} combinaciones únicas")
+        if "calidad" in t5.columns:
+            total_ocu5 = t5["Ocupados_miles"].sum()
+            for cal in ["Confiable", "Aceptable con reserva", "No publicable"]:
+                m = t5["calidad"] == cal
+                n, ocu = m.sum(), t5.loc[m, "Ocupados_miles"].sum()
+                if n:
+                    print(f"    {cal}: {n:,} celdas ({ocu/total_ocu5*100:.1f}%)")
         print(f"{'─'*50}")
-        print(tablas["tabla5"].head(10).to_string(index=False))
+        print(t5.head(10).to_string(index=False))
 
+        t6 = tablas["tabla6"]
         print(f"\n{'─'*65}")
         print(f"  TABLA 6: Top 20 actividades CIIU nacional")
+        if "calidad" in t6.columns:
+            total_ocu6 = t6["Ocupados_miles"].sum()
+            for cal in ["Confiable", "Aceptable con reserva", "No publicable"]:
+                m = t6["calidad"] == cal
+                n, ocu = m.sum(), t6.loc[m, "Ocupados_miles"].sum()
+                if n:
+                    print(f"    {cal}: {n:,} celdas ({ocu/total_ocu6*100:.1f}%)")
         print(f"{'─'*65}")
-        print(tablas["tabla6"].head(20).to_string(index=False))
+        print(t6.head(20).to_string(index=False))
 
     # ═══════════════════════════════════════════════════════════════
     # GRÁFICOS
@@ -451,24 +657,98 @@ class AnalisisOcupadosCiudad:
         tablas: Dict[str, pd.DataFrame],
         ruta: str = "Resultados_CIIU_Area_GEIH2025.xlsx",
     ) -> None:
-        """Exporta las 6 tablas a un Excel con una hoja por tabla.
+        """Exporta las 6 tablas a un Excel multi-hoja con calidad estadística.
+
+        Incluye hojas publicables (solo Confiable + Aceptable) para
+        tablas 5 y 6, y hoja de metadatos con la metodología.
 
         Args:
             tablas: Output de calcular().
             ruta: Path completo del archivo Excel de salida.
         """
+        from datetime import datetime
+
+        t5 = tablas["tabla5"]
+        t6 = tablas["tabla6"]
+
+        # Metadatos metodológicos
+        metadatos = pd.DataFrame({
+            "Campo": [
+                "Fuente",
+                "Período",
+                "Universo",
+                "Unidad de análisis",
+                "Variable de peso",
+                "Cálculo del promedio anual",
+                "Clasificación sectorial",
+                "División geográfica",
+                "Evaluación de calidad",
+                "Calidad — Confiable",
+                "Calidad — Aceptable con reserva",
+                "Calidad — No publicable",
+                "Dominio tabla 5",
+                "Dominio tabla 6",
+                "Limitaciones",
+                "Fecha de generación",
+            ],
+            "Valor": [
+                "DANE — GEIH, marco 2018",
+                "Enero a diciembre 2025 (12 meses)",
+                "Población ocupada residente en hogares particulares",
+                "Persona ocupada en la semana de referencia",
+                "FEX_C18 / 12 (promedio anual)",
+                "Suma del factor ajustado por celda CIIU×Ciudad",
+                "CIIU Rev. 4 A.C. (divisiones y clases)",
+                "32 ciudades y áreas metropolitanas DANE",
+                "CV muestral con DEFF (diseño complejo DANE/OIT, Cochran 1977)",
+                f"CV ≤ {_UMBRAL_CONFIABLE:.0%}",
+                f"{_UMBRAL_CONFIABLE:.0%} < CV ≤ {_UMBRAL_ACEPTABLE:.0%}",
+                f"CV > {_UMBRAL_ACEPTABLE:.0%} o muestra < 100 registros",
+                "Ciudad/AM (n_base = muestra de la ciudad)",
+                "Total nacional (n_base = muestra nacional)",
+                ("Representativa para 13 ciudades principales + AM y "
+                 "10 intermedias. NO a nivel municipal general."),
+                datetime.now().strftime("%Y-%m-%d %H:%M"),
+            ],
+        })
+
         hojas = {
-            "Total Nacional":           tablas["tabla1"],
-            "Agrupación DANE":          tablas["tabla2"][["AGRUPACION_DANE", "Ocupados_miles", "Pct_%"]],
-            "Dominio Geográfico":       tablas["tabla3"][["DOMINIO", "Ocupados_miles", "Pct_%"]],
-            "Ciudad-AM":                tablas["tabla4"][["Ciudad_AM", "Dominio", "Ocupados_miles", "Pct_%"]],
-            "Agrupación-CIIU-Ciudad":   tablas["tabla5"],
-            "Agrupación-CIIU":          tablas["tabla6"],
+            "metadatos":              metadatos,
+            "Total Nacional":         tablas["tabla1"],
+            "Agrupación DANE":        tablas["tabla2"][
+                ["AGRUPACION_DANE", "Ocupados_miles", "Pct_%"]],
+            "Dominio Geográfico":     tablas["tabla3"][
+                ["DOMINIO", "Ocupados_miles", "Pct_%"]],
+            "Ciudad-AM":              tablas["tabla4"][
+                ["Ciudad_AM", "Dominio", "Ocupados_miles", "Pct_%"]],
+            "CIIU×Ciudad (completo)": t5,
+            "CIIU×Ciudad (publicabl)": t5[t5["calidad"].isin(
+                _ETIQUETAS_PUBLICABLES)] if "calidad" in t5.columns else t5,
+            "CIIU Nacional (completo)": t6,
+            "CIIU Nacional (publica)": t6[t6["calidad"].isin(
+                _ETIQUETAS_PUBLICABLES)] if "calidad" in t6.columns else t6,
         }
 
         with pd.ExcelWriter(ruta, engine="openpyxl") as writer:
             for nombre_hoja, df in hojas.items():
                 df.to_excel(writer, sheet_name=nombre_hoja[:31], index=False)
+
+        # Auto-ajustar anchos
+        try:
+            from openpyxl import load_workbook
+            wb = load_workbook(ruta)
+            for ws in wb.worksheets:
+                for col in ws.columns:
+                    max_len = max(
+                        (len(str(c.value)) for c in col if c.value is not None),
+                        default=10,
+                    )
+                    ws.column_dimensions[col[0].column_letter].width = min(
+                        max_len + 2, 50
+                    )
+            wb.save(ruta)
+        except ImportError:
+            pass
 
         print(f"   ✅ Excel: {Path(ruta).name} ({len(hojas)} hojas)")
         for nombre in hojas:

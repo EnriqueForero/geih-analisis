@@ -23,6 +23,7 @@ __all__ = [
     "PreparadorGEIH",
     "MergeCorrelativas",
     "COLUMNAS_DEFAULT",
+    "COLUMNAS_BOLETIN",
 ]
 
 
@@ -40,6 +41,10 @@ from .config import (
     DEPARTAMENTOS,
     DPTO_A_CIUDAD,
     AREA_A_CIUDAD,
+    AREA_GEIH_A_CIUDAD,    # v6.0 — mapeo correcto de AREA (2 dígitos)
+    DPTOS_13_CIUDADES,     # v6.0 — set oficial de las 13 A.M. del boletín
+    DPTOS_10_CIUDADES,     # v6.0 — set oficial de las 10 ciudades intermedias
+    POSICION_OCUPACIONAL,  # v6.0 — mapa CISE-93 (jornalero=7, no 8)
     NIVELES_AGRUPADOS,
     P3042_A_ANOS,
     CIIU_DESCRIPCION_FALLBACK,
@@ -78,7 +83,8 @@ COLUMNAS_DEFAULT: List[str] = [
     "P6800",      # Horas normales semana
     "P6850",      # Horas reales semana pasada
     "P6920",      # Cotiza pensión
-    "P3069",      # Tamaño empresa
+    "P3069",      # Tamaño empresa (independientes)
+    "P6870",      # Tamaño establecimiento (asalariados) — informalidad oficial v6.0
     "P7130",      # Desea cambiar trabajo
     "RAMA2D_R4",  # CIIU 2 dígitos
     "RAMA4D_R4",  # CIIU 4 dígitos
@@ -145,6 +151,20 @@ Las columnas extra se fusionan con esta lista. Si una columna no
 existe en la base, se ignora silenciosamente (sin error).
 """
 
+# v6.0 — Alias semántico: COLUMNAS_DEFAULT ya contiene todas las
+# variables necesarias para replicar el Boletín DANE. Se expone como
+# COLUMNAS_BOLETIN para que el código del usuario sea explícito sobre
+# su intención cuando esté replicando indicadores oficiales.
+COLUMNAS_BOLETIN: List[str] = COLUMNAS_DEFAULT
+"""Preset documentado para replicar el Boletín GEIH del DANE.
+
+Equivale a COLUMNAS_DEFAULT pero el nombre comunica la intención al
+lector del código:
+
+    df = prep.preparar_base(geih, columnas=COLUMNAS_BOLETIN)
+"""
+
+
 
 class PreparadorGEIH:
     """Prepara la base GEIH consolidada para análisis.
@@ -187,6 +207,7 @@ class PreparadorGEIH:
         meses_filtro: Optional[Union[int, List[int]]] = None,
         solo_ocupados: bool = False,
         solo_ingreso_positivo: bool = False,
+        derivar: bool = True,
     ) -> pd.DataFrame:
         """Prepara un subconjunto de la base con tipos correctos y FEX ajustado.
 
@@ -275,17 +296,25 @@ class PreparadorGEIH:
         )
 
         # ── Factor de expansión ajustado ───────────────────────
-        # NOTA IMPORTANTE: El divisor del FEX depende de cuántos meses
-        # tiene el Parquet consolidado (n_meses), NO del filtro aplicado.
-        # Si el Parquet tiene 12 meses y se filtra un semestre, el FEX
-        # sigue dividiéndose entre 12. La reducción del universo se
-        # refleja en que se suman menos registros.
+        # Regla unificada (v6.0): el divisor FEX es siempre el número de
+        # meses realmente analizados. Casos:
         #
-        # Excepción: si meses_filtro es un entero (mes puntual), se
-        # asume que el usuario quiere la estimación de ESE mes con
-        # FEX sin dividir (divisor = 1).
+        #   1. meses_filtro=int (ej: 12)             → divisor = 1
+        #   2. meses_filtro=list (ej: [10,11,12])    → divisor = len(lista)
+        #   3. meses_filtro=None, config.meses_rango → divisor = n_meses del config
+        #      (que ya fue sincronizado a len(meses_rango) en __post_init__)
+        #   4. meses_filtro=None, config sin rango   → divisor = config.n_meses
+        #
+        # Antes (v5.x): había una rama "if int then divisor=1 else config.n_meses"
+        # que era correcta solo cuando meses_filtro y config.meses_rango eran
+        # mutuamente excluyentes. Con meses_rango sincronizado en config, la
+        # rama vieja sobre-dividía cuando el usuario pasaba meses_filtro=list
+        # y al mismo tiempo tenía config.meses_rango configurado. El cálculo
+        # unificado es estable bajo cualquier combinación.
         if isinstance(filtro_final, int):
             n_meses_divisor = 1
+        elif isinstance(filtro_final, list):
+            n_meses_divisor = len(filtro_final)
         else:
             n_meses_divisor = self.config.n_meses
 
@@ -316,6 +345,15 @@ class PreparadorGEIH:
         if cols_faltantes:
             n_falt = len(cols_faltantes)
             print(f"      ℹ️  {n_falt} columnas solicitadas no encontradas en la base")
+
+        # ── Derivación automática de variables de análisis ──
+        # v6.0: antes el usuario tenía que llamar agregar_variables_derivadas
+        # manualmente después de preparar_base, lo cual era fuente frecuente
+        # de KeyError en celdas que usaban 'RAMA', 'DOMINIO', 'SEXO', etc.
+        # Ahora es automático. Usuarios que quieran el DataFrame mínimo
+        # (solo tipos convertidos + FEX_ADJ) pueden pasar derivar=False.
+        if derivar:
+            df = self.agregar_variables_derivadas(df)
 
         return df
 
@@ -353,40 +391,50 @@ class PreparadorGEIH:
     def agregar_variables_derivadas(self, df: pd.DataFrame) -> pd.DataFrame:
         """Agrega variables derivadas estándar para análisis.
 
-        Variables creadas:
-          - DPTO_STR: código departamento estandarizado (2 dígitos)
-          - NOMBRE_DPTO: nombre del departamento
-          - SEXO: 'Hombres' / 'Mujeres'
-          - RAMA: rama de actividad DANE
-          - RAMA_INT: CIIU 2 dígitos como entero
-          - CIUDAD: nombre de ciudad/AM
-          - NIVEL_GRUPO: nivel educativo agrupado
-          - ANOS_EDUC: años de educación (para Mincer)
-          - INGLABO_SML: ingreso en múltiplos de SMMLV
+        v6.0 (abril 2026) — expande el set de columnas derivadas para
+        cubrir todas las que necesita la replicación del Boletín DANE:
+
+        Columnas siempre añadidas (si las fuentes existen):
+          - DPTO_STR       : código departamento estandarizado (2 dígitos)
+          - NOMBRE_DPTO    : nombre del departamento
+          - SEXO           : 'Hombres' / 'Mujeres' (P3271 — marco 2018)
+          - RAMA           : rama de actividad DANE (14 categorías)
+          - RAMA_INT       : CIIU 2 dígitos como Int64
+          - CIUDAD         : nombre de ciudad/AM
+          - NIVEL_GRUPO    : nivel educativo agrupado
+          - ANOS_EDUC      : años de educación (para Mincer)
+          - INGLABO_SML    : ingreso en múltiplos de SMMLV
+
+        Columnas nuevas en v6.0 (necesarias para el Boletín DANE):
+          - DOMINIO        : '13_AM' | 'otras_cab' | 'rural'
+          - POSICION_OCU   : 9 categorías CISE-93 publicadas por DANE
+          - EDAD_RANGO     : '15-24', '25-54', '55+' (rangos del boletín)
+          - INFORMAL       : 1 si informal según 17ª CIET, 0 formal, NaN
+                             si la base no tiene las variables requeridas
 
         Args:
             df: DataFrame preparado.
 
         Returns:
-            El mismo DataFrame con columnas nuevas.
+            El mismo DataFrame con columnas derivadas añadidas.
         """
-        # Departamento
+        # ── Departamento ──────────────────────────────────────
         if "DPTO" in df.columns:
             df["DPTO_STR"] = self._conversor.estandarizar_dpto(df["DPTO"])
             df["NOMBRE_DPTO"] = df["DPTO_STR"].map(DEPARTAMENTOS)
 
-        # Sexo
+        # ── Sexo (marco 2018: P3271) ──────────────────────────
         if "P3271" in df.columns:
             df["SEXO"] = df["P3271"].map({1: "Hombres", 2: "Mujeres"})
 
-        # Rama CIIU
+        # ── Rama CIIU ─────────────────────────────────────────
         if "RAMA2D_R4" in df.columns:
             df["RAMA_INT"] = pd.to_numeric(
                 df["RAMA2D_R4"], errors="coerce"
             ).round(0).astype("Int64")
             df["RAMA"] = self.mapear_rama_ciiu(df["RAMA2D_R4"])
 
-        # Ciudad
+        # ── Ciudad (por DPTO y AREA) ──────────────────────────
         if "DPTO_STR" in df.columns:
             df["CIUDAD"] = df["DPTO_STR"].map(DPTO_A_CIUDAD)
 
@@ -398,12 +446,133 @@ class PreparadorGEIH:
             else:
                 df["CIUDAD"] = ciudad_area
 
-        # Nivel educativo
+        # ── DOMINIO geográfico del Boletín DANE (v6.0) ───────
+        # Los 4 dominios mutuamente excluyentes que define el Boletín:
+        #   1. "13_AM"      → AREA ∈ DPTOS_13_CIUDADES y CLASE == 1
+        #   2. "10_ciudades"→ AREA ∈ DPTOS_10_CIUDADES y CLASE == 1
+        #   3. "otras_cab"  → CLASE == 1 y AREA fuera de los dos sets
+        #   4. "rural"      → CLASE == 2 (centros poblados y rural disperso)
+        #
+        # FIX v6.0: Antes se usaba `AREA_A_CIUDAD.keys()` como set de las
+        # 13 A.M. — pero ese diccionario contiene DIVIPOLA de 5 dígitos
+        # (no AREA de 2 dígitos del microdato GEIH) y además incluye TODAS
+        # las ciudades, no solo las 13 principales. Resultado del bug:
+        # el filtro DOMINIO=='13_AM' devolvía 0 filas. Se reemplaza por
+        # DPTOS_13_CIUDADES, set oficial de 2 dígitos del Boletín.
+        if "AREA" in df.columns and "CLASE" in df.columns:
+            area_str = df["AREA"].astype(str).str.strip().str.zfill(2)
+            clase_num = pd.to_numeric(df["CLASE"], errors="coerce")
+            es_13 = area_str.isin(DPTOS_13_CIUDADES)
+            es_10 = area_str.isin(DPTOS_10_CIUDADES)
+
+            dominio = pd.Series("otros", index=df.index, dtype="object")
+            dominio[(clase_num == 1) & es_13] = "13_AM"
+            dominio[(clase_num == 1) & es_10] = "10_ciudades"
+            dominio[(clase_num == 1) & ~es_13 & ~es_10] = "otras_cab"
+            dominio[clase_num == 2] = "rural"
+            df["DOMINIO"] = dominio
+
+        # ── Posición ocupacional CISE-93 (v6.0) ──────────────
+        # FIX v6.0: el mapa inline anterior tenía cruzados los códigos
+        # 7 y 8. La codificación CISE-93 oficial (confirmada con la hoja
+        # "Ocupados TN_posición" del anexo DANE) es:
+        #   7 = Jornalero o peón                              (no 8)
+        #   8 = Trabajador sin remuneración en otras empresas (no 7)
+        # Se usa el diccionario POSICION_OCUPACIONAL del config para
+        # mantener una sola fuente de verdad.
+        if "P6430" in df.columns:
+            df["POSICION_OCU"] = pd.to_numeric(
+                df["P6430"], errors="coerce"
+            ).map(POSICION_OCUPACIONAL)
+
+        # ── Rango de edad (rangos del boletín DANE) ──────────
+        if "P6040" in df.columns:
+            edad = pd.to_numeric(df["P6040"], errors="coerce")
+            rango = pd.Series(pd.NA, index=df.index, dtype="object")
+            rango[(edad >= 15) & (edad <= 24)] = "15-24"
+            rango[(edad >= 25) & (edad <= 54)] = "25-54"
+            rango[edad >= 55] = "55+"
+            df["EDAD_RANGO"] = rango
+
+        # ── Informalidad 17ª CIET (v6.0 — definición DANE) ───
+        # Nota metodológica DANE:
+        # https://www.dane.gov.co/files/investigaciones/boletines/ech/ech/
+        #   Nueva_medicion_informalidad.pdf
+        #
+        # Variables requeridas:
+        #   P6430 — posición ocupacional (CISE-93, jornalero=7)
+        #   P6920 — cotización a pensión (1=sí, 2=no, 3=ya pensionado)
+        #   P6870 — tamaño del establecimiento (1=solo, 2..9 = rangos)
+        #
+        # Reglas de clasificación:
+        #  (a) Asalariados (P6430 ∈ {1,2}): formales si cotizan pensión.
+        #  (b) Empleada doméstica (P6430 = 3): misma regla que (a).
+        #  (c) Cuenta propia (P6430 = 4): formales si cotizan pensión.
+        #  (d) Patrón/empleador (P6430 = 5): formales si empresa > 5
+        #      empleados (P6870 ∈ {6..9}, códigos 11+ trabajadores) Y
+        #      cotizan a pensión.
+        #  (e) Jornalero o peón (P6430 = 7): regla (a).
+        #  (f) Trabajador familiar sin remuneración (6), trabajador sin
+        #      remuneración en otras empresas (8) y "Otro" (9):
+        #      informales por definición.
+        #
+        # FIX v6.0 vs versión anterior:
+        #   - Código jornalero corregido: P6430=7 (CISE-93), no 8.
+        #   - Patrones grandes ahora se clasifican como formales si cumplen
+        #     ambas condiciones (tamaño + cotización), reduciendo el sesgo
+        #     de +1-3 p.p. en la medición rural.
+        #   - Si P6870 no está, se aplica la versión sin tamaño y se avisa.
+        if "P6430" in df.columns and "P6920" in df.columns:
+            pos = pd.to_numeric(df["P6430"], errors="coerce")
+            cot = pd.to_numeric(df["P6920"], errors="coerce")
+            tam = (pd.to_numeric(df["P6870"], errors="coerce")
+                   if "P6870" in df.columns else None)
+
+            informal = pd.Series(pd.NA, index=df.index, dtype="Int8")
+
+            # (a)+(b)+(e) Asalariados, doméstica y jornaleros: cotización
+            es_empleado = pos.isin([1, 2, 3, 7])
+            informal[es_empleado & (cot == 1)] = 0
+            informal[es_empleado & (cot != 1)] = 1
+
+            # (c) Cuenta propia: cotización pensional
+            informal[(pos == 4) & (cot == 1)] = 0
+            informal[(pos == 4) & (cot != 1)] = 1
+
+            # (d) Patrón / empleador: tamaño + cotización
+            if tam is not None:
+                empresa_grande = tam >= 6  # P6870: 6 = "11 a 19 personas"+
+                informal[(pos == 5) & empresa_grande & (cot == 1)] = 0
+                informal[(pos == 5) & ~(empresa_grande & (cot == 1))] = 1
+            else:
+                # Sin P6870 caemos a la regla simple (sesgo conocido)
+                informal[(pos == 5) & (cot == 1)] = 0
+                informal[(pos == 5) & (cot != 1)] = 1
+
+            # (f) Informales por definición: familiares sin rem., otro
+            informal[pos.isin([6, 8, 9])] = 1
+
+            df["INFORMAL"] = informal
+
+            if tam is None:
+                print(
+                    "ℹ️  INFORMAL calculada SIN P6870 (tamaño de empresa). "
+                    "Esperable sesgo de +1-3 p.p. vs Boletín DANE en rural. "
+                    "Agregue P6870 vía columnas_extra para definición exacta."
+                )
+        else:
+            faltantes = sorted({"P6430", "P6920"} - set(df.columns))
+            print(
+                f"ℹ️  INFORMAL no derivada: faltan {faltantes}. "
+                f"Agréguelas vía columnas_extra al consolidar."
+            )
+
+        # ── Nivel educativo ──────────────────────────────────
         if "P3042" in df.columns:
             df["NIVEL_GRUPO"] = df["P3042"].map(NIVELES_AGRUPADOS)
             df["ANOS_EDUC"] = df["P3042"].map(P3042_A_ANOS)
 
-        # Ingreso en SMMLV
+        # ── Ingreso en SMMLV ─────────────────────────────────
         if "INGLABO" in df.columns:
             df["INGLABO_SML"] = df["INGLABO"] / self.config.smmlv
 

@@ -5,6 +5,25 @@ geih.config — Configuración centralizada para el análisis GEIH.
 Toda constante, mapeo, paleta de colores y parámetro configurable vive aquí.
 Nunca hay "números mágicos" sueltos en la lógica de negocio.
 
+CAMBIO v5.2 — Corrección geográfica y posición ocupacional:
+  - FIX: DPTO_A_CIUDAD["41"] corregido de "Ibagué" a "Neiva" (41=Huila).
+    Ibagué es capital de Tolima (73). Confirmado con DIVIPOLA y DDI-853.
+  - FIX: AREA_A_CIUDAD["41001"] corregido de "Ibagué" a "Neiva".
+    Se removió "41551" (era Pitalito, no Neiva). Se agregó "73001"="Ibagué".
+  - FIX: AREA_A_CIUDAD — composición de áreas metropolitanas reconstruida
+    desde DDI-853 y Listados_DIVIPOLA.xlsx (sep. 2025). Corregidos 14
+    municipios mal asignados (ej: Buga no está en Cali AM) y agregados
+    11 que faltaban (ej: Envigado, Sabaneta en Medellín AM).
+  - FIX: DPTO_A_CIUDAD usa nombres canónicos para las 10 ciudades intermedias.
+    Antes: "Boyacá/Tunja" → Ahora: "Tunja" (consistente con CIUDADES_10_INTERMEDIAS).
+  - NUEVO: DPTOS_13_CIUDADES, DPTOS_10_CIUDADES — conjuntos de códigos de
+    departamento para clasificación rápida de dominios geográficos.
+  - NUEVO: AREA_GEIH_A_CIUDAD — mapeo AREA (2 dígitos) → nombre de ciudad.
+    La variable AREA en los microdatos GEIH es un código de dominio de muestreo
+    de 2 dígitos (coincide con el departamento), NO un código DIVIPOLA de 5 dígitos.
+  - NUEVO: POSICION_OCUPACIONAL — mapeo P6430 → nombre según codificación CISE-93.
+    Los microdatos usan CISE-93 (7=Jornalero), no el orden del cuestionario (g=7).
+
 CAMBIO v5.1 — Configuración externa + departamentos completos:
   - Soporte para geih_config.json externo: actualizar SMMLV y referencias
     DANE sin necesidad de lanzar un nuevo release a PyPI.
@@ -59,6 +78,11 @@ __all__ = [
     "REF_DANE",
     "REF_DANE_2025",
     "cargar_config_externa",
+    # v5.2 — Dominios geográficos y posición ocupacional
+    "DPTOS_13_CIUDADES",
+    "DPTOS_10_CIUDADES",
+    "AREA_GEIH_A_CIUDAD",
+    "POSICION_OCUPACIONAL",
 ]
 
 
@@ -324,20 +348,75 @@ class ConfigGEIH:
     """Edad mínima usada por el DANE para PET."""
 
     def __post_init__(self):
-        """Valida parámetros y auto-deriva valores calculados."""
-        
-        # ── 1. Sincronización automática de divisor poblacional ──
-        # Si el usuario pasa un filtro de meses específico, el divisor
-        # del factor de expansión (n_meses) DEBE ser exactamente la 
-        # cantidad de meses filtrados para no inflar/reducir la población.
+        """Valida parámetros y auto-deriva valores calculados.
+
+        FIX v5.2 (abril 2026) — corrección de bug en la validación de
+        meses_rango. El código anterior comparaba max(meses_rango) contra
+        n_meses, lo cual hacía imposible construir Configs para analizar
+        meses no contiguos desde enero (ej: meses_rango=[12] o [10,11,12])
+        porque n_meses se sobrescribía a len(meses_rango) ANTES de la
+        validación, produciendo errores del tipo "mes 12 > n_meses=1".
+
+        La validación correcta es que cada mes del rango esté en el
+        calendario [1..12], no contra n_meses. Mantenemos la sincronización
+        n_meses = len(meses_rango) porque PreparadorGEIH lee n_meses como
+        divisor del factor de expansión, y ese comportamiento sí es
+        correcto: el divisor debe ser la cantidad de meses que se analizan.
+
+        Adicionalmente, se guarda `_meses_consolidado_fuente` para que
+        `carpetas_mensuales` pueda generar las 12 carpetas de enero a
+        diciembre aunque n_meses haya quedado en 1 o 3 tras la sincronización.
+        """
+
+        # ── 0. Snapshot del n_meses original (antes de cualquier ajuste) ──
+        # Lo guardamos en un atributo privado para que carpetas_mensuales()
+        # pueda generar las carpetas de TODO el consolidado fuente, no solo
+        # las del subconjunto analizado.
+        self._meses_consolidado_fuente = self.n_meses
+
+        # ── 1. Validar meses_rango antes de usarlo ────────────────
+        # (Antes el código validaba después de sobrescribir n_meses, lo
+        # cual dejaba la validación rota contra su propio estado modificado.)
         if self.meses_rango is not None:
             if not isinstance(self.meses_rango, list):
-                raise TypeError("meses_rango debe ser una lista de enteros")
-            
-            # ¡AQUÍ ESTÁ LA MAGIA! Sincronización forzada:
+                raise TypeError(
+                    f"meses_rango debe ser una lista de enteros, "
+                    f"recibido: {type(self.meses_rango)}"
+                )
+            if len(self.meses_rango) == 0:
+                raise ValueError("meses_rango no puede ser una lista vacía")
+            for m in self.meses_rango:
+                if not isinstance(m, int) or m < 1 or m > 12:
+                    raise ValueError(
+                        f"Mes {m} en meses_rango fuera del calendario [1..12]"
+                    )
+            # Validar que no haya meses duplicados
+            if len(set(self.meses_rango)) != len(self.meses_rango):
+                raise ValueError(
+                    f"meses_rango contiene meses duplicados: {self.meses_rango}"
+                )
+            # Validar que los meses del rango caben en el consolidado fuente.
+            # Nota: _meses_consolidado_fuente es el n_meses ORIGINAL que
+            # describe cuántos meses trae el Parquet/CSV consolidado, NO
+            # el divisor FEX. La regla es: no se puede pedir analizar el
+            # mes 12 si el consolidado solo trae meses 1..6.
+            max_mes = max(self.meses_rango)
+            if max_mes > self._meses_consolidado_fuente:
+                raise ValueError(
+                    f"meses_rango incluye el mes {max_mes} pero el consolidado "
+                    f"fuente solo tiene {self._meses_consolidado_fuente} meses "
+                    f"(enero–{MESES_NOMBRES[self._meses_consolidado_fuente - 1].lower()}). "
+                    f"Ajuste n_meses al tamaño real del consolidado, o filtre "
+                    f"meses_rango al rango disponible."
+                )
+
+            # ── 2. Sincronizar n_meses con len(meses_rango) ──────
+            # Esto hace que PreparadorGEIH calcule el divisor FEX correcto
+            # (= cantidad de meses analizados). Carpetas siguen intactas
+            # gracias al snapshot anterior en _meses_consolidado_fuente.
             self.n_meses = len(self.meses_rango)
-            
-        # ── Validación básica ──────────────────────────────────────
+
+        # ── 3. Validación básica de n_meses (tras sincronización) ──
         if self.n_meses < 1 or self.n_meses > 12:
             raise ValueError(f"n_meses={self.n_meses} fuera de rango [1, 12]")
         if self.anio < 2018 or self.anio > 2050:
@@ -345,26 +424,6 @@ class ConfigGEIH:
                 f"anio={self.anio} fuera de rango [2018, 2050]. "
                 f"La GEIH Marco 2018 inicia en 2022."
             )
-
-        # ── Validar meses_rango ────────────────────────────────────
-        if self.meses_rango is not None:
-            if not isinstance(self.meses_rango, list):
-                raise TypeError(
-                    f"meses_rango debe ser una lista de enteros, "
-                    f"recibido: {type(self.meses_rango)}"
-                )
-            for m in self.meses_rango:
-                if not isinstance(m, int) or m < 1 or m > 12:
-                    raise ValueError(
-                        f"Mes {m} en meses_rango fuera de rango [1, 12]"
-                    )
-            # Verificar que los meses del rango estén dentro de n_meses
-            max_mes = max(self.meses_rango)
-            if max_mes > self.n_meses:
-                raise ValueError(
-                    f"meses_rango incluye mes {max_mes} pero n_meses={self.n_meses}. "
-                    f"Los meses del rango deben existir en el consolidado."
-                )
 
         # ── Auto-seleccionar SMMLV según el año ────────────────────
         if self.smmlv == 0:
@@ -392,8 +451,16 @@ class ConfigGEIH:
     # ── Propiedades calculadas ──────────────────────────────────
     @property
     def carpetas_mensuales(self) -> List[str]:
-        """Lista de carpetas mensuales DANE para este año y n_meses."""
-        return generar_carpetas_mensuales(self.anio, self.n_meses)
+        """Lista de carpetas mensuales DANE para el consolidado fuente.
+
+        FIX v5.2: usa `_meses_consolidado_fuente` (el n_meses ORIGINAL
+        del consolidado), no `n_meses` (que puede haber sido sobrescrito
+        por meses_rango para reflejar el divisor FEX del análisis). De
+        esta forma, la consolidación sigue leyendo todas las carpetas
+        del consolidado aunque el análisis sea sobre un subconjunto.
+        """
+        n = getattr(self, "_meses_consolidado_fuente", self.n_meses)
+        return generar_carpetas_mensuales(self.anio, n)
 
     @property
     def referencia_dane(self) -> Optional["ReferenciaDane"]:
@@ -422,7 +489,9 @@ class ConfigGEIH:
         print(f"  CONFIGURACIÓN GEIH — {self.periodo_etiqueta}")
         print(f"{'='*60}")
         print(f"  Año              : {self.anio}")
-        print(f"  Meses (divisor)  : {self.n_meses}")
+        n_fuente = getattr(self, "_meses_consolidado_fuente", self.n_meses)
+        print(f"  Meses fuente     : {n_fuente} (consolidado)")
+        print(f"  Meses análisis   : {self.n_meses}")
         if self.meses_rango:
             print(f"  Meses (filtro)   : {self.meses_rango}")
         print(f"  SMMLV            : ${self.smmlv:,} COP")
@@ -637,60 +706,122 @@ para estos departamentos por esta razón."""
 # ═════════════════════════════════════════════════════════════════════
 # CIUDADES Y ÁREAS METROPOLITANAS
 # ═════════════════════════════════════════════════════════════════════
+#
+# ADVERTENCIA — ÁREA vs. DPTO en la GEIH:
+#   La variable AREA en los microdatos de la GEIH es un código de DOMINIO
+#   DE MUESTREO de 2 dígitos que coincide con el código de departamento,
+#   NO un código DIVIPOLA de 5 dígitos como podría esperarse.
+#
+#   AREA se llena SOLO para personas muestreadas en los dominios de las
+#   23 ciudades principales e intermedias. Personas fuera de esos
+#   dominios tienen AREA = '' (vacío).
+#
+#   Para clasificación correcta de dominios geográficos, use
+#   DPTOS_13_CIUDADES, DPTOS_10_CIUDADES y AREA_GEIH_A_CIUDAD.
+#   Ver sección "Dominios geográficos DANE" más abajo.
+#
+# CORRECCIÓN v5.2:
+#   - "41" (Huila) ahora mapea correctamente a "Neiva" (antes: "Ibagué").
+#     Ibagué es capital de Tolima (73), NO de Huila (41).
+#     Confirmado con DDI-853, DIVIPOLA y anexo estadístico DANE.
+#   - "73" (Tolima) ahora mapea a "Ibagué" (antes: "Tolima" sin ciudad).
+#   - Los 10 departamentos de ciudades intermedias usan nombres canónicos
+#     (ej: "Tunja" en vez de "Boyacá/Tunja") para ser consistentes con
+#     CIUDADES_10_INTERMEDIAS.
 
 DPTO_A_CIUDAD: Dict[str, str] = {
+    # ── 13 ciudades principales ────────────────────────────────
     "11": "Bogotá D.C.",          "05": "Medellín A.M.",
     "76": "Cali A.M.",            "08": "Barranquilla A.M.",
     "68": "Bucaramanga A.M.",     "17": "Manizales A.M.",
     "66": "Pereira A.M.",         "54": "Cúcuta A.M.",
-    "52": "Pasto",                "41": "Ibagué",
+    "52": "Pasto",                "73": "Ibagué",         # v5.2 FIX: 73=Tolima
     "23": "Montería",             "13": "Cartagena",
-    "50": "Villavicencio",        "15": "Boyacá/Tunja",
-    "18": "Caquetá/Florencia",    "19": "Cauca/Popayán",
-    "20": "Cesar/Valledupar",     "27": "Chocó/Quibdó",
-    "44": "La Guajira/Riohacha",  "47": "Magdalena/Sta.Marta",
-    "63": "Quindío/Armenia",      "70": "Sucre/Sincelejo",
-    "25": "Cundinamarca",         "73": "Tolima",
-    # ── Amazonía y Orinoquía (v5.1) ────────────────────────────
-    "81": "Arauca",               "85": "Casanare/Yopal",
-    "86": "Putumayo/Mocoa",       "88": "San Andrés",
-    "91": "Amazonas/Leticia",     "94": "Guainía/Inírida",
-    "95": "Guaviare/S.J.Guaviare", "97": "Vaupés/Mitú",
-    "99": "Vichada/Pto.Carreño",
+    "50": "Villavicencio",
+    # ── 10 ciudades intermedias ────────────────────────────────
+    # v5.2 FIX: Nombres canónicos (antes usaban "Dpto/Ciudad")
+    "15": "Tunja",                "18": "Florencia",
+    "19": "Popayán",              "20": "Valledupar",
+    "27": "Quibdó",               "41": "Neiva",           # v5.2 FIX: 41=Huila→Neiva
+    "44": "Riohacha",             "47": "Santa Marta",
+    "63": "Armenia",              "70": "Sincelejo",
+    # ── Otros departamentos ────────────────────────────────────
+    "25": "Cundinamarca",
+    # ── Capitales Amazonía y Orinoquía (v5.1) ──────────────────
+    "81": "Arauca",               "85": "Yopal",
+    "86": "Mocoa",                "88": "San Andrés",
+    "91": "Leticia",              "94": "Inírida",
+    "95": "San José del Guaviare","97": "Mitú",
+    "99": "Puerto Carreño",
 }
 
 AREA_A_CIUDAD: Dict[str, str] = {
-    # ── 13 ciudades principales y sus áreas metropolitanas ──────
+    # ═════════════════════════════════════════════════════════════
+    # Mapeo DIVIPOLA 5 dígitos → Ciudad/AM para la GEIH.
+    #
+    # FUENTE: DDI-853 GEIH 2025 (pág. 204-212) + DIVIPOLA sep. 2025.
+    #
+    # ⚠️  Para los microdatos GEIH, la variable AREA es de 2 dígitos.
+    #     Use AREA_GEIH_A_CIUDAD para mapear AREA de los microdatos.
+    #     Esta tabla es útil si tiene datos con DIVIPOLA de 5 dígitos
+    #     (ej: CNPV, registros administrativos, correlativas).
+    #
+    # v5.2: Composición AM corregida contra DDI-853 y Listados_DIVIPOLA.
+    #       Removidos municipios que NO pertenecen al AM según el DANE.
+    #       Agregados municipios que faltaban.
+    # ═════════════════════════════════════════════════════════════
+    #
+    # ── Bogotá D.C. ───────────────────────────────────────────
     "11001": "Bogotá D.C.",
-    "05001": "Medellín A.M.",     "05088": "Medellín A.M.",
-    "05308": "Medellín A.M.",     "05318": "Medellín A.M.",
-    "05360": "Medellín A.M.",     "05380": "Medellín A.M.",
-    "05400": "Medellín A.M.",     "05501": "Medellín A.M.",
-    "76001": "Cali A.M.",         "76111": "Cali A.M.",
-    "76113": "Cali A.M.",         "76364": "Cali A.M.",
-    "76520": "Cali A.M.",         "76563": "Cali A.M.",
-    "08001": "Barranquilla A.M.", "08433": "Barranquilla A.M.",
-    "08549": "Barranquilla A.M.", "08758": "Barranquilla A.M.",
-    "68001": "Bucaramanga A.M.",  "68081": "Bucaramanga A.M.",
-    "68276": "Bucaramanga A.M.",  "68307": "Bucaramanga A.M.",
-    "68615": "Bucaramanga A.M.",  "68705": "Bucaramanga A.M.",
-    "17001": "Manizales A.M.",    "17042": "Manizales A.M.",
-    "17616": "Manizales A.M.",
-    "66001": "Pereira A.M.",      "66045": "Pereira A.M.",
-    "66170": "Pereira A.M.",
-    "54001": "Cúcuta A.M.",       "54128": "Cúcuta A.M.",
-    "54172": "Cúcuta A.M.",       "54206": "Cúcuta A.M.",
-    "54520": "Cúcuta A.M.",
-    "52001": "Pasto",             "41001": "Ibagué",
-    "23001": "Montería",          "13001": "Cartagena",
+    # ── Medellín A.M. (Valle de Aburrá) — DDI: 10 municipios ──
+    "05001": "Medellín A.M.",     # Medellín
+    "05079": "Medellín A.M.",     # Barbosa
+    "05088": "Medellín A.M.",     # Bello
+    "05129": "Medellín A.M.",     # Caldas
+    "05212": "Medellín A.M.",     # Copacabana
+    "05266": "Medellín A.M.",     # Envigado
+    "05308": "Medellín A.M.",     # Girardota
+    "05360": "Medellín A.M.",     # Itagüí
+    "05380": "Medellín A.M.",     # La Estrella
+    "05631": "Medellín A.M.",     # Sabaneta
+    # ── Cali A.M. — DDI: Cali + Yumbo ─────────────────────────
+    "76001": "Cali A.M.",         # Santiago de Cali
+    "76892": "Cali A.M.",         # Yumbo
+    # ── Barranquilla A.M. — DDI: Barranquilla + Soledad ────────
+    "08001": "Barranquilla A.M.", # Barranquilla
+    "08758": "Barranquilla A.M.", # Soledad
+    # ── Bucaramanga A.M. — DDI: 4 municipios ───────────────────
+    "68001": "Bucaramanga A.M.",  # Bucaramanga
+    "68276": "Bucaramanga A.M.",  # Floridablanca
+    "68307": "Bucaramanga A.M.",  # Girón
+    "68547": "Bucaramanga A.M.",  # Piedecuesta
+    # ── Manizales A.M. — DDI: Manizales + Villamaría ──────────
+    "17001": "Manizales A.M.",    # Manizales
+    "17873": "Manizales A.M.",    # Villamaría
+    # ── Pereira A.M. — DDI: 3 municipios ───────────────────────
+    "66001": "Pereira A.M.",      # Pereira
+    "66170": "Pereira A.M.",      # Dosquebradas
+    "66400": "Pereira A.M.",      # La Virginia
+    # ── Cúcuta A.M. — DDI: 5 municipios ────────────────────────
+    "54001": "Cúcuta A.M.",       # San José de Cúcuta
+    "54261": "Cúcuta A.M.",       # El Zulia
+    "54405": "Cúcuta A.M.",       # Los Patios
+    "54553": "Cúcuta A.M.",       # Puerto Santander
+    "54874": "Cúcuta A.M.",       # Villa del Rosario
+    # ── 6 ciudades sin A.M. ────────────────────────────────────
+    "52001": "Pasto",
+    "73001": "Ibagué",
+    "23001": "Montería",
+    "13001": "Cartagena",
     "50001": "Villavicencio",
+    "41001": "Neiva",
     # ── 10 ciudades intermedias ─────────────────────────────────
     "15001": "Tunja",             "18001": "Florencia",
     "19001": "Popayán",           "20001": "Valledupar",
-    "27001": "Quibdó",            "41551": "Neiva",
-    "44001": "Riohacha",          "47001": "Santa Marta",
-    "63001": "Armenia",           "70001": "Sincelejo",
-    # ── Capitales Amazonía/Orinoquía (v5.1) ────────────────────
+    "27001": "Quibdó",            "44001": "Riohacha",
+    "47001": "Santa Marta",       "63001": "Armenia",
+    "70001": "Sincelejo",
+    # ── Capitales Amazonía/Orinoquía ───────────────────────────
     "81001": "Arauca",            "85001": "Yopal",
     "86001": "Mocoa",             "88001": "San Andrés",
     "91001": "Leticia",           "94001": "Inírida",
@@ -707,6 +838,131 @@ CIUDADES_10_INTERMEDIAS: set = {
     "Tunja", "Florencia", "Popayán", "Valledupar", "Quibdó",
     "Neiva", "Riohacha", "Santa Marta", "Armenia", "Sincelejo",
 }
+
+
+# ═════════════════════════════════════════════════════════════════════
+# DOMINIOS GEOGRÁFICOS DANE — CLASIFICACIÓN CORRECTA (v5.2)
+# ═════════════════════════════════════════════════════════════════════
+#
+# La GEIH define 4 dominios geográficos mutuamente excluyentes:
+#
+#   1. "13 ciudades y A.M."              → AREA ∈ DPTOS_13 y CLASE=1
+#   2. "10 ciudades"                     → AREA ∈ DPTOS_10 y CLASE=1
+#   3. "Otras cabeceras"                 → CLASE=1 y AREA ∉ (DPTOS_13 ∪ DPTOS_10)
+#   4. "Centros poblados y rural disperso" → CLASE=2
+#
+# Variables clave:
+#   AREA  — Código de 2 dígitos del dominio de muestreo. Coincide con el
+#           código de departamento para las 23 ciudades. Vacío ('') para
+#           personas fuera de esos dominios. NO es DIVIPOLA de 5 dígitos.
+#   CLASE — 1=Cabecera (urbano), 2=Centro poblado y rural disperso.
+#
+# Ejemplo de clasificación vectorizada (sin .apply):
+#
+#   area = df["AREA"].astype(str).str.strip()
+#   clase = df["CLASE"]
+#   dominio = pd.Series("Otras cabeceras", index=df.index)
+#   dominio[clase == 2] = "Centros poblados y rural disperso"
+#   dominio[area.isin(DPTOS_13_CIUDADES) & (clase == 1)] = "13 ciudades y A.M."
+#   dominio[area.isin(DPTOS_10_CIUDADES) & (clase == 1)] = "10 ciudades"
+#
+# Fuentes de confirmación:
+#   - DDI-853 de la GEIH 2025 (V9 AREA, V10 CLASE)
+#   - Anexo estadístico anex-GEIH-dic2025.xlsx
+#   - Boletín pres-GEIH-dic2025.pdf, páginas 7-9
+
+DPTOS_13_CIUDADES: set = {
+    "11",  # Bogotá D.C.
+    "05",  # Medellín A.M. (Valle de Aburrá)
+    "76",  # Cali A.M. (Cali + Jamundí + Palmira + Yumbo + Candelaria + Dagua)
+    "08",  # Barranquilla A.M. (Barranquilla + Malambo + Puerto Colombia + Soledad)
+    "68",  # Bucaramanga A.M. (Bucaramanga + Floridablanca + Girón + Piedecuesta + Lebrija)
+    "17",  # Manizales A.M. (Manizales + Chinchiná + Villamaría)
+    "66",  # Pereira A.M. (Pereira + Dosquebradas + La Virginia)
+    "54",  # Cúcuta A.M. (Cúcuta + El Zulia + Los Patios + San Cayetano + Villa del Rosario)
+    "52",  # Pasto
+    "73",  # Ibagué (capital de Tolima)
+    "23",  # Montería
+    "13",  # Cartagena
+    "50",  # Villavicencio
+}
+"""Códigos de departamento (2 dígitos) de las 13 ciudades principales.
+Coinciden con la variable AREA en los microdatos GEIH cuando AREA ≠ ''."""
+
+DPTOS_10_CIUDADES: set = {
+    "15",  # Tunja (capital de Boyacá)
+    "18",  # Florencia (capital de Caquetá)
+    "19",  # Popayán (capital de Cauca)
+    "20",  # Valledupar (capital de Cesar)
+    "27",  # Quibdó (capital de Chocó)
+    "41",  # Neiva (capital de Huila) — NO Ibagué, que es 73=Tolima
+    "44",  # Riohacha (capital de La Guajira)
+    "47",  # Santa Marta (capital de Magdalena)
+    "63",  # Armenia (capital de Quindío)
+    "70",  # Sincelejo (capital de Sucre)
+}
+"""Códigos de departamento (2 dígitos) de las 10 ciudades intermedias."""
+
+AREA_GEIH_A_CIUDAD: Dict[str, str] = {
+    # ── 13 ciudades principales ────────────────────────────────
+    "11": "Bogotá D.C.",     "05": "Medellín A.M.",    "76": "Cali A.M.",
+    "08": "Barranquilla A.M.","68": "Bucaramanga A.M.", "17": "Manizales A.M.",
+    "66": "Pereira A.M.",    "54": "Cúcuta A.M.",      "52": "Pasto",
+    "73": "Ibagué",          "23": "Montería",          "13": "Cartagena",
+    "50": "Villavicencio",
+    # ── 10 ciudades intermedias ────────────────────────────────
+    "15": "Tunja",           "18": "Florencia",         "19": "Popayán",
+    "20": "Valledupar",      "27": "Quibdó",            "41": "Neiva",
+    "44": "Riohacha",        "47": "Santa Marta",       "63": "Armenia",
+    "70": "Sincelejo",
+}
+"""Mapeo AREA (2 dígitos) → nombre de ciudad para la GEIH.
+
+La variable AREA en los microdatos GEIH es un código de dominio de muestreo
+de 2 dígitos que coincide con el código de departamento de las 23 ciudades.
+Esta tabla permite mapear directamente AREA a nombres de ciudad, sin
+necesidad de usar AREA_A_CIUDAD (que espera DIVIPOLA de 5 dígitos).
+
+Uso:
+    df["CIUDAD_DANE"] = df["AREA"].astype(str).str.strip().map(AREA_GEIH_A_CIUDAD)
+"""
+
+
+# ═════════════════════════════════════════════════════════════════════
+# POSICIÓN OCUPACIONAL — CODIFICACIÓN CISE-93 (v5.2)
+# ═════════════════════════════════════════════════════════════════════
+#
+# ADVERTENCIA SOBRE P6430:
+#   El cuestionario GEIH lista las opciones de posición ocupacional
+#   en orden alfabético (a-i). El DDI-853 documenta ese orden:
+#     g = "Trabajador sin remuneración en empresas de otros hogares"
+#     h = "Jornalero o peón"
+#
+#   PERO los microdatos publicados usan la codificación CISE-93
+#   (Clasificación Internacional de la Situación en el Empleo, OIT 1993):
+#     7 = Jornalero o peón                                    ← CISE-93
+#     8 = Trabajador sin remuneración en empresas de otros hogares
+#
+#   Confirmado con el anexo estadístico oficial del DANE:
+#     anex-GEIH-dic2025.xlsx → hoja "Ocupados TN_posición":
+#       Jornalero o Peón = 849k → coincide con P6430=7 en los datos
+#       Otro = 12k             → coincide con P6430=8+9 en los datos
+
+POSICION_OCUPACIONAL: Dict[int, str] = {
+    1: "Obrero, empleado particular",
+    2: "Obrero, empleado del gobierno",
+    3: "Empleado doméstico",
+    4: "Trabajador por cuenta propia",
+    5: "Patrón o empleador",
+    6: "Trabajador familiar sin remuneración",
+    7: "Jornalero o Peón",
+    8: "Trabajador sin remuneración en empresas de otros hogares",
+    9: "Otro",
+}
+"""Mapeo P6430 → nombre de posición ocupacional.
+
+Codificación CISE-93 (OIT), que es la que usan los microdatos publicados.
+El DANE publica P6430=8 y P6430=9 combinados como "Otro" en sus boletines."""
 
 
 # ═════════════════════════════════════════════════════════════════════

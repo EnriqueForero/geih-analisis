@@ -3,39 +3,40 @@
 [![PyPI version](https://badge.fury.io/py/geih-analisis.svg)](https://pypi.org/project/geih-analisis/)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Tests](https://img.shields.io/badge/tests-71%20passed-brightgreen.svg)]()
+[![Version](https://img.shields.io/badge/version-0.1.6-brightgreen.svg)]()
 [![AI Assisted](https://img.shields.io/badge/AI%20Assisted-Claude%20%7C%20Gemini-blue)]()
 
 **Paquete Python para analizar los microdatos de la Gran Encuesta Integrada de Hogares (GEIH) del DANE — Colombia.**
 
-Convierte los archivos CSV crudos del DANE en indicadores del mercado laboral listos para reportar: desempleo, salarios, brecha de género, formalidad, educación y más — con pocas líneas de código.
+Convierte los archivos `.zip` crudos del DANE en indicadores del mercado laboral listos para reportar: desempleo, salarios, brecha de género, formalidad, educación, tenencia de tierra y más — con pocas líneas de código.
 
 ---
 
-> **English summary:** Python package for analyzing Colombia's GEIH household survey microdata (DANE). Computes labor market indicators (unemployment, wages, gender gap, formality) from raw CSV files. Supports 2022–present, 70+ analytical classes, Google Colab optimized. `pip install geih-analisis` → `from geih import ConfigGEIH`.
+> **English summary:** Python package for Colombia's GEIH household survey microdata (DANE). Reads DANE ZIPs directly into RAM, builds a 5M-row Data Lake, and computes labor indicators (unemployment, wages, gender gap, formality, regional CIIU × department). `pip install geih-analisis` → `from geih import ConfigGEIH`.
 
 ---
 
 ## Tabla de contenidos
 
 1. [¿Para quién es este paquete?](#1-para-quién-es-este-paquete)
-2. [Instalación](#2-instalación)
-3. [Inicio rápido](#3-inicio-rápido)
+2. [Novedades en la v0.1.6](#2-novedades-en-la-v016)
+3. [Instalación](#3-instalación)
 4. [Paso 0 — Descargar los datos del DANE](#4-paso-0--descargar-los-datos-del-dane)
-5. [Flujo de trabajo completo](#5-flujo-de-trabajo-completo)
-6. [Análisis disponibles](#6-análisis-disponibles)
-7. [Ejemplos de análisis](#7-ejemplos-de-análisis)
-8. [Análisis departamental](#8-análisis-departamental)
-9. [Análisis de tierras agropecuarias)](#9-análisis-de-tierras-agropecuarias)
-10. [Configuración externa)](#10-configuración-externa)
-11. [Precisión muestral)](#11-precisión-muestral)
-12. [Agregar variables sin modificar el código](#12-agregar-variables-sin-modificar-el-código)
-13. [Agregar un año nuevo](#13-agregar-un-año-nuevo)
-14. [FAQ — Preguntas frecuentes](#14-faq--preguntas-frecuentes)
-15. [Cómo citar](#15-cómo-citar)
-16. [Licencia](#16-licencia)
-17. [Metodología de desarrollo](#17-metodología-de-desarrollo)
-18. [Créditos y agradecimientos](#18-créditos-y-agradecimientos)
+5. [Inicio rápido](#5-inicio-rápido)
+6. [Flujo de trabajo completo](#6-flujo-de-trabajo-completo)
+7. [Análisis disponibles](#7-análisis-disponibles)
+8. [Ejemplos de análisis](#8-ejemplos-de-análisis)
+9. [Análisis departamental × rama CIIU](#9-análisis-departamental--rama-ciiu)
+10. [Análisis por 32 ciudades y áreas metropolitanas](#10-análisis-por-32-ciudades-y-áreas-metropolitanas)
+11. [Análisis de tierras agropecuarias](#11-análisis-de-tierras-agropecuarias)
+12. [Configuración externa y precisión muestral](#12-configuración-externa-y-precisión-muestral)
+13. [Herramientas auxiliares](#12bis-herramientas-auxiliares)
+14. [Verificación contra el Boletín DANE (NUEVO v0.1.6)](#13-verificación-contra-el-boletín-dane)
+15. [Desestacionalización de series mensuales (NUEVO v0.1.6)](#14-desestacionalización-de-series-mensuales)
+16. [Notebooks de replicación y validación](#15-notebooks-de-replicación-y-validación)
+17. [FAQ](#16-faq)
+18. [Cómo citar](#17-cómo-citar)
+19. [Licencia y metodología](#18-licencia-y-metodología)
 
 ---
 
@@ -44,237 +45,237 @@ Convierte los archivos CSV crudos del DANE en indicadores del mercado laboral li
 Este paquete es para ti si:
 
 - Eres **economista, analista laboral o investigador** y necesitas calcular tasas de desempleo, ingresos medianos o brechas salariales a partir de la GEIH.
-- Eres **estudiante** y quieres explorar el mercado laboral colombiano sin procesar manualmente millones de filas.
-- Trabajas en **regiones** y necesitas indicadores departamentales semestrales o trimestrales con evaluación de confiabilidad estadística.
+- Eres **estudiante de pregrado o posgrado** y quieres explorar el mercado laboral colombiano sin procesar manualmente millones de filas.
+- Trabajas en **gobiernos regionales** y necesitas indicadores departamentales con evaluación de confiabilidad estadística.
 - Investigas **política pública agraria** y quieres cruzar ingresos con tenencia de tierra.
-- Tienes conocimiento de **Python básico** como saber instalar paquetes y ejecutar celdas es suficiente para empezar.
-- Usas **Google Colab** y no quieres instalar nada en tu computador.
+- Usas **Google Colab** o Python local y no quieres perder tiempo descomprimiendo archivos.
 
-**No necesitas:** experiencia avanzada en programación, conocimiento de la estructura interna de la GEIH, ni saber qué es un factor de expansión. El paquete maneja todo eso por ti.
+**No necesitas:** experiencia avanzada en programación, conocer la estructura interna de la GEIH, ni saber qué es un factor de expansión. El paquete maneja todo eso por ti.
 
 ---
 
-## 2. Instalación
+## 2. Novedades en la v0.1.6
 
-### Opción A — pip (recomendado para uso local o Colab con pip)
+Esta versión está orientada a **rigor de validación contra el Boletín DANE**. Durante la replicación verbatim del Boletín GEIH Diciembre 2025 con tolerancia ±0.05 p.p., se identificaron seis bugs latentes que producían cifras silenciosamente incorrectas en clasificaciones geográficas y de informalidad. Todos están corregidos, blindados con tests "canario" y documentados.
+
+### 🛡️ Correcciones críticas
+
+- **`DOMINIO` ahora se calcula bien.** Antes el filtro `df['DOMINIO']=='13_AM'` devolvía 0 filas porque la clasificación usaba `AREA_A_CIUDAD.keys()` (DIVIPOLA de 5 dígitos) en vez de `DPTOS_13_CIUDADES` (códigos AREA de 2 dígitos del microdato). Ahora produce 4 categorías mutuamente excluyentes que cuadran con el Boletín al primer mil: `13_AM`, `10_ciudades`, `otras_cab`, `rural`.
+- **`POSICION_OCU` con código CISE-93 correcto.** El mapa anterior tenía cruzados los códigos 7 y 8: jornalero quedaba como código 8 (orden alfabético del cuestionario) en vez del 7 oficial CISE-93 que usan los microdatos publicados. Cifra de control: jornaleros Dic-2025 ≈ 849 mil — ahora cuadra exacto.
+- **`INFORMAL` con definición oficial 17ª CIET.** Ahora incorpora `P6870` (tamaño establecimiento) en la regla de patrones, eliminando el sesgo de +1 a +3 p.p. en zonas rurales.
+- **`ConfigGEIH` ya no rechaza meses no contiguos.** `ConfigGEIH(meses_rango=[12])`, `[10,11,12]` y cualquier subconjunto del calendario funcionan. Antes la validación comparaba el rango contra su propio tamaño y siempre fallaba.
+- **`PreparadorGEIH.preparar_base` deriva variables automáticamente.** Antes había que recordar llamar `agregar_variables_derivadas` manualmente; ahora es automático con el parámetro `derivar=True` por defecto.
+
+### ⚙️ Nuevas funcionalidades
+
+- **`IndicadoresLaborales.calcular()` expone `TD_raw`, `TGP_raw`, `TO_raw`** sin redondear. Necesario para validar contra el anexo Excel del DANE (precisión 4 decimales) cuando el round a 1 decimal del display destruiría la resolución.
+- **Módulo `geih.estacional`** con `desestacionalizar()` (STL por defecto, X-13 opcional). Permite replicar la pág. 25 del Boletín DANE — TD desestacionalizada mensual.
+- **`P6870` añadida a `COLUMNAS_DEFAULT`** y nuevo alias `COLUMNAS_BOLETIN` para documentar la intención cuando se replica el boletín.
+- **`tests/test_canarios_boletin.py`** — batería de 26 tests "canario" que validan end-to-end la replicación del Boletín. Si cualquier cambio futuro rompe la replicación, el test correspondiente lo detecta con un mensaje que indica exactamente qué bug ha vuelto y dónde mirar.
+- **Notebook `Verificacion_GEIH_2025_vs_Boletin_DANE_v3.ipynb`** — replicación verbatim del Boletín Dic-2025 contra el anexo Excel oficial, con CSV maestro de 73+ comparaciones y tolerancia estricta ±0.05 p.p. Plantilla reutilizable para validar futuros boletines.
+
+### 📋 Migración desde 0.1.5
+
+1. **Reinstale** y **reinicie el kernel** de Colab/Jupyter (Python cachea módulos).
+2. Si su código llamaba `agregar_variables_derivadas` manualmente, ya no es necesario — pero mantenerlo no rompe nada (el método es idempotente).
+3. Si dependía de `df['DOMINIO']=='13_AM'` antes y obtenía cifras anómalas, **revise sus reportes** — la lógica anterior producía basura silenciosa.
+4. Para informalidad oficial: si su Parquet fue consolidado antes de 0.1.6, considere reconsolidar para que `P6870` entre en la base. Sin ella, `INFORMAL` cae a la versión aproximada y avisa con un warning.
+
+👉 Detalle completo en [`CHANGELOG.md`](CHANGELOG.md).
+
+---
+
+## 2.bis Novedades en la v0.1.5
+
+Esta versión reorganiza el pipeline de ingesta y añade un nuevo módulo analítico clave:
+
+- **📦 Lectura directa de `.zip` → RAM.** El `ConsolidadorGEIH` ahora lee los ZIP mensuales del DANE sin descomprimirlos a disco. Ya **no es necesario** extraer los CSV manualmente ni crear carpetas `CSV/`. Coloca los ZIP tal como los descargas y listo.
+- **🗺️ Nueva clase `OcupadosDptoRama`** (`geih.analisis_dpto_rama`) — Ocupados promedio anual por Departamento × Rama CIIU (2 o 4 dígitos) con evaluación de CV bajo diseño complejo (Cochran 1977, Kish 1965).
+- **🏙️ `AnalisisOcupadosCiudad` refactorizado** — 6 tablas (nacional, agrupación DANE, dominio geográfico, ciudad/AM, granular CIIU×ciudad, CIIU nacional) + exportación Excel multi-hoja.
+- **🧱 Separación Data Lake / Data Mart.** `ConsolidadorGEIH` construye el universo completo (~515 columnas, ~5M filas). `PreparadorGEIH` filtra al Data Mart analítico. Esto permite reutilizar el Parquet consolidado para análisis no previstos.
+- **🧩 `append_mes()`** — agrega un mes nuevo al Parquet existente sin reconsolidar todo el año.
+
+👉 Cambios completos en [`CHANGELOG.md`](CHANGELOG.md).
+
+---
+
+## 3. Instalación
+
+### Opción A — pip (recomendado)
 
 ```bash
 pip install geih-analisis
 ```
 
-Con gráficos interactivos y dashboard visual:
+Con el dashboard Streamlit opcional:
 
 ```bash
-pip install "geih-analisis[all]"
+pip install "geih-analisis[dashboard]"
 ```
 
-### Opción B — Google Colab (sin instalación, desde Drive)
+### Opción B — Google Colab desde Google Drive
 
 ```python
 from google.colab import drive
 drive.mount('/content/drive')
-
-import sys
-sys.path.insert(0, '/content/drive/MyDrive/GEIH')  # ← ajustar a tu ruta
+!pip install geih-analisis -q
 
 from geih import __version__
 print(f"geih v{__version__} listo")
 ```
 
-### Opción C — Última versión en desarrollo (desde GitHub)
-
-```bash
-pip install git+https://github.com/enriqueforero/geih-analisis.git
-```
-
-### Requisitos del sistema
+### Requisitos
 
 | Dependencia | Versión mínima |
 |---|---|
 | Python | 3.9+ |
 | pandas | 1.5+ |
-| numpy | 1.21+ |
+| numpy  | 1.21+ |
 | pyarrow | 10.0+ |
-| scipy | 1.7+ |
+| scipy  | 1.7+ |
 | openpyxl | 3.0+ |
-
----
-
-## 3. Inicio rápido
-
-### Ultra-rápido — 3 líneas (si ya tienes los datos consolidados)
-
-```python
-from geih import ConfigGEIH, ConsolidadorGEIH, PreparadorGEIH, IndicadoresLaborales
-
-config = ConfigGEIH(anio=2025, n_meses=12)
-geih   = ConsolidadorGEIH.cargar('GEIH_2025_Consolidado.parquet')
-df     = PreparadorGEIH(config=config).preparar_base(geih)
-r      = IndicadoresLaborales(config=config).calcular(df)
-print(f"Desempleo: {r['TD_%']:.1f}%  |  Participación: {r['TGP_%']:.1f}%  |  Ocupación: {r['TO_%']:.1f}%")
-```
-
-### Completo — desde los CSV hasta los resultados
-
-```python
-from geih import (
-    ConfigGEIH, ConsolidadorGEIH, PreparadorGEIH,
-    IndicadoresLaborales, AnalisisSalarios, BrechaGenero, Exportador
-)
-import os
-
-# ── 1. Configurar ─────────────────────────────────────────────────────
-RUTA   = '/content/drive/MyDrive/GEIH'   # ← ajustar a tu ruta en Drive
-config = ConfigGEIH(anio=2025, n_meses=12)
-config.resumen()   # muestra SMMLV, período y carpetas esperadas
-
-# ── 2. Consolidar los CSV del DANE ────────────────────────────────────
-# Primera vez: ~5 minutos. Siguientes veces: instantáneo desde el archivo .Parquet.
-PARQUET = f'{RUTA}/GEIH_{config.anio}_Consolidado.parquet'
-
-if os.path.exists(PARQUET):
-    geih = ConsolidadorGEIH.cargar(PARQUET)
-else:
-    cons = ConsolidadorGEIH(ruta_base=RUTA, config=config, incluir_area=True)
-    cons.verificar_estructura()            # verifica que estén los 96 archivos CSV
-    geih = cons.consolidar(checkpoint=True)  # retoma automáticamente si Colab se cae
-    cons.exportar(geih)
-
-# ── 3. Preparar datos ─────────────────────────────────────────────────
-prep = PreparadorGEIH(config=config)
-df   = prep.preparar_base(geih)
-df   = prep.agregar_variables_derivadas(df)
-
-# ── 4. Calcular y exportar ────────────────────────────────────────────
-ind     = IndicadoresLaborales(config=config)
-r       = ind.calcular(df)
-ind.sanity_check(r, f"Anual {config.anio}")   # valida contra cifras DANE
-
-exp     = Exportador(ruta_base=RUTA, config=config)
-td_dpto = ind.por_departamento(df)
-exp.guardar_tabla(td_dpto, f'desempleo_departamentos_{config.anio}')
-
-print(f"✅  TD={r['TD_%']:.1f}%  TGP={r['TGP_%']:.1f}%  TO={r['TO_%']:.1f}%")
-```
 
 ---
 
 ## 4. Paso 0 — Descargar los datos del DANE
 
-> ⚠️ **Este paquete no incluye los datos.** Los microdatos de la GEIH son públicos y gratuitos, pero debes descargarlos del portal oficial del DANE y organizarlos en la estructura de carpetas que el paquete espera.
+> ⚠️ **Este paquete no incluye los datos.** Los microdatos de la GEIH son públicos y gratuitos, pero debes descargarlos del portal oficial del DANE.
 
 ### 4.1 Dónde descargar
 
-**Portal oficial de microdatos del DANE:**
-🔗 [https://microdatos.dane.gov.co](https://microdatos.dane.gov.co/index.php/catalog/central/about)
+#### Microdatos GEIH (lo único obligatorio para usar el paquete)
 
-### 4.2 Paso a paso detallado
+**Portal oficial:** 🔗 [https://microdatos.dane.gov.co](https://microdatos.dane.gov.co/index.php/catalog/central/about)
 
-**Paso 1 — Ir al portal y buscar la encuesta**
+1. Abrir el portal y buscar `Gran Encuesta Integrada de Hogares`.
+2. Seleccionar el año (ej. `GEIH 2025`) → **"Obtener microdatos"**.
+3. Descargar el **ZIP mensual** de cada mes que quieras analizar. El ZIP contiene los 8 módulos CSV que define el DANE (Características generales, Datos del hogar, Fuerza de trabajo, Ocupados, No ocupados, Otras formas de trabajo, Migración, Otros ingresos).
 
-1. Abrir [microdatos.dane.gov.co](https://microdatos.dane.gov.co)
-2. En el buscador escribir: `Gran Encuesta Integrada de Hogares`
-3. Seleccionar el año que necesitas (ej: `GEIH 2025`)
-4. Hacer clic en **"Obtener microdatos"**
+> Los archivos `.DAT` y `.SAV` son para software estadístico especializado (SPSS, SAS) y no se usan aquí. Solo necesitas el ZIP que contiene los CSV.
 
-**Paso 2 — Descargar los archivos en formato .zip para cada mes**
+#### Documentación técnica oficial — leerla evita errores graves
 
-La GEIH se publica en **8 archivos CSV por mes** que están todos en un archivo de formato .zip. Debes descargar los meses a analizar:
-
-| # | Módulo | Nombre del archivo |
+| Recurso | Para qué sirve | Dónde |
 |---|---|---|
-| 1 | Características generales | `Características generales, seguridad social en salud y educación.CSV` |
-| 2 | Datos del hogar | `Datos del hogar y la vivienda.CSV` |
-| 3 | Fuerza de trabajo | `Fuerza de trabajo.CSV` |
-| 4 | Ocupados | `Ocupados.CSV` |
-| 5 | No ocupados | `No ocupados.CSV` |
-| 6 | Otras formas de trabajo | `Otras formas de trabajo.CSV` |
-| 7 | Migración | `Migración.CSV` |
-| 8 | Otros ingresos | `Otros ingresos e impuestos.CSV` |
+| **Manual DDI-853** | Diccionario completo de variables del microdato (`P3271`=sexo, `P6430`=posición ocupacional, etc.). Indispensable para entender qué codifica cada columna. | [https://microdatos.dane.gov.co/index.php/catalog/853](https://microdatos.dane.gov.co/index.php/catalog/853) |
+| **Boletín mensual GEIH** | Cifras oficiales publicadas. **Use siempre el más reciente como fuente-de-verdad cuando valide cálculos propios.** Trae el PDF de "Principales resultados" + el anexo Excel con precisión completa. | [https://www.dane.gov.co/index.php/estadisticas-por-tema/mercado-laboral/empleo-y-desempleo](https://www.dane.gov.co/index.php/estadisticas-por-tema/mercado-laboral/empleo-y-desempleo) |
+| **DIVIPOLA** | División Político-Administrativa (códigos de departamento y municipio). Crítica si va a cruzar GEIH con otras fuentes. | [https://geoportal.dane.gov.co/servicios/descarga-y-metadatos/datos-geoestadisticos/?cod=112](https://geoportal.dane.gov.co/servicios/descarga-y-metadatos/datos-geoestadisticos/?cod=112) |
+| **CIIU Rev. 4 A.C.** | Clasificación Industrial Internacional Uniforme adaptada para Colombia. Define qué significa cada código de `RAMA2D_R4` y `RAMA4D_R4`. | [https://www.dane.gov.co/index.php/sistema-estadistico-nacional-sen/normas-y-estandares/nomenclaturas-y-clasificaciones/clasificaciones/clasificacion-industrial-internacional-uniforme-de-todas-las-actividades-economicas-ciiu](https://www.dane.gov.co/index.php/sistema-estadistico-nacional-sen/normas-y-estandares/nomenclaturas-y-clasificaciones/clasificaciones/clasificacion-industrial-internacional-uniforme-de-todas-las-actividades-economicas-ciiu) |
+| **Tablas correlativas** | Conversiones entre clasificaciones (CIIU↔CPC, CIIU↔CIUO). Útiles si va a cruzar con Censo Económico, EAM, EAS. | [https://www.dane.gov.co/index.php/sistema-estadistico-nacional-sen/normas-y-estandares/nomenclaturas-y-clasificaciones/tablas-correlativas](https://www.dane.gov.co/index.php/sistema-estadistico-nacional-sen/normas-y-estandares/nomenclaturas-y-clasificaciones/tablas-correlativas) |
+| **Nota metodológica de Informalidad** | Definición operativa de la 17ª CIET aplicada por el DANE. Lectura recomendada antes de interpretar la columna `INFORMAL`. | [https://www.dane.gov.co/files/investigaciones/boletines/ech/ech/Nueva_medicion_informalidad.pdf](https://www.dane.gov.co/files/investigaciones/boletines/ech/ech/Nueva_medicion_informalidad.pdf) |
 
-**Paso 3 — Organizar los archivos en carpetas**
+> 🛑 **Regla de oro:** cualquier indicador que produzca con esta librería **debe** validarse contra el boletín DANE más reciente antes de publicarse o enviarse a un tomador de decisiones. La librería es una herramienta de cálculo, no una fuente oficial. Si una cifra suya difiere del boletín en más de la tolerancia que tenga el indicador (típicamente ±0.05 p.p. para tasas, ±1 mil para poblaciones), **algo está mal en su consolidado o en su código** — no en el boletín. Use el notebook de verificación de la sección 13 como plantilla de validación.
 
-Crea una carpeta raíz (por ejemplo `GEIH`) y dentro organiza los archivos exactamente así:
+### 4.2 Organización de los archivos — carpeta `data/`
+
+A partir de la v0.1.5 la estructura es **radicalmente más simple**. Crea una carpeta `data/` (o como prefieras) y coloca **los ZIP tal como los descargaste**, renombrándolos con el patrón `<Mes> <Año>.zip`:
 
 ```
-GEIH/                                ← carpeta raíz (tu variable RUTA)
+data/                            ← tu variable RUTA
 │
-├── Enero 2025/
-│   └── CSV/
-│       ├── Características generales, seguridad social en salud y educación.CSV
-│       ├── Datos del hogar y la vivienda.CSV
-│       ├── Fuerza de trabajo.CSV
-│       ├── Ocupados.CSV
-│       ├── No ocupados.CSV
-│       ├── Otras formas de trabajo.CSV
-│       ├── Migración.CSV
-│       └── Otros ingresos e impuestos.CSV
-│
-├── Febrero 2025/
-│   └── CSV/
-│       └── (mismos 8 archivos)
-│
-├── Marzo 2025/
-│   └── CSV/
-│       └── (mismos 8 archivos)
-│
-│   ... (una carpeta por cada mes)
-│
-└── Diciembre 2025/
-    └── CSV/
-        └── (mismos 8 archivos)
+├── Enero 2025.zip               ← ZIP descargado del DANE, sin extraer
+├── Febrero 2025.zip
+├── Marzo 2025.zip
+├── Abril 2025.zip
+├── Mayo 2025.zip
+├── Junio 2025.zip
+├── Julio 2025.zip
+├── Agosto 2025.zip
+├── Septiembre 2025.zip
+├── Octubre 2025.zip
+├── Noviembre 2025.zip
+└── Diciembre 2025.zip
 ```
 
-> **Importante — nombres exactos de carpetas:** deben ser `Enero 2025`, `Febrero 2025`, `Marzo 2025`, `Abril 2025`, `Mayo 2025`, `Junio 2025`, `Julio 2025`, `Agosto 2025`, `Septiembre 2025`, `Octubre 2025`, `Noviembre 2025`, `Diciembre 2025`. Con mayúscula inicial, espacio y año. El paquete busca estas carpetas con esa nomenclatura exacta. Las otras carpetas que genera el DANE como DAT y SAV, contienen formatos para programas estadísticos especializados, esos no se usan en esta librería. Sólo trabaje con los archivos en formato CSV. 
+> **Nombres exactos:** `Enero 2025.zip`, `Febrero 2025.zip`, … `Diciembre 2025.zip`. Mayúscula inicial, espacio, año, extensión `.zip`. Esta es la nomenclatura que el paquete busca.
+>
+> **Compatibilidad hacia atrás:** si ya tienes los CSV extraídos en carpetas `Enero 2025/CSV/...`, el paquete sigue reconociéndolas como fallback. Pero para nuevos usuarios, **lo recomendado es dejar los ZIP tal cual**.
 
-**Paso 5 — Verificar que todo está en orden**
-
-Antes de consolidar, verifica que los archivos están correctamente ubicados:
+### 4.3 Verificar que todo está en orden
 
 ```python
 from geih import ConsolidadorGEIH, ConfigGEIH
 
 config = ConfigGEIH(anio=2025, n_meses=12)
-cons   = ConsolidadorGEIH(ruta_base='/tu/ruta/GEIH', config=config)
+cons   = ConsolidadorGEIH(ruta_base='data', config=config)
 cons.verificar_estructura()
-# ✅ Enero 2025: 8 archivos — OK
-# ✅ Febrero 2025: 8 archivos — OK
-# ✅ Marzo 2025: 8 archivos — OK
+# ✅ Enero 2025.zip: 8 módulos — OK
+# ✅ Febrero 2025.zip: 8 módulos — OK
 # ...
 ```
 
-Si falta algún archivo, el verificador te indica exactamente cuál.
+Si falta un ZIP, está corrupto, o le falta un módulo adentro, el verificador te lo dice exactamente.
 
-### 4.3 Descarga automática con `DescargadorDANE` (opcional)
+---
 
-Si prefieres que el paquete organice los ZIPs que descargaste manualmente:
+## 5. Inicio rápido
+
+### Ultra-rápido — 3 líneas (si ya consolidaste antes)
 
 ```python
-from geih import DescargadorDANE, ConfigGEIH
+from geih import ConfigGEIH, ConsolidadorGEIH, PreparadorGEIH, IndicadoresLaborales
 
-desc = DescargadorDANE(
-    config=ConfigGEIH(anio=2025, n_meses=12),
-    ruta_destino='/tu/ruta/GEIH',
+config = ConfigGEIH(anio=2025, n_meses=12)
+geih   = ConsolidadorGEIH.cargar('data/GEIH_2025_Consolidado.parquet')
+df     = PreparadorGEIH(config=config).preparar_base(geih)
+r      = IndicadoresLaborales(config=config).calcular(df)
+print(f"TD={r['TD_%']:.1f}%  TGP={r['TGP_%']:.1f}%  TO={r['TO_%']:.1f}%")
+```
+
+### Completo — desde los ZIP hasta los resultados
+
+```python
+from geih import (
+    ConfigGEIH, ConsolidadorGEIH, PreparadorGEIH,
+    IndicadoresLaborales, AnalisisSalarios, BrechaGenero, Exportador,
 )
-# Si tienes los ZIPs descargados manualmente:
-desc.organizar_zips('/ruta/donde/guardaste/los/zips')
-# Verifica la estructura resultante:
-desc.verificar()
+import os
+
+# 1. Configurar
+RUTA   = 'data'                                 # carpeta con los ZIP
+config = ConfigGEIH(anio=2025, n_meses=12)
+config.resumen()                                 # muestra SMMLV, período y ZIP esperados
+
+# 2. Consolidar los ZIP del DANE (primera vez: ~5 min; luego instantáneo)
+PARQUET = f'{RUTA}/GEIH_{config.anio}_Consolidado.parquet'
+if os.path.exists(PARQUET):
+    geih = ConsolidadorGEIH.cargar(PARQUET)
+else:
+    cons = ConsolidadorGEIH(ruta_base=RUTA, config=config, incluir_area=True)
+    cons.verificar_estructura()
+    geih = cons.consolidar(checkpoint=True)      # retoma si Colab se cae
+    cons.exportar(geih, PARQUET)
+
+# 3. Preparar el Data Mart
+prep = PreparadorGEIH(config=config)
+df   = prep.preparar_base(geih)
+df   = prep.agregar_variables_derivadas(df)
+
+# 4. Calcular y exportar
+ind = IndicadoresLaborales(config=config)
+r   = ind.calcular(df)
+ind.sanity_check(r, f"Anual {config.anio}")     # valida contra cifras DANE
+
+exp = Exportador(ruta_base=RUTA, config=config)
+exp.guardar_tabla(ind.por_departamento(df), f'desempleo_dptos_{config.anio}')
+print(f"✅ TD={r['TD_%']:.1f}%  TGP={r['TGP_%']:.1f}%  TO={r['TO_%']:.1f}%")
 ```
 
 ---
 
-## 5. Flujo de trabajo completo
+## 6. Flujo de trabajo completo
 
 ```
-Archivos CSV del DANE (8 módulos × N meses)
+ZIP mensuales del DANE (data/Enero 2025.zip, Febrero 2025.zip, ...)
           ↓
-  ConsolidadorGEIH     → une los módulos, concatena los meses
-          ↓               guarda GEIH_2025_Consolidado.parquet
-  PreparadorGEIH       → calcula FEX_ADJ, mapea ramas y departamentos
-          ↓               agrega variables derivadas (INGLABO_SML, etc.)
-  Clases de análisis   → TD, salarios, brecha, Gini, ICE, ICI, ITAT...
-          ↓
+  ConsolidadorGEIH     → lee los ZIP a RAM, hace LEFT JOIN de los 8 módulos
+          ↓               sobre el módulo ancla "Características generales".
+          ↓               Guarda GEIH_2025_Consolidado.parquet  (Data Lake, ~515 col)
+  PreparadorGEIH       → filtra columnas analíticas (Data Mart),
+          ↓               calcula FEX_ADJ, mapea ramas y departamentos,
+          ↓               agrega variables derivadas (INGLABO_SML, MES_NUM, etc.)
+  Clases de análisis   → TD, salarios, brecha, Gini, ICE, ICI, ITAT,
+          ↓               OcupadosDptoRama, AnalisisOcupadosCiudad, ...
   Exportador           → resultados_geih_2025/
                            ├── graficas/   (PNG)
                            ├── tablas/     (CSV)
@@ -284,79 +285,74 @@ Archivos CSV del DANE (8 módulos × N meses)
 ### El único parámetro que cambia: `ConfigGEIH`
 
 ```python
-from geih import ConfigGEIH
-
-# Año completo
-config = ConfigGEIH(anio=2025, n_meses=12)
-
-# Primer trimestre de 2026
-config = ConfigGEIH(anio=2026, n_meses=3)
-
-# Solo enero de 2026
-config = ConfigGEIH(anio=2026, n_meses=1)
-
-# Primer semestreconfig = ConfigGEIH(anio=2025, n_meses=12, meses_rango=[1,2,3,4,5,6])
+ConfigGEIH(anio=2025, n_meses=12)                                    # año completo
+ConfigGEIH(anio=2026, n_meses=3)                                     # primer trimestre
+ConfigGEIH(anio=2026, n_meses=1)                                     # solo enero
+ConfigGEIH(anio=2025, n_meses=12, meses_rango=[1,2,3,4,5,6])         # primer semestre
 ```
 
-`ConfigGEIH` selecciona automáticamente el SMMLV correcto, genera la lista de carpetas esperadas y controla cómo se calcula el factor de expansión. Cambiar `anio` y `n_meses` es todo lo que necesitas.
+`ConfigGEIH` selecciona automáticamente el SMMLV del año, genera la lista de ZIP esperados y controla cómo se calcula el factor de expansión ajustado.
 
 ---
 
-## 6. Análisis disponibles
+## 7. Análisis disponibles
 
-### Indicadores fundamentales del mercado laboral
+### Indicadores fundamentales
 
 | Clase | Qué produce |
 |---|---|
-| `IndicadoresLaborales` | TD, TGP, TO — nacionales y por departamento |
+| `IndicadoresLaborales` | TD, TGP, TO — nacional y por departamento |
 | `DistribucionIngresos` | Distribución de ingresos por rangos de SMMLV |
-| `AnalisisSalarios` | Mediana, media, percentiles por rama de actividad y edad |
-| `BrechaGenero` | Diferencia salarial hombres/mujeres por nivel educativo |
-| `IndicesCompuestos` | Coeficiente de Gini del ingreso laboral |
-| `AnalisisRamaSexo` | Composición del empleo por industria y sexo |
+| `AnalisisSalarios`     | Mediana, media, percentiles por rama y edad |
+| `BrechaGenero`         | Diferencia salarial H/M por nivel educativo |
+| `IndicesCompuestos`    | Coeficiente de Gini del ingreso laboral |
+| `AnalisisRamaSexo`     | Composición del empleo por industria y sexo |
 
-### Análisis avanzados
+### Índices compuestos y análisis avanzado
 
 | Clase | Qué produce |
 |---|---|
-| `CalidadEmpleo` | ICE: índice que combina pensión, salud, horas y salario |
-| `CompetitividadLaboral` | ICI: competitividad laboral por departamento |
-| `VulnerabilidadLaboral` | IVI: vulnerabilidad por rama de actividad |
-| `MapaTalento` | ITAT: oferta laboral, costo y calidad por departamento |
-| `EcuacionMincer` | Retorno salarial a cada año adicional de educación |
-| `Estacionalidad` | Variación mensual de TD, TGP y TO durante el año |
-| `FuerzaLaboralJoven` | Indicadores específicos para jóvenes de 15 a 28 años |
-| `CostoLaboral` | Costo total incluyendo prestaciones sociales (~54% sobre salario) |
-| `FormalidadSectorial` | ICF: formalidad del empleo por sector económico |
+| `CalidadEmpleo` (ICE) | Pensión + salud + horas + salario |
+| `CompetitividadLaboral` (ICI) | Competitividad laboral por departamento |
+| `VulnerabilidadLaboral` (IVI) | Vulnerabilidad por rama |
+| `MapaTalento` (ITAT) | Oferta, costo y calidad por departamento |
+| `FormalidadSectorial` (ICF) | Formalidad por sector económico |
+| `EcuacionMincer` | Retorno salarial por año de educación |
+| `Estacionalidad` | Variación mensual de TD, TGP, TO |
+| `FuerzaLaboralJoven` | Indicadores para jóvenes 15–28 |
+| `CostoLaboral` | Costo total incluyendo prestaciones (~54%) |
 
 ### Poblaciones especiales
 
-- `AnalisisCampesino` — trabajadores que se autodeclaran campesinos
-- `AnalisisDiscapacidad` — personas con discapacidad (escala Washington ONU, 8 dimensiones)
-- `AnalisisMigracion` — migración interna e internacional
-- `AnalisisSobrecalificacion` — universitarios ocupados en empleos que no requieren ese nivel
-- `AnalisisContractual` — tipo de contrato: escrito indefinido, escrito fijo, verbal, sin contrato
-- `AnalisisAutonomia` — trabajadores formalmente independientes pero en realidad dependientes
-- `DuracionDesempleo` — semanas buscando empleo (friccional, cíclico, estructural, largo plazo)
-- `DashboardSectoresProColombia` — 7 sectores estratégicos de actividad económica
+`AnalisisCampesino`, `AnalisisDiscapacidad` (Washington ONU), `AnalisisMigracion`, `AnalisisSobrecalificacion`, `AnalisisContractual`, `AnalisisAutonomia`, `DuracionDesempleo`, `DashboardSectoresProColombia`.
 
-### Nuevos en v0.1.4
+### Nuevos / refactorizados en v0.1.5
+
+| Clase | Módulo | Qué produce |
+|---|---|---|
+| `OcupadosDptoRama` | `geih.analisis_dpto_rama` | **Ocupados promedio anual** por Departamento × Rama CIIU (2 o 4 dígitos) con CV, IC 95% y clasificación DANE |
+| `AnalisisOcupadosCiudad` | `geih.analisis_area` | 6 tablas CIIU × 32 ciudades/AM + Excel multi-hoja |
+| `AnalisisDepartamental` | `geih.analisis_dpto` | Reporte integral por departamento con precisión muestral |
+| `AnalisisTierraAgropecuario` | `geih.analisis_tierra` | Distribución salarial × tenencia de tierra (P3064) |
+
+### Otras clases disponibles en el paquete (no listadas arriba)
 
 | Clase | Qué produce |
 |---|---|
-| `AnalisisDepartamental` | **Reporte integral** por departamento con precisión muestral |
-| `AnalisisTierraAgropecuario` | Distribución salarial × tenencia de tierra |
-
-### 32 ciudades y áreas metropolitanas
-
-```python
-from geih import AnalisisOcupadosCiudad
-
-area   = AnalisisOcupadosCiudad(config=config)
-tablas = area.calcular(df)                  # 6 tablas: nacional, agrupación DANE, ciudad/AM
-area.imprimir(tablas)
-area.exportar_excel(tablas, 'CIIU_Area_2025.xlsx')
-```
+| `DiagnosticoCalidad` | Valores faltantes, ceros sospechosos, tipos incorrectos y columnas duplicadas sobre la base consolidada |
+| `Top20Sectores` | Ranking de las 20 ramas CIIU con mayor ocupación |
+| `AnalisisHoras`, `AnalisisSubempleo` | Horas trabajadas y subempleo subjetivo/objetivo |
+| `AnalisisFFT` | Fuerza de trabajo potencial (extendida) |
+| `AnalisisUrbanoRural` | Brecha cabecera vs resto |
+| `ProductividadTamano` | Productividad aproximada por tamaño de empresa |
+| `ContribucionSectorial` | Aporte de cada sector al empleo total |
+| `AnatomaSalario`, `FormaPago` | Descomposición del salario y forma de pago (efectivo, transferencia, especie) |
+| `CanalEmpleo` | Cómo consiguieron el empleo los ocupados |
+| `EtnicoRacial`, `BonoDemografico` | Composición étnica y ventana demográfica |
+| `ProxyBilinguismo` | Proxy de bilingüismo vía P3041 |
+| `AnalisisOtrasFormas`, `AnalisisOtrosIngresos` | Módulos DANE "Otras formas de trabajo" y "Otros ingresos" |
+| `AnalisisAlcanceMercado`, `AnalisisDesanimados` | Alcance geográfico de la empresa y trabajadores desanimados |
+| `MergeCorrelativas` | Enriquece el DataFrame con descripciones CIIU Rev.4 y DIVIPOLA legibles |
 
 ### Comparación entre años
 
@@ -364,18 +360,16 @@ area.exportar_excel(tablas, 'CIIU_Area_2025.xlsx')
 from geih import ComparadorMultiAnio, ConfigGEIH
 
 comp = ComparadorMultiAnio()
-comp.agregar_anio(2025, 'GEIH_2025_M01.parquet', ConfigGEIH(anio=2025, n_meses=1))
-comp.agregar_anio(2026, 'GEIH_2026_M01.parquet', ConfigGEIH(anio=2026, n_meses=1))
-
-comp.comparar_indicadores()    # TD / TGP / TO con variación anual
-comp.evolucion_ingresos()      # mediana salarial por año en COP y SMMLV
-comp.comparar_departamentos()  # TD por departamento × año
-comp.comparar_brecha_genero()  # brecha salarial H/M por año
+comp.agregar_anio(2025, 'data/GEIH_2025_M01.parquet', ConfigGEIH(anio=2025, n_meses=1))
+comp.agregar_anio(2026, 'data/GEIH_2026_M01.parquet', ConfigGEIH(anio=2026, n_meses=1))
+comp.comparar_indicadores()      # TD / TGP / TO con variación anual
+comp.comparar_departamentos()    # TD por departamento × año
+comp.comparar_brecha_genero()    # brecha H/M por año
 ```
 
 ---
 
-## 7. Ejemplos de análisis
+## 8. Ejemplos de análisis
 
 ### Tasa de desempleo nacional y por departamento
 
@@ -383,415 +377,454 @@ comp.comparar_brecha_genero()  # brecha salarial H/M por año
 from geih import IndicadoresLaborales
 
 ind = IndicadoresLaborales(config=config)
-
-# Nacional
-r = ind.calcular(df)
+r   = ind.calcular(df)
 print(f"TD={r['TD_%']:.1f}%  TGP={r['TGP_%']:.1f}%  TO={r['TO_%']:.1f}%")
 # → TD=9.8%  TGP=63.4%  TO=57.2%
 
-# Por departamento
 td_dpto = ind.por_departamento(df)
 print(td_dpto[['Departamento', 'TD_%', 'Ocupados_M']].head(10).to_string(index=False))
 ```
 
-### Salarios medianos por industria y nivel educativo
+### Salarios por nivel educativo
 
 ```python
-from geih import AnalisisSalarios
-
-# Mediana salarial por rama de actividad
-salarios = AnalisisSalarios(config=config).por_rama(df)
-print(salarios[['Mediana', 'Media', 'Mediana_SMMLV']].head(10))
-
-# Por nivel educativo (diferenciando Especialización, Maestría y Doctorado)
 from geih.utils import EstadisticasPonderadas as EP
 
 niveles = {10: 'Universitaria', 11: 'Especialización', 12: 'Maestría', 13: 'Doctorado'}
 df_edu  = df[(df['OCI'] == 1) & (df['INGLABO'] > 0)].copy()
 df_edu['NIVEL'] = df_edu['P3042'].map(niveles)
 
-for nivel in ['Universitaria', 'Especialización', 'Maestría', 'Doctorado']:
+for nivel in niveles.values():
     m   = df_edu['NIVEL'] == nivel
     med = EP.mediana(df_edu.loc[m, 'INGLABO'], df_edu.loc[m, 'FEX_ADJ'])
-    print(f"{nivel:20s}: ${med:>12,.0f}  ({med / config.smmlv:.1f}× SMMLV)")
-# Universitaria       :   $2,100,000  (1.5× SMMLV)
-# Especialización     :   $3,800,000  (2.7× SMMLV)
-# Maestría            :   $5,200,000  (3.7× SMMLV)
-# Doctorado           :   $7,500,000  (5.3× SMMLV)
+    print(f"{nivel:20s}: ${med:>12,.0f}  ({med/config.smmlv:.1f}× SMMLV)")
 ```
 
 ### Brecha salarial de género
 
 ```python
 from geih import BrechaGenero
-
-brecha = BrechaGenero().calcular(df)
-print(brecha)
-#               Hombres    Mujeres  Brecha_%
-# Media           1.35       1.18     -12.6
-# Universitaria   2.10       1.95      -7.1
-# Maestría        4.82       4.41      -8.5
-```
-
-### Comparación enero 2025 vs enero 2026
-
-```python
-from geih import ComparadorMultiAnio, ConfigGEIH
-
-comp = ComparadorMultiAnio()
-comp.agregar_anio(2025, 'GEIH_2025_M01.parquet', ConfigGEIH(anio=2025, n_meses=1))
-comp.agregar_anio(2026, 'GEIH_2026_M01.parquet', ConfigGEIH(anio=2026, n_meses=1))
-
-df_ind = comp.comparar_indicadores()
-# ANIO   TD_%   Δ_TD_%   TGP_%   TO_%   Ocupados_M
-# 2025   10.8      —      63.1   56.3      22.5
-# 2026   11.4    +0.6     62.8   55.7      22.8
-```
-
-### Dashboard interactivo (sin código)
-
-```python
-from geih import ejecutar_dashboard
-
-ejecutar_dashboard(ruta_base='/tu/ruta/GEIH')
-# Abre un dashboard en tu navegador con filtros y gráficos
-# Requiere: pip install "geih-analisis[dashboard]"
+print(BrechaGenero().calcular(df))
+#                 Hombres  Mujeres  Brecha_%
+# Media             1.35     1.18     -12.6
+# Universitaria     2.10     1.95      -7.1
+# Maestría          4.82     4.41      -8.5
 ```
 
 ---
 
-## 8. Análisis departamental
+## 9. Análisis departamental × rama CIIU
 
-Consolida indicadores de 6+ clases en un solo reporte departamental con evaluación de precisión estadística. Soporta análisis semestral.
-
-### Análisis anual
+Replica la metodología oficial del DANE para estimar ocupados por Departamento (DIVIPOLA) y Rama CIIU Rev. 4 adaptada (2 dígitos: 88 divisiones, o 4 dígitos: ~500 clases).
 
 ```python
-from geih import AnalisisDepartamental, ConfigGEIH, PreparadorGEIH
+from geih import OcupadosDptoRama, ConfigGEIH
 
 config = ConfigGEIH(anio=2025, n_meses=12)
-prep = PreparadorGEIH(config=config)
-df = prep.preparar_base(geih)
-df = prep.agregar_variables_derivadas(df)
+odr    = OcupadosDptoRama(config=config)
 
-ad = AnalisisDepartamental(config=config)
-reporte = ad.calcular(df)
-ad.exportar_excel(reporte, "departamentos_2025.xlsx")
+tabla_2d = odr.calcular(df, nivel="2d")   # 88 divisiones
+tabla_4d = odr.calcular(df, nivel="4d")   # ~500 clases
+
+odr.exportar_excel(tabla_2d, "ocupados_dpto_rama_2d_2025.xlsx")
 ```
 
-### Análisis semestral (para regiones)
+**Metodología:** para cada mes y celda `(DPTO, rama)`, se calcula el total expandido `T_m = Σ FEX_C18` y el conteo muestral `n_m`. El promedio anual es la media de los 12 totales mensuales reponderada por meses con dato. El CV se estima con la fórmula de varianza bajo diseño complejo:
 
-```python
-# Primer semestre
-config_s1 = ConfigGEIH(anio=2025, n_meses=12, meses_rango=[1,2,3,4,5,6])
-df_s1 = PreparadorGEIH(config=config_s1).preparar_base(geih)
-df_s1 = PreparadorGEIH(config=config_s1).agregar_variables_derivadas(df_s1)
-reporte_s1 = AnalisisDepartamental(config=config_s1).calcular(df_s1)
-
-# Segundo semestre
-config_s2 = ConfigGEIH(anio=2025, n_meses=12, meses_rango=[7,8,9,10,11,12])
-df_s2 = PreparadorGEIH(config=config_s2).preparar_base(geih)
-df_s2 = PreparadorGEIH(config=config_s2).agregar_variables_derivadas(df_s2)
-reporte_s2 = AnalisisDepartamental(config=config_s2).calcular(df_s2)
+```
+Var(p̂) ≈ DEFF × p(1−p) / n_base
 ```
 
-### 33 departamentos (completo)
-
-La versión incluye los 32 departamentos + Bogotá D.C. — antes faltaban Arauca, Casanare, Putumayo, San Andrés, Amazonas, Guainía, Guaviare, Vaupés y Vichada. Cada departamento lleva su evaluación de precisión muestral.
-
-### Indicadores por departamento
-
-Cada fila del reporte incluye: TD, TGP, TO, mediana salarial, formalidad (cotización pensión), CV de TD, intervalo de confianza al 95%, clasificación de precisión DANE, y advertencia de muestra insuficiente cuando aplica.
+donde `n_base` es el tamaño muestral del **departamento** (no de la celda), porque todos los registros del dominio contribuyen a estimar la proporción. Cada celda lleva su clasificación DANE (precisión alta / aceptable / baja / no confiable).
 
 ---
 
-## 9. Análisis de tierras agropecuarias
+## 10. Análisis por 32 ciudades y áreas metropolitanas
 
-Explota las variables P3064 (tenencia de tierra), P3064S1 (renta estimada) y P3056 (tipo de actividad) para análisis de política pública agraria.
+```python
+from geih import AnalisisOcupadosCiudad
+
+area   = AnalisisOcupadosCiudad(config=config)
+tablas = area.calcular(df)              # 6 tablas
+area.imprimir(tablas)
+area.exportar_excel(tablas, "CIIU_Area_2025.xlsx")
+```
+
+Produce 6 tablas: total nacional, agrupación DANE, dominio geográfico, ciudad/AM, granular CIIU×ciudad, y CIIU nacional. Incluye 3 gráficos (barras por agrupación, barras por ciudades, heatmap rama×ciudad) y exportación Excel multi-hoja. Usa la variable `AREA` (DIVIPOLA de 5 dígitos del módulo Ocupados) para identificar las 13 ciudades principales, las 10 áreas intermedias y 9 adicionales.
+
+---
+
+## 11. Análisis de tierras agropecuarias
 
 ```python
 from geih import AnalisisTierraAgropecuario
 
-tierra = AnalisisTierraAgropecuario(config=config)
-
-# Brecha de ingresos: ¿ser propietario saca de la pobreza?
-brecha = tierra.brecha_ingresos(df)
-
-# Costo de oportunidad: ¿gana más trabajando o arrendando?
-costo = tierra.costo_oportunidad(df)
-
-# Inequidad de género en propiedad de la tierra
-genero = tierra.por_genero(df)
-
-# Por departamento con evaluación de confiabilidad
-dept = tierra.por_departamento(df)
-
-# Reporte completo
+tierra  = AnalisisTierraAgropecuario(config=config)
 reporte = tierra.reporte_completo(df)
 tierra.exportar_excel(reporte, "tierras_2025.xlsx")
 ```
 
-### Análisis disponibles
-
-1. **Brecha de ingresos Propietario vs. No propietario**: ¿La propiedad de la tierra correlaciona con mayores ingresos?
-2. **Costo de oportunidad**: Ingreso laboral vs. renta estimada de la tierra (P3064S1). ¿El campesino gana más que si arrendara?
-3. **Distribución de la tierra por género**: Inequidad en titularidad por sexo y departamento.
-4. **Formalidad agropecuaria**: Cotización a pensión por tenencia.
-5. **Por subcategoría CIIU**: Agricultura (01) vs. Silvicultura (02) vs. Pesca (03) con detalle a 4 dígitos.
-6. **Por departamento**: Con evaluación de precisión muestral para cada celda.
-
-### Nota muestral
-
-P3064 solo aplica a trabajadores independientes del sector agropecuario. A nivel nacional hay suficiente muestra, pero al cruzar departamento + subcategoría + tenencia, las celdas pueden tener pocas observaciones. **Cada resultado lleva su indicador de confiabilidad.**
+Explota P3064 (tenencia), P3064S1 (renta estimada) y P3056 (tipo de actividad) para: brecha de ingresos propietario vs no propietario, costo de oportunidad (ingreso laboral vs renta de la tierra), distribución por género, formalidad agropecuaria, CIIU a 4 dígitos (Agricultura/Silvicultura/Pesca), y desagregación departamental con evaluación de confiabilidad en cada celda.
 
 ---
 
-## 10. Configuración externa
+## 12. Configuración externa y precisión muestral
 
-### El problema
-
-Cada vez que cambia el salario mínimo (decreto de diciembre), o cuando el DANE publica el boletín anual, había que modificar `config.py` y lanzar un nuevo release a PyPI. Para un dato que cambia una vez al año, eso es excesivo.
-
-### La solución: `geih_config.json`
-
-Ahora el paquete busca un archivo `geih_config.json` que sobreescribe los valores internos. El usuario lo coloca junto a sus datos y actualiza sin esperar un release:
+### `geih_config.json` — actualizar SMMLV sin esperar un release
 
 ```json
 {
-  "smmlv_por_anio": {
-    "2027": 1900000
-  },
+  "smmlv_por_anio":  { "2027": 1900000 },
   "ref_dane": {
-    "2026": {
-      "td_anual_pct": 9.2,
-      "tgp_anual_pct": 64.0,
-      "to_anual_pct": 58.0,
-      "pea_anual_m": 26.5,
-      "ocupados_anual_m": 24.0,
-      "desocupados_anual_m": 2.5
-    }
+    "2026": { "td_anual_pct": 9.2, "tgp_anual_pct": 64.0, "to_anual_pct": 58.0 }
   },
-  "muestreo": {
-    "deff_default": 2.5,
-    "cv_preciso_pct": 7.0,
-    "cv_aceptable_pct": 15.0
-  }
+  "muestreo": { "deff_default": 2.5, "cv_preciso_pct": 7.0, "cv_aceptable_pct": 15.0 }
 }
 ```
 
-### Dónde colocar el archivo
+Orden de búsqueda: ruta explícita → `GEIH_CONFIG_PATH` (env) → `./geih_config.json` → `~/.geih/geih_config.json`.
 
-El paquete busca en este orden:
-
-1. Ruta explícita: `cargar_config_externa("/mi/ruta/geih_config.json")`
-2. Variable de entorno: `GEIH_CONFIG_PATH`
-3. Directorio de trabajo: `./geih_config.json`
-4. Home del usuario: `~/.geih/geih_config.json`
-
-Si no encuentra ningún archivo, usa los valores hardcodeados del paquete (sin error).
-
-### Verificar configuración activa
+### Evaluar precisión de cualquier estimación
 
 ```python
-config = ConfigGEIH(anio=2025, n_meses=12)
-config.resumen()
-# Muestra: año, meses, SMMLV, si hay config externa cargada, etc.
+from geih import evaluar_proporcion
+
+p = evaluar_proporcion(proporcion=0.089, n_registros=50_000,
+                       n_expandido=26_000_000, dominio="Nacional")
+print(p.resumen())
+# Nacional  Est=8.90  EE=0.20  CV=2.3%  IC=[8.51, 9.29]  ✅ Precisión alta
 ```
-
----
-
-## 11. Precisión muestral
-
-### El problema
-
-Sin errores muestrales, las desagregaciones finas producen cifras sin contexto de confiabilidad. Un usuario podría reportar "TD de Vaupés = 25%" sin saber que el CV es del 40%.
-
-### La solución: módulo `geih.muestreo`
-
-Toda estimación puede evaluarse con el módulo de muestreo:
-
-```python
-from geih import evaluar_proporcion, ConfigMuestreo
-
-# Evaluar la precisión de una tasa de desempleo
-precision = evaluar_proporcion(
-    proporcion=0.089,        # TD = 8.9%
-    n_registros=50000,       # registros en la muestra
-    n_expandido=26_000_000,  # personas expandidas
-    dominio="Nacional",
-)
-print(precision.resumen())
-# Nacional  Est=8.90  EE=0.20  CV=2.3%  IC=[8.51, 9.29]  n=50,000  N̂=26.000M  ✅ Precisión alta
-```
-
-### Clasificación DANE
 
 | CV | Clasificación | Uso |
 |---|---|---|
-| < 7% | ✅ Precisión alta | Publicable |
-| 7–15% | ⚠️ Precisión aceptable | Usar con precaución |
-| 15–20% | ⚠️⚠️ Precisión baja | Solo referencia |
-| > 20% | ❌ No confiable | No publicar |
+| < 7 %  | ✅ Precisión alta      | Publicable |
+| 7–15 % | ⚠️ Precisión aceptable | Usar con precaución |
+| 15–20 %| ⚠️⚠️ Precisión baja    | Solo referencia |
+| > 20 % | ❌ No confiable        | No publicar |
 
-Las clases `AnalisisDepartamental` y `AnalisisTierraAgropecuario` integran automáticamente esta evaluación en cada fila de sus resultados.
+`AnalisisDepartamental`, `OcupadosDptoRama` y `AnalisisTierraAgropecuario` integran esta evaluación en cada fila.
 
 ---
 
-## 12. Agregar variables sin modificar el código
+## 12.bis. Herramientas auxiliares
 
-El parámetro `columnas_extra` permite agregar cualquier variable de la GEIH desde el notebook, sin tocar el código fuente del paquete:
+Además de las clases de análisis, el paquete incluye utilidades técnicas para todo el ciclo de vida del dato:
+
+### Diagnóstico de calidad de la base
 
 ```python
-prep = PreparadorGEIH(config=config)
+from geih import DiagnosticoCalidad
 
-# Agregar variables que no están en los defaults
-df = prep.preparar_base(
-    geih,
-    columnas_extra=["P6870", "P6880", "P7310", "MI_VARIABLE_CUSTOM"]
+diag  = DiagnosticoCalidad()
+tabla = diag.valores_faltantes(geih, titulo="Base consolidada 2025", umbral_pct=1.0)
+diag.verificar_tipos(geih)        # detecta tipos incorrectos
+diag.columnas_duplicadas(geih)    # columnas con contenido idéntico o colineal
+```
+
+Reporta valores faltantes y ceros por columna, tipos de dato sospechosos y columnas potencialmente duplicadas sobre el Data Lake antes de pasar al análisis.
+
+### Merge con correlativas CIIU y DIVIPOLA
+
+```python
+from geih import MergeCorrelativas
+
+merger = MergeCorrelativas()
+df = merger.merge_ciiu(df, ruta_ciiu="correlativas/CIIU_Rev4_Col.xlsx",
+                      sheet_name="CIIU 2022")
+df = merger.merge_divipola(df, ruta_divipola="correlativas/DIVIPOLA.xlsx")
+```
+
+Agrega las columnas `DESCRIPCION_CIIU` y el nombre legible del departamento/municipio a partir de archivos Excel externos. Útil para exportar tablas con etiquetas en lugar de códigos.
+
+### Módulo muestral completo
+
+Además de `evaluar_proporcion()` (§12), el módulo `geih.muestreo` expone:
+
+```python
+from geih import evaluar_media, evaluar_total, clasificar_precision
+
+# Media muestral con IC bajo diseño complejo
+evaluar_media(media=2_100_000, desv_est=1_450_000,
+              n_registros=38_000, n_expandido=22_000_000, dominio="Ocupados").resumen()
+
+# Total expandido (ocupados, desocupados, PEA)
+evaluar_total(total=24_500_000, n_registros=50_000,
+              n_expandido=26_000_000, dominio="Ocupados").resumen()
+
+# Clasificación directa a partir de un CV
+clasificar_precision(cv_pct=8.3)   # → "⚠️ Precisión aceptable"
+```
+
+Todas las rutinas aplican la fórmula de varianza bajo diseño complejo con `DEFF` configurable (default 2,5 para GEIH).
+
+### Logging estructurado
+
+```python
+from geih import configurar_logging, get_logger
+
+configurar_logging(nivel="INFO", archivo="logs/geih_2025.log")
+log = get_logger("mi_analisis")
+log.info("Inicio del pipeline")
+```
+
+El `LoggerGEIH` centraliza mensajes del consolidador y los análisis en un único archivo reutilizable desde notebooks.
+
+### Dashboard Streamlit (opcional)
+
+```python
+from geih import ejecutar_dashboard
+ejecutar_dashboard(ruta_base="data", puerto=8501)
+# 🌐 Dashboard disponible en http://localhost:8501
+```
+
+Lanza la interfaz Streamlit en segundo plano con filtros y gráficos básicos sobre los Parquet consolidados. Requiere `pip install "geih-analisis[dashboard]"`.
+
+### Exportador unificado
+
+```python
+from geih import Exportador
+exp = Exportador(ruta_base="data", config=config)
+exp.guardar_tabla(td_dpto, "desempleo_dptos_2025")   # CSV + XLSX
+exp.guardar_grafico(fig, "td_por_rama")              # PNG en graficas/
+```
+
+Crea automáticamente las subcarpetas `resultados_geih_<anio>/tablas/`, `graficas/` y `excel/`.
+
+---
+
+## 13. Verificación contra el Boletín DANE
+
+> 🆕 **Nuevo en v0.1.6.** Esta sección documenta el flujo recomendado para validar que sus cálculos reproducen el Boletín DANE oficial dentro de tolerancia estricta.
+
+### Por qué es obligatorio validar
+
+La librería implementa cientos de operaciones sobre microdatos complejos. Aunque la suite de tests garantiza que los cálculos son matemáticamente correctos contra cifras hardcoded del boletín, **su consolidado puede tener problemas que la librería no puede detectar**: meses faltantes, factores de expansión corruptos, columnas renombradas, joins mal hechos en el módulo de consolidación. La única defensa real es validar el resultado final contra el boletín publicado por el DANE para el mismo período.
+
+### El flujo de 5 pasos
+
+1. **Descargue el boletín mensual del DANE** para el período que está analizando (PDF + anexo Excel) desde el portal oficial. El anexo Excel es la fuente-de-verdad: el PDF redondea a 1 decimal y no sirve para validación estricta.
+2. **Identifique 5-10 cifras de control** del boletín — típicamente: TD nacional, TGP nacional, ocupados totales, ocupados por dominio (13_AM, rural), tasas por sexo. Estas son sus "canarios".
+3. **Calcule las mismas cifras con la librería**, usando `IndicadoresLaborales.calcular()` con los campos `_raw` (sin redondear).
+4. **Compare con tolerancia estricta** — ±0.05 p.p. para tasas, ±1 mil para poblaciones. Cualquier diferencia mayor es señal de problema.
+5. **Si todo cuadra**, su consolidado es confiable y los demás indicadores que calcule sobre la misma base heredan esa confianza. Si no cuadra, **no avance** hasta entender por qué.
+
+### Plantilla mínima de verificación
+
+```python
+from geih import ConfigGEIH, PreparadorGEIH, IndicadoresLaborales
+
+# Vista de Diciembre 2025
+cfg = ConfigGEIH(anio=2025, n_meses=12, meses_rango=[12])
+df_dic = PreparadorGEIH(cfg).preparar_base(geih_raw)
+
+r = IndicadoresLaborales().calcular(df_dic)
+
+# Cifras del Boletín DANE Dic-2025 (anexo Excel, no del PDF redondeado)
+TOLERANCIA_PP = 0.05
+referencias = {
+    'TD_raw':  8.0,
+    'TGP_raw': 64.3,
+    'TO_raw':  59.2,
+}
+for clave, ref in referencias.items():
+    diff = abs(r[clave] - ref)
+    estado = '✅' if diff <= TOLERANCIA_PP else '❌'
+    print(f'{estado} {clave}: {r[clave]:.4f}  (DANE: {ref}  Δ={diff:.4f})')
+
+# Sanity check ácido: PET expandido debe estar ~40.9 M en CUALQUIER vista
+# Es el "canario" más sensible: detecta divisores FEX mal aplicados.
+pet_M = df_dic.loc[df_dic['PET']==1, 'FEX_ADJ'].sum() / 1e6
+assert 40.5 < pet_M < 41.3, f'PET = {pet_M:.2f}M fuera de rango — divisor FEX mal'
+```
+
+### Tests "canario" automatizados
+
+El paquete incluye `tests/test_canarios_boletin.py` — 26 tests organizados en 8 clases que validan **end-to-end** la replicación del Boletín Dic-2025. Si cualquier cambio en su consolidado (o en una versión futura de la librería) rompe una cifra del boletín, el test correspondiente falla con un mensaje que indica exactamente qué métrica difiere y dónde mirar.
+
+```bash
+# Correr los canarios contra su consolidado
+GEIH_TEST_DATA=/ruta/a/su/consolidado/2025     pytest tests/test_canarios_boletin.py -v
+```
+
+Si la variable de entorno no está definida, los tests se **skipean limpiamente** — no falla la suite por falta de datos. Esto permite incluirlos en CI sin necesidad de subir microdatos al repositorio.
+
+### Tolerancias recomendadas
+
+| Tipo de indicador | Tolerancia | Justificación |
+|---|---|---|
+| Tasas (TD, TGP, TO, informalidad) | **±0.05 p.p.** | Mitad del último decimal publicado por DANE |
+| Poblaciones (miles) | **±1 mil** | Precisión declarada del anexo Excel |
+| Ingresos (pesos/mes) | **±500 COP** | ~0.05% del SMMLV |
+| Informalidad (rural) | **±0.5 p.p.** | Definición oficial DANE incluye registro mercantil que la librería no puede replicar sin metadato extra |
+
+---
+
+## 14. Desestacionalización de series mensuales
+
+> 🆕 **Nuevo en v0.1.6.** El módulo `geih.estacional` permite reproducir la sección "TD desestacionalizada" del Boletín DANE (página 25), que separa la tendencia de los efectos estacionales en la serie mensual.
+
+### Cuándo usarla
+
+La TD cruda mensual tiene patrones estacionales fuertes: pico en enero (fin de contratos navideños), valle en noviembre (alta contratación pre-navideña). Comparar `TD(noviembre)` con `TD(enero)` directamente lleva a conclusiones erróneas. La serie desestacionalizada permite ver la tendencia subyacente.
+
+### Uso básico
+
+```python
+from geih import ConfigGEIH, PreparadorGEIH
+from geih.estacional import desestacionalizar_td_mensual
+import pandas as pd
+
+# Vista anual completa
+cfg = ConfigGEIH(anio=2025, n_meses=12)
+df_anu = PreparadorGEIH(cfg).preparar_base(geih_raw)
+
+# STL requiere ≥24 meses → necesitamos histórico del año anterior.
+# Lo más simple es usar las cifras del boletín del año previo:
+td_2024 = pd.Series(
+    [12.1, 11.5, 11.3, 10.6, 10.3, 10.3, 10.0, 9.8, 9.1, 8.4, 8.2, 9.1],
+    index=pd.period_range('2024-01', '2024-12', freq='M').to_timestamp(),
 )
+
+resultado = desestacionalizar_td_mensual(
+    df_anu, anio=2025, incluir_historico=td_2024,
+)
+print(resultado.tail(3))
+#             td_cruda  td_desest
+# 2025-10-01      7.20       7.51
+# 2025-11-01      7.00       7.43
+# 2025-12-01      8.00       7.62
 ```
 
-Las columnas que no existan en la base se ignoran silenciosamente. Esto sigue el Principio Abierto/Cerrado de SOLID: abierto a extensión, cerrado a modificación.
+### Limitación importante
+
+El método por defecto es **STL** (Seasonal-Trend LOESS), que está siempre disponible vía `statsmodels`. El DANE usa internamente **X-13-ARIMA-SEATS** con calendario laboral colombiano (días hábiles, Semana Santa, festivos), parámetros que no exponemos en esta librería. Esperar diferencias de **±0.1 a ±0.3 p.p.** entre la curva desestacionalizada por la librería y la publicada por el DANE en el boletín. La forma general (tendencia, picos, valles) sí es reproducible.
 
 ---
 
-## 13. Agregar un año nuevo
+## 15. Notebooks de replicación y validación
 
-### Opción A — Sin tocar el código (recomendado)
+> 🆕 **Nuevo en v0.1.6.** El proyecto incluye notebooks de ejemplo listos para correr en Google Colab, que sirven como plantillas de validación y como referencia ejecutable de las mejores prácticas.
 
-Coloque un archivo `geih_config.json` junto a sus datos:
+### `Verificacion_GEIH_2025_vs_Boletin_DANE_v3.ipynb`
 
-```json
-{
-  "smmlv_por_anio": {
-    "2027": 1900000
-  }
-}
-```
+Notebook de **replicación verbatim del Boletín GEIH Diciembre 2025** contra el anexo Excel oficial del DANE. 9 secciones (A-I) que cubren:
 
-El paquete lo detecta automáticamente. No requiere un nuevo release a PyPI.
+- **A — Diciembre mensual:** TD/TGP/TO nacional, brecha por sexo, dominio geográfico, ramas CIIU (las 13), posición ocupacional.
+- **B — Trimestre Oct-Dic:** TD por las 23 ciudades del boletín extendido.
+- **C — Anual Ene-Dic:** totales y brechas por sexo.
+- **D — Informalidad:** 6 desagregaciones contra Boletín pág. 42.
+- **E — Juventud (15-28):** TGP/TO/TD por sexo y período.
+- **F — Étnico:** indígenas, negro/afro, sin grupo étnico.
+- **G — Ingresos laborales** (IML por sexo).
+- **H — Errores muestrales:** documenta el gap conocido de la librería.
+- **I — Replicación de gráficas:** TD mensual cruda + desestacionalizada (pág. 25) y dispersión TGP H/M de 23 ciudades (pág. 29).
 
-### Opción B — En el código fuente
+Produce un CSV maestro (`verificacion_maestra.csv`) con 73+ comparaciones individuales contra el boletín, cada una marcada como ✅/⚠️/❌ con su diferencia exacta. **Úselo como plantilla** para validar futuros boletines: solo cambie las cifras de referencia y el período.
 
-Cuando el DANE publique los datos de un año nuevo, solo necesitas 2 cambios en `config.py`:
-
+**Uso en Colab:**
 ```python
-# 1. Agregar el SMMLV del año nuevo (publicado por decreto en diciembre)
-SMMLV_POR_ANIO = {
-    2025: 1_423_500,
-    2026: 1_750_905,
-    2027: X_XXX_XXX,   # ← agregar aquí
-}
+# Celda 1: montar drive e instalar
+from google.colab import drive
+drive.mount('/content/drive')
+!pip install geih-analisis --upgrade
 
-# 2. Agregar la referencia DANE cuando publiquen el boletín oficial
-REF_DANE = {
-    2027: ReferenciaDane(td_anual_pct=..., tgp_anual_pct=..., to_anual_pct=...),
-}
+# Celda 2..N: el resto del notebook ya ejecutable
 ```
 
-Si no agregas la referencia DANE, el paquete muestra un aviso pero los análisis siguen funcionando normalmente.
+### Otros notebooks que vienen en el repositorio
+
+| Notebook | Para qué sirve |
+|---|---|
+| `01_consolidacion_anual.ipynb` | Pipeline de consolidación de los 12 ZIP mensuales del DANE a Parquet único. Incluye `verificar_estructura()` y diagnóstico de calidad. |
+| `02_indicadores_basicos.ipynb` | Cálculo de TD/TGP/TO nacional y por departamento. Es el "Hello World" del paquete. |
+| `03_analisis_dpto_rama.ipynb` | Uso de `OcupadosDptoRama` para producir el Excel multi-hoja del entregable principal (Departamento × CIIU 2d/4d con CV). |
+| `04_brecha_genero.ipynb` | Brecha salarial controlada por nivel educativo y experiencia. |
+
+> Todos los notebooks están en la carpeta `notebooks/` del repositorio. Si va a contribuir, **siempre añada un notebook de ejemplo** que muestre la nueva funcionalidad — es el mejor seguro contra el bit-rot de la documentación.
+
+### Recomendación de flujo para usuarios nuevos
+
+1. **Descargar microdatos GEIH** del año más reciente del portal DANE.
+2. **Ejecutar `01_consolidacion_anual.ipynb`** para construir el Parquet base. Verificar que `cons.verificar_estructura()` reporta los 12 meses OK.
+3. **Ejecutar `Verificacion_GEIH_2025_vs_Boletin_DANE_v3.ipynb`** (ajustando el año si necesario). Si llega al final con ≥95% ✅, su consolidado es confiable.
+4. **Solo entonces** empezar a calcular indicadores nuevos para sus reportes. Validar siempre el resultado contra alguna cifra publicada por el DANE.
 
 ---
 
-## 14. FAQ — Preguntas frecuentes
+## 16. FAQ
+
+**¿Tengo que descomprimir los ZIP del DANE?**
+No. Desde la v0.1.5 el paquete lee directamente desde `.zip` a RAM. Coloca los ZIP en `data/` con el nombre `Enero 2025.zip`, etc.
+
+**¿Qué pasa si ya tenía la estructura vieja con carpetas `CSV/`?**
+Sigue funcionando — el consolidador la reconoce como fallback. Pero los nuevos usuarios deberían usar ZIP directamente.
 
 **¿Qué es la GEIH?**
-La Gran Encuesta Integrada de Hogares es la encuesta mensual del DANE que mide el mercado laboral en Colombia. Encuesta a más de 250.000 hogares al año y es la fuente oficial de las tasas de desempleo y empleo del país.
+La Gran Encuesta Integrada de Hogares del DANE. Encuesta mensual con más de 250 000 hogares al año. Es la fuente oficial de las tasas de desempleo y empleo de Colombia.
 
-**¿Qué es el SMMLV y por qué importa?**
-El Salario Mínimo Mensual Legal Vigente es la referencia salarial de Colombia. El paquete lo usa para expresar ingresos en múltiplos comprensibles (ej: "gana 2,3× SMMLV"). Cada año tiene su propio valor fijado por decreto.
-
-**¿Qué es el factor de expansión (FEX)?**
-La GEIH encuesta una muestra, no a toda la población. El factor de expansión indica cuántas personas reales representa cada encuestado. El paquete lo calcula automáticamente tomando el factor de expansión que está en la base y con `ConfigGEIH(n_meses=...)` — no necesitas hacer nada.
+**¿Qué es el SMMLV?**
+El Salario Mínimo Mensual Legal Vigente. El paquete lo usa para expresar ingresos en múltiplos comprensibles (ej. "2,3× SMMLV"). Se fija por decreto cada diciembre.
 
 **¿Por qué la primera consolidación tarda ~5 minutos?**
-Está leyendo y uniendo ~96 archivos CSV (8 módulos × 12 meses) con cerca de 817.550 filas × 515 columnas. El resultado se guarda en formato Parquet que es un formato eficiente para gran volumen de datos en velocidad y espacio en disco: las siguientes veces carga en segundos.
+Está leyendo y uniendo ~96 archivos CSV (8 módulos × 12 meses) con ~5 M filas × ~515 columnas, dentro de los ZIP. El resultado se guarda en Parquet: las siguientes veces carga en segundos.
 
-**¿Qué pasa si Colab se desconecta durante la consolidación?**
-El parámetro `checkpoint=True` guarda el avance después de cada mes procesado. Al volver a ejecutar, retoma automáticamente desde el último mes completado.
+**¿Y si Colab se desconecta?**
+`consolidar(checkpoint=True)` guarda el avance mes a mes y retoma automáticamente.
 
-**¿Puedo analizar solo enero 2026 si aún no tengo todo el año?**
-Sí. Usa `ConfigGEIH(anio=2026, n_meses=1)`. El paquete espera solo la carpeta `Enero 2026/CSV/` y calcula los factores de expansión correctamente para ese mes.
+**¿Puedo analizar un solo mes?**
+Sí: `ConfigGEIH(anio=2026, n_meses=1)`. Solo necesitas `data/Enero 2026.zip`.
 
-**¿Puedo comparar 2025 vs 2026 si solo tengo enero 2026?**
-Sí, usando `n_meses=1` para ambos años en el `ComparadorMultiAnio`. Esto garantiza que los factores de expansión sean equivalentes entre años.
+**¿Puedo agregar un mes nuevo sin reconsolidar?**
+Sí: `ConsolidadorGEIH.append_mes()` añade un mes al Parquet existente.
 
-**¿Los datos del DANE tienen algún costo?**
-No. Son públicos y gratuitos en [microdatos.dane.gov.co](https://microdatos.dane.gov.co) y no requieren registro o autenticación.
+**¿Los datos tienen costo?** No. Son públicos y gratuitos en [microdatos.dane.gov.co](https://microdatos.dane.gov.co) sin registro.
 
-**¿Funciona con datos de años anteriores (2022, 2023, 2024)?**
-Sí. El paquete soporta la GEIH desde 2022 (Marco Muestral 2018 del DANE) hasta el presente con `ConfigGEIH(anio=2022, ...)`.
+**¿Funciona con años anteriores (2022–2024)?** Sí, desde 2022 (Marco Muestral 2018).
 
-**¿Qué significa el error "PEA > 40M"?**
-Indica que el factor de expansión no se está calculando correctamente. Asegúrate de que `n_meses` en `ConfigGEIH` coincide con el número de meses reales en tu archivo Parquet:
+**¿Los 33 departamentos están incluidos?** Sí, los 32 + Bogotá D.C. Para departamentos pequeños (Amazonía, Orinoquía), el paquete advierte automáticamente cuando la muestra es insuficiente.
 
-```python
-# Si el Parquet tiene 12 meses → n_meses=12 → FEX ÷ 12
-config = ConfigGEIH(anio=2025, n_meses=12)
+**¿Hay un dashboard visual?**
+Sí. `ejecutar_dashboard(ruta_base="data")` lanza una interfaz Streamlit con filtros y gráficos básicos sobre los Parquet consolidados. Requiere `pip install "geih-analisis[dashboard]"`.
 
-# Si el Parquet tiene solo enero → n_meses=1 → FEX ÷ 1
-config = ConfigGEIH(anio=2026, n_meses=1)
-```
+**¿Puedo enriquecer los códigos CIIU y DIVIPOLA con descripciones legibles?**
+Sí, con `MergeCorrelativas`. Agrega `DESCRIPCION_CIIU` y los nombres de departamento/municipio a partir de archivos Excel de correlativas (§12.bis).
 
-**¿Se pueden hacer análisis departamentales semestrales?**
-Sí. Use `meses_rango` en `ConfigGEIH` para filtrar meses. Cada departamento lleva su evaluación de precisión muestral. Para departamentos pequeños (Amazonía, Orinoquía), la muestra semestral puede ser insuficiente — el paquete lo advierte automáticamente.
-
-**¿Se puede analizar la distribución salarial por tenencia de tierra?**
-Sí, con `AnalisisTierraAgropecuario`. La GEIH incluye P3064 (propietario de la tierra) y P3064S1 (renta estimada) para trabajadores independientes del sector agropecuario. Cada resultado lleva su indicador de confiabilidad.
+**¿Puedo diagnosticar la calidad de la base antes de analizarla?**
+Sí, con `DiagnosticoCalidad`: reporta valores faltantes, ceros sospechosos, tipos incorrectos y columnas duplicadas.
 
 **¿Puedo agregar variables sin modificar el paquete?**
-Sí. Use `columnas_extra` en `preparar_base()`. No necesita hacer fork ni modificar código fuente.
-
-**¿Necesito lanzar un nuevo release para actualizar el SMMLV?**
-No. Use `geih_config.json` para actualizar SMMLV y referencias DANE externamente.
-
-**¿Los 33 departamentos están incluidos?**
-Sí. Los departamentos de Amazonía/Orinoquía (Arauca, Casanare, Putumayo, Amazonas, Guainía, Guaviare, Vaupés, Vichada) y San Andrés ahora están incluidos. El paquete advierte cuando la muestra es insuficiente para estimaciones confiables.
+Sí: `prep.preparar_base(geih, columnas_extra=["P6870", "P7310", ...])`.
 
 ---
 
-## 15. Cómo citar
-
-Si usas este paquete en un trabajo académico o publicación, puedes citarlo así:
-
-**Formato BibTeX:**
+## 17. Cómo citar
 
 ```bibtex
 @software{forero2026geih,
   author  = {Forero Herrera, Néstor Enrique},
   title   = {geih-analisis: Paquete Python para análisis de microdatos GEIH},
   year    = {2026},
-  version = {0.1.4},
+  version = {0.1.5},
   url     = {https://github.com/enriqueforero/geih-analisis},
   note    = {Datos fuente: Gran Encuesta Integrada de Hogares — DANE, Colombia}
 }
 ```
 
-**Formato texto (APA):**
-
-> Forero Herrera, N. E. (2026). *geih-analisis* (v0.1.4) [Software]. GitHub. https://github.com/enriqueforero/geih-analisis
+> Forero Herrera, N. E. (2026). *geih-analisis* (v0.1.5) [Software]. https://github.com/enriqueforero/geih-analisis
 
 ---
 
-## 16. Licencia
+## 18. Licencia y metodología
 
-MIT — Néstor Enrique Forero Herrera · Colombia · 2026
+**MIT** — Néstor Enrique Forero Herrera · Colombia · 2026
 
-Los **datos de la GEIH** son de acceso público y propiedad del DANE (Departamento Administrativo Nacional de Estadística de Colombia). Este paquete es una herramienta de análisis independiente y no tiene afiliación oficial con el DANE ni con ninguna entidad gubernamental.
+Los datos de la GEIH son propiedad del **DANE** (Departamento Administrativo Nacional de Estadística). Este paquete es una herramienta independiente sin afiliación oficial.
 
----
+**Metodología de desarrollo.** La arquitectura, la lógica de negocio y los requerimientos son de autoría humana; el autor asume responsabilidad total del código publicado. Se utilizaron modelos de IA generativa (Claude y Gemini) como asistencia técnica para código boilerplate, optimización y refactorización. Ningún bloque asistido por IA se integró sin revisión crítica y validación funcional.
 
-## 17. Metodología de desarrollo
+**Agradecimientos.** El diseño de esta librería se inspiró en notebooks previos compartidos por colegas, cuyo aporte se reconoce explícitamente:
 
-La arquitectura, la lógica de negocio y los requerimientos de este paquete son de autoría humana. El autor asume responsabilidad total sobre la integridad del código publicado.
+- **[Lina María Castro](https://co.linkedin.com/in/lina-maria-castro)** compartió notebooks propios sobre **consolidación multi-módulo de la GEIH** y sobre **análisis por municipios**, que sirvieron como referencia metodológica inicial para el `ConsolidadorGEIH` y para `AnalisisOcupadosCiudad`. Aunque la implementación final reescribió ambos módulos desde cero, el enfoque original de Lina fue el punto de partida conceptual.
+- **[Nicolás Rivera](https://co.linkedin.com/in/nicol%C3%A1s-rivera-garz%C3%B3n-7a8b23201)** extendió el trabajo anterior al incorporar mejoras de programación en los notebooks y **validó los cálculos de ocupados por municipio × rama de actividad económica**, contrastando cifras contra los boletines oficiales del DANE.
 
-Se utilizaron modelos de IA generativa (Claude y Gemini) como asistencia técnica para generación de código boilerplate, optimización de consultas y sugerencias de refactorización.
-
-**Validación:** Ningún bloque asistido por IA fue integrado sin revisión crítica, ajuste al contexto del dominio y validación mediante pruebas funcionales.
-
----
-
-## 18. Créditos y agradecimientos
-
-Se agradece a [Lina María Castro](https://co.linkedin.com/in/lina-maria-castro) por su trabajo analítico y técnico previo sobre el procesamiento de microdatos GEIH — incluyendo un enfoque de consolidación multi-módulo — que sirvió como referencia metodológica para el diseño de esta librería. También se agradece a [Nicolás Rivera](https://co.linkedin.com/in/nicol%C3%A1s-rivera-garz%C3%B3n-7a8b23201) por compartir una extensión posterior de ese trabajo.
-
+Ambos aportes son anteriores al paquete y se reconocen como contribuciones intelectuales al proyecto.

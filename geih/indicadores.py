@@ -101,9 +101,18 @@ class IndicadoresLaborales:
             "PEA_M": pea / 1e6,
             "Ocupados_M": ocu / 1e6,
             "Desocupados_M": des / 1e6,
+            # Valores de display (1 decimal, como el Boletín DANE)
             "TD_%": round(td, 1),
             "TGP_%": round(tgp, 1),
             "TO_%": round(to, 1),
+            # Valores crudos sin redondear (v6.0) — necesarios para
+            # validación estricta contra anexo Excel del DANE, cuya
+            # precisión es de 4 decimales. El round(_, 1) anterior
+            # convertía 7.97 y 8.03 ambos en 8.0 e impedía verificar
+            # con tolerancia ±0.05 p.p.
+            "TD_raw": td,
+            "TGP_raw": tgp,
+            "TO_raw": to,
         }
         return resultado
 
@@ -111,6 +120,7 @@ class IndicadoresLaborales:
         self,
         resultado: Dict[str, float],
         periodo: str = "Anual",
+        tolerancia_pp: float = 0.5,
     ) -> bool:
         """Valida los indicadores contra las referencias DANE.
 
@@ -150,8 +160,8 @@ class IndicadoresLaborales:
                     continue
                 calc = resultado.get(key, np.nan)
                 diff = abs(calc - ref_val)
-                estado = "✅" if diff <= 0.5 else "⚠️"
-                if diff > 0.5:
+                estado = "✅" if diff <= tolerancia_pp else "⚠️"
+                if diff > tolerancia_pp:
                     ok = False
                 print(f"  {estado} {key:>6} = {calc:.1f}%  (ref. DANE: {ref_val:.1f}%  Δ={diff:.1f})")
 

@@ -132,20 +132,23 @@ __pycache__/
 build/
 dashboard/
 dist/
+docs/
 env/
 mnt/
 resultados_geih_2025/
 resultados_geih_2026/
 resultados_geih_2027/
 venv/
-z. Archivos/
-z. Backup/
-z. Cosas antiguas/
 
 
 # ── Archivos específicos excluidos ────────────────────────────────────
+2026-04-12 Consolidador_Codigo_y_Docs_v0_1_3 GEIH.ipynb
+2026-04-12 Notebook_Publicacion_GitHub_PyPI_v1.3.1 GEIH.ipynb
 2026_04_01_Consolidado_Codigo_GEIH.py
+GUIA_GEIH.md
+conftest.py
 geih_pipeline.log
+generar_golden_set.py
 metadata.json
 
 
