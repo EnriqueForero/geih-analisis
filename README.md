@@ -3,7 +3,7 @@
 [![PyPI version](https://badge.fury.io/py/geih-analisis.svg)](https://pypi.org/project/geih-analisis/)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/version-0.1.6-brightgreen.svg)]()
+[![Version](https://img.shields.io/badge/version-0.1.5-brightgreen.svg)]()
 [![AI Assisted](https://img.shields.io/badge/AI%20Assisted-Claude%20%7C%20Gemini-blue)]()
 
 **Paquete Python para analizar los microdatos de la Gran Encuesta Integrada de Hogares (GEIH) del DANE — Colombia.**
@@ -19,7 +19,7 @@ Convierte los archivos `.zip` crudos del DANE en indicadores del mercado laboral
 ## Tabla de contenidos
 
 1. [¿Para quién es este paquete?](#1-para-quién-es-este-paquete)
-2. [Novedades en la v0.1.6](#2-novedades-en-la-v016)
+2. [Novedades en la v0.1.5](#2-novedades-en-la-v016)
 3. [Instalación](#3-instalación)
 4. [Paso 0 — Descargar los datos del DANE](#4-paso-0--descargar-los-datos-del-dane)
 5. [Inicio rápido](#5-inicio-rápido)
@@ -31,8 +31,8 @@ Convierte los archivos `.zip` crudos del DANE en indicadores del mercado laboral
 11. [Análisis de tierras agropecuarias](#11-análisis-de-tierras-agropecuarias)
 12. [Configuración externa y precisión muestral](#12-configuración-externa-y-precisión-muestral)
 13. [Herramientas auxiliares](#12bis-herramientas-auxiliares)
-14. [Verificación contra el Boletín DANE (NUEVO v0.1.6)](#13-verificación-contra-el-boletín-dane)
-15. [Desestacionalización de series mensuales (NUEVO v0.1.6)](#14-desestacionalización-de-series-mensuales)
+14. [Verificación contra el Boletín DANE (NUEVO v0.1.5)](#13-verificación-contra-el-boletín-dane)
+15. [Desestacionalización de series mensuales (NUEVO v0.1.5)](#14-desestacionalización-de-series-mensuales)
 16. [Notebooks de replicación y validación](#15-notebooks-de-replicación-y-validación)
 17. [FAQ](#16-faq)
 18. [Cómo citar](#17-cómo-citar)
@@ -54,7 +54,7 @@ Este paquete es para ti si:
 
 ---
 
-## 2. Novedades en la v0.1.6
+## 2. Novedades en la v0.1.5
 
 Esta versión está orientada a **rigor de validación contra el Boletín DANE**. Durante la replicación verbatim del Boletín GEIH Diciembre 2025 con tolerancia ±0.05 p.p., se identificaron seis bugs latentes que producían cifras silenciosamente incorrectas en clasificaciones geográficas y de informalidad. Todos están corregidos, blindados con tests "canario" y documentados.
 
@@ -79,7 +79,7 @@ Esta versión está orientada a **rigor de validación contra el Boletín DANE**
 1. **Reinstale** y **reinicie el kernel** de Colab/Jupyter (Python cachea módulos).
 2. Si su código llamaba `agregar_variables_derivadas` manualmente, ya no es necesario — pero mantenerlo no rompe nada (el método es idempotente).
 3. Si dependía de `df['DOMINIO']=='13_AM'` antes y obtenía cifras anómalas, **revise sus reportes** — la lógica anterior producía basura silenciosa.
-4. Para informalidad oficial: si su Parquet fue consolidado antes de 0.1.6, considere reconsolidar para que `P6870` entre en la base. Sin ella, `INFORMAL` cae a la versión aproximada y avisa con un warning.
+4. Para informalidad oficial: si su Parquet fue consolidado antes de 0.1.5, considere reconsolidar para que `P6870` entre en la base. Sin ella, `INFORMAL` cae a la versión aproximada y avisa con un warning.
 
 👉 Detalle completo en [`CHANGELOG.md`](CHANGELOG.md).
 
@@ -594,7 +594,7 @@ Crea automáticamente las subcarpetas `resultados_geih_<anio>/tablas/`, `grafica
 
 ## 13. Verificación contra el Boletín DANE
 
-> 🆕 **Nuevo en v0.1.6.** Esta sección documenta el flujo recomendado para validar que sus cálculos reproducen el Boletín DANE oficial dentro de tolerancia estricta.
+> 🆕 **Nuevo en v0.1.5.** Esta sección documenta el flujo recomendado para validar que sus cálculos reproducen el Boletín DANE oficial dentro de tolerancia estricta.
 
 ### Por qué es obligatorio validar
 
@@ -661,7 +661,7 @@ Si la variable de entorno no está definida, los tests se **skipean limpiamente*
 
 ## 14. Desestacionalización de series mensuales
 
-> 🆕 **Nuevo en v0.1.6.** El módulo `geih.estacional` permite reproducir la sección "TD desestacionalizada" del Boletín DANE (página 25), que separa la tendencia de los efectos estacionales en la serie mensual.
+> 🆕 **Nuevo en v0.1.5.** El módulo `geih.estacional` permite reproducir la sección "TD desestacionalizada" del Boletín DANE (página 25), que separa la tendencia de los efectos estacionales en la serie mensual.
 
 ### Cuándo usarla
 
@@ -703,7 +703,7 @@ El método por defecto es **STL** (Seasonal-Trend LOESS), que está siempre disp
 
 ## 15. Notebooks de replicación y validación
 
-> 🆕 **Nuevo en v0.1.6.** El proyecto incluye notebooks de ejemplo listos para correr en Google Colab, que sirven como plantillas de validación y como referencia ejecutable de las mejores prácticas.
+> 🆕 **Nuevo en v0.1.5.** El proyecto incluye notebooks de ejemplo listos para correr en Google Colab, que sirven como plantillas de validación y como referencia ejecutable de las mejores prácticas.
 
 ### `Verificacion_GEIH_2025_vs_Boletin_DANE_v3.ipynb`
 
