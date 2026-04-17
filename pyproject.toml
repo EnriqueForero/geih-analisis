@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "geih-analisis"
-version = "0.1.5"
-description = "Análisis de microdatos GEIH del DANE — Colombia. 70+ indicadores: TD, TGP, TO, Gini, Mincer, ICE, ICI, brecha de género, 33 departamentos, análisis de tierras y precisión muestral."
+version = "0.1.6"
+description = "Análisis de microdatos GEIH del DANE — Colombia. 70+ indicadores: TD, TGP, TO, Gini, Mincer, ICE, ICI, brecha de género, 33 departamentos, informalidad, análisis de tierras y precisión muestral."
 readme = "README.md"
 license = {text = "MIT"}
 requires-python = ">=3.9"
@@ -13,7 +13,7 @@ authors = [
     {name = "Néstor Enrique Forero Herrera", email = "enrique.economista@gmail.com"},
 ]
 
-keywords = ["GEIH", "DANE", "Colombia", "mercado laboral", "desempleo", "empleo", "microdatos", "encuesta hogares", "estadistica"]
+keywords = ["GEIH", "DANE", "Colombia", "mercado laboral", "desempleo", "empleo", "microdatos", "informalidad", "encuesta hogares", "estadistica"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Science/Research",

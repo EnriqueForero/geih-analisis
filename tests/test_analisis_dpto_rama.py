@@ -29,7 +29,7 @@ def df_sintetico():
                         "RAMA2D_R4": r2,
                         "RAMA4D_R4": r4,
                         "FEX_C18": float(rng.integers(800, 2500)),
-                        "mes_num": mes,
+                        "MES_NUM": mes,
                     })
     return pd.DataFrame(filas)
 
@@ -71,7 +71,7 @@ def test_total_nacional_coincide_con_promedio_directo(analisis, df_sintetico):
     out = analisis.calcular(df_sintetico, nivel_ciiu="2d", verbose=False)
     total_tabla = out["ocupados_promedio"].sum()
     total_directo = (df_sintetico
-                     .groupby("mes_num")["FEX_C18"].sum().mean())
+                     .groupby("MES_NUM")["FEX_C18"].sum().mean())
     assert abs(total_tabla - total_directo) < 1.0
 
 
@@ -134,7 +134,7 @@ def test_celda_con_meses_faltantes_se_reponderán(analisis):
         for _ in range(30):
             filas.append({"DPTO": "05", "RAMA2D_R4": "01",
                           "RAMA4D_R4": "0111", "FEX_C18": 1000.0,
-                          "mes_num": mes})
+                          "MES_NUM": mes})
     df = pd.DataFrame(filas)
     out = analisis.calcular(df, nivel_ciiu="2d", verbose=False)
     # Cada mes tiene 30 personas × 1000 = 30.000 expandidos

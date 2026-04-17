@@ -50,21 +50,23 @@ from .config import (
     CIIU_DESCRIPCION_FALLBACK,
 )
 from .utils import ConversorTipos
-
+from .informalidad import clasificar_informalidad_dane
 
 # ═════════════════════════════════════════════════════════════════════
 # COLUMNAS POR DEFECTO — EXTENSIBLE DESDE EL NOTEBOOK
 # ═════════════════════════════════════════════════════════════════════
 
 COLUMNAS_DEFAULT: List[str] = [
-    # ── Identificación y factor de expansión ──────────────────
+
+    # ── Identificación y factor de expansión ──────────────────────
     "FEX_C18", "MES_NUM",
-    # ── Características generales (E/F/G) ─────────────────────
+
+    # ── Características generales (E/F/G) ─────────────────────────
     "P3271",      # Sexo (1=H, 2=M)
     "P6040",      # Edad
     "P6080",      # Autorreconocimiento étnico
     "P3042",      # Nivel educativo (1-13)
-    "P3043S1",    # Campo de formación (CINE-F) — para proxy bilingüismo
+    "P3043S1",    # Campo de formación (CINE-F) — proxy bilingüismo
     "P6090",      # Afiliado salud (1=Sí)
     "CLASE",      # Zona (1=Cabecera/Urbano, 2=Rural)
     "DPTO",       # Departamento (código 2 dígitos)
@@ -73,63 +75,106 @@ COLUMNAS_DEFAULT: List[str] = [
     # Discapacidad — Escala Washington (8 dimensiones)
     "P1906S1", "P1906S2", "P1906S3", "P1906S4",
     "P1906S5", "P1906S6", "P1906S7", "P1906S8",
-    # ── Fuerza de trabajo (H) ─────────────────────────────────
+
+    # ── Fuerza de trabajo (H) ─────────────────────────────────────
     "FT", "PET", "OCI", "DSI", "FFT",
     "P6240",      # Actividad semana pasada
-    # ── Ocupados (I) ──────────────────────────────────────────
+
+    # ── Ocupados (I) — ingresos y tiempo ──────────────────────────
     "INGLABO",    # Ingreso laboral mensual
     "P6500",      # Salario bruto declarado
-    "P6430",      # Posición ocupacional (1-9)
     "P6800",      # Horas normales semana
     "P6850",      # Horas reales semana pasada
-    "P6920",      # Cotiza pensión
-    "P3069",      # Tamaño empresa (independientes)
-    "P6870",      # Tamaño establecimiento (asalariados) — informalidad oficial v6.0
     "P7130",      # Desea cambiar trabajo
-    "RAMA2D_R4",  # CIIU 2 dígitos
-    "RAMA4D_R4",  # CIIU 4 dígitos
     "AREA",       # Municipio 5 dígitos (32 ciudades)
-    # Autonomía laboral
+
+    # ── Posición ocupacional ───────────────────────────────────────
+    "P6430",      # Posición ocupacional (CISE-93 1-9)
+
+    # ── Forma de trabajo (independientes) ─────────────────────────
+    "P6765",      # 1-8. P6765=7 → "tiene negocio"
+
+    # ── Informalidad 17ª CIET (sector + ocupación) ────────────────
+    # Sector — ASALARIADOS
+    "P3045S1",    # ¿Empresa registrada CC? (asalariados)
+    "P3046",      # ¿Empresa tiene contabilidad? (asalariados)
+    # Sector — INDEPENDIENTES SIN NEGOCIO
+    "P3051",      # ¿Tiene negocio, empresa, finca?
+    "P3065",      # ¿Registrada CC? (sin negocio)
+    "P3066",      # ¿Tiene contabilidad? (sin negocio) — CRÍTICA
+    # Sector — INDEPENDIENTES CON NEGOCIO
+    "P3067",      # ¿Registró negocio CC? (con negocio)
+    "P3067S1",    # ¿Renovó registro? (1=Sí, 2=No)
+    "P3067S2",    # Año de última renovación                        ← NUEVA
+    "P6775",      # ¿Lleva contabilidad? (negocio)                  ← NUEVA
+    "P3068",      # ¿Separa gastos negocio/hogar?
+
+    # ── Tamaño y oficio ───────────────────────────────────────────
+    "P3069",      # Tamaño empresa (1=solo, 4=6-10, ...)
+    "OFICIO_C8",  # Oficio CIUO-08 (4 caracteres) — CRÍTICA
+
+    # ── Rama de actividad ─────────────────────────────────────────
+    "RAMA2D_R4",  # CIIU 2 dígitos (excluir ramas 84 y 99)
+    "RAMA4D_R4",  # CIIU 4 dígitos
+
+    # ── Salud ─────────────────────────────────────────────────────
+    # P6090 ya capturado en Características generales (informativa)
+    "P6100",      # Régimen (1=Contrib, 2=Esp, 3=Subs, 9=NS)       ← NUEVA
+    "P6110",      # ¿Quién paga salud? (1, 2, 4 = empleador)        ← NUEVA
+
+    # ── Pensión ───────────────────────────────────────────────────
+    "P6920",      # ¿Cotiza pensión? (1=Sí, 3=Pensionado)
+    "P6930",      # Fondo de pensiones (1, 2, 3 = válidos)
+    "P6940",      # ¿Quién paga pensión? (1, 3 = empleador)         ← NUEVA
+
+    # ── Contrato ──────────────────────────────────────────────────
+    "P6440",      # ¿Tiene contrato?
+    "P6450",      # ¿Verbal o escrito? (2=Escrito)
+    "P6460",      # ¿Contrato indefinido?
+
+    # ── Autonomía laboral ─────────────────────────────────────────
     "P3047",      # ¿Quién decide horario?
     "P3048",      # ¿Quién decide qué producir?
     "P3049",      # ¿Quién decide precio?
-    # Formalidad contractual
-    "P6440",      # ¿Tiene contrato?
-    "P6450",      # ¿Contrato escrito?
-    "P6460",      # ¿Contrato indefinido?
-    # Variables de alto valor analítico
-    "P1802",      # Alcance mercado (1-6, 6=Exportación)
-    "P6765",      # Forma de trabajo (destajo, honorarios...)
-    "P3363",      # ¿Cómo consiguió empleo?
-    "P3364",      # ¿Retención en la fuente?
-    "P6400",      # ¿Trabaja donde lo contrataron?
-    "P6410",      # Tipo intermediación (EST, CTA)
-    # Compensación
+
+    # ── Tenencia de tierra y actividad agropecuaria (v5.1) ────────
+    "P3056",      # Tipo actividad negocio (1=mercancías, 2=agropecuario)
+    "P3064",      # ¿Propietario de la tierra? (1=Sí, 2=No)
+    "P3064S1",    # Valor estimado arriendo terreno (COP/mes)
+
+    # ── Compensación ──────────────────────────────────────────────
     "P6510S1",    # Horas extras
     "P6580S1",    # Bonificaciones
     "P6585S1A1",  # Auxilio alimentación
     "P6585S2A1",  # Auxilio transporte
-    # ── Tenencia de tierra y actividad agropecuaria (v5.1) ────
-    "P3056",      # Tipo actividad negocio (1=mercancías, 2=agropecuario)
-    "P3064",      # ¿Propietario de la tierra? (1=Sí, 2=No)
-    "P3064S1",    # Valor estimado arriendo terreno (COP/mes)
-    # ── No ocupados (J) ───────────────────────────────────────
+
+    # ── Variables de alto valor analítico ─────────────────────────
+    "P1802",      # Alcance mercado (1-6, 6=Exportación)
+    "P3363",      # ¿Cómo consiguió empleo?
+    "P3364",      # ¿Retención en la fuente?
+    "P6400",      # ¿Trabaja donde lo contrataron?
+    "P6410",      # Tipo intermediación (EST, CTA)
+
+    # ── No ocupados (J) ───────────────────────────────────────────
     "P7250",      # Semanas buscando trabajo
     "P6300",      # ¿Desea trabajar? (FFT con deseo)
     "P6310",      # ¿Disponible para trabajar?
     "P7140S2",    # Razón: mejorar ingresos
-    # ── Otras formas de trabajo (K) ───────────────────────────
+
+    # ── Otras formas de trabajo (K) ───────────────────────────────
     "P3054",      # Autoconsumo bienes
     "P3054S1",    # Horas autoconsumo bienes
     "P3055",      # Autoconsumo servicios
     "P3055S1",    # Horas autoconsumo servicios
     "P3057",      # Formación no remunerada
-    # ── Migración (L) ─────────────────────────────────────────
+
+    # ── Migración (L) ─────────────────────────────────────────────
     "P3370",      # ¿Dónde vivía hace 12 meses?
     "P3370S1",    # Departamento hace 12 meses
     "P3376",      # País de nacimiento
     "P3378S1",    # Año de llegada a Colombia
-    # ── Otros ingresos (M) ────────────────────────────────────
+
+    # ── Otros ingresos (M) ────────────────────────────────────────
     "P7422",      # Arriendos recibidos
     "P7500S1",    # Pensiones
     "P7500S1A1",  # Monto pensiones
@@ -145,7 +190,7 @@ Para agregar variables adicionales desde el notebook sin modificar
 este archivo, use el parámetro `columnas_extra`:
 
     prep = PreparadorGEIH(config=config)
-    df = prep.preparar_base(geih, columnas_extra=["P6870", "P6880"])
+    df = prep.preparar_base(geih, columnas_extra=["P3069", "P6880"])
 
 Las columnas extra se fusionan con esta lista. Si una columna no
 existe en la base, se ignora silenciosamente (sin error).
@@ -155,7 +200,7 @@ existe en la base, se ignora silenciosamente (sin error).
 # variables necesarias para replicar el Boletín DANE. Se expone como
 # COLUMNAS_BOLETIN para que el código del usuario sea explícito sobre
 # su intención cuando esté replicando indicadores oficiales.
-COLUMNAS_BOLETIN: List[str] = COLUMNAS_DEFAULT
+COLUMNAS_BOLETIN: List[str] = list(COLUMNAS_DEFAULT)
 """Preset documentado para replicar el Boletín GEIH del DANE.
 
 Equivale a COLUMNAS_DEFAULT pero el nombre comunica la intención al
@@ -190,7 +235,7 @@ class PreparadorGEIH:
         df_s2 = prep.preparar_base(geih, meses_filtro=[7,8,9,10,11,12])
 
         # Con variables adicionales del usuario
-        df = prep.preparar_base(geih, columnas_extra=["P6870", "P3376S1"])
+        df = prep.preparar_base(geih, columnas_extra=["P3069", "P3376S1"])
     """
 
     def __init__(self, config: Optional[ConfigGEIH] = None):
@@ -234,7 +279,7 @@ class PreparadorGEIH:
 
         Ejemplo:
             # Agregar variables sin tocar el paquete:
-            df = prep.preparar_base(geih, columnas_extra=["P6870", "P6880"])
+            df = prep.preparar_base(geih, columnas_extra=["P3069", "P6880"])
 
             # Análisis semestral:
             df_s1 = prep.preparar_base(geih, meses_filtro=[1,2,3,4,5,6])
@@ -439,8 +484,9 @@ class PreparadorGEIH:
             df["CIUDAD"] = df["DPTO_STR"].map(DPTO_A_CIUDAD)
 
         if "AREA" in df.columns:
-            area_str = self._conversor.estandarizar_area(df["AREA"])
-            ciudad_area = area_str.map(AREA_A_CIUDAD)
+            # AREA en GEIH es código de dominio de 2 dígitos, no DIVIPOLA 5
+            area_2d = df["AREA"].astype(str).str.strip().str.zfill(2)
+            ciudad_area = area_2d.map(AREA_GEIH_A_CIUDAD)
             if "CIUDAD" in df.columns:
                 df["CIUDAD"] = ciudad_area.combine_first(df["CIUDAD"])
             else:
@@ -494,78 +540,37 @@ class PreparadorGEIH:
             rango[edad >= 55] = "55+"
             df["EDAD_RANGO"] = rango
 
-        # ── Informalidad 17ª CIET (v6.0 — definición DANE) ───
-        # Nota metodológica DANE:
-        # https://www.dane.gov.co/files/investigaciones/boletines/ech/ech/
-        #   Nueva_medicion_informalidad.pdf
+        # ── Informalidad 17ª CIET (v7.0 — definición DANE completa) ──
+        # Fuente: Nota metodológica DANE "Nueva medición de informalidad
+        # laboral" (julio 2022), basada en 17ª CIET (OIT 2003) y Manual
+        # de Informalidad INE Chile.
+        #
+        # La informalidad laboral tiene DOS dimensiones:
+        #   1. SECTOR: ¿la unidad económica (empresa) es formal o informal?
+        #      Criterios: registro mercantil (Cámara de Comercio) y/o
+        #      contabilidad completa. Proxy: tamaño de empresa (P3069).
+        #   2. OCUPACIÓN: ¿el puesto de trabajo es formal o informal?
+        #      Criterios: afiliación a salud contributiva Y cotización a
+        #      pensión, ambas pagadas (total o parcialmente) por el empleador.
+        #
+        # Informal = sector_informal OR (sector_formal AND ocupación_informal)
         #
         # Variables requeridas:
-        #   P6430 — posición ocupacional (CISE-93, jornalero=7)
-        #   P6920 — cotización a pensión (1=sí, 2=no, 3=ya pensionado)
-        #   P6870 — tamaño del establecimiento (1=solo, 2..9 = rangos)
+        #   P6430    — posición ocupacional CISE-93
+        #   P6920    — cotiza pensión (1=Sí, 2=No, 3=Ya pensionado)
+        #   P6090    — régimen de salud (1=Contributivo, 2=Especial, 3=Subsidiado)
+        #   P3069    — tamaño empresa (1-10)
+        #   P3045S1  — ¿empresa registrada Cámara de Comercio? (asalariados)
+        #   P3046    — ¿empresa tiene contabilidad? (asalariados)
+        #   P3051    — ¿tiene negocio? (independientes)
+        #   P3065    — ¿registrada Cámara Comercio? (indep. sin negocio)
+        #   P3067    — ¿registró negocio Cámara Comercio? (indep. con negocio)
+        #   P3067S1  — ¿renovó registro?
+        #   P3068    — ¿contabilidad separa gastos negocio/hogar?
         #
-        # Reglas de clasificación:
-        #  (a) Asalariados (P6430 ∈ {1,2}): formales si cotizan pensión.
-        #  (b) Empleada doméstica (P6430 = 3): misma regla que (a).
-        #  (c) Cuenta propia (P6430 = 4): formales si cotizan pensión.
-        #  (d) Patrón/empleador (P6430 = 5): formales si empresa > 5
-        #      empleados (P6870 ∈ {6..9}, códigos 11+ trabajadores) Y
-        #      cotizan a pensión.
-        #  (e) Jornalero o peón (P6430 = 7): regla (a).
-        #  (f) Trabajador familiar sin remuneración (6), trabajador sin
-        #      remuneración en otras empresas (8) y "Otro" (9):
-        #      informales por definición.
-        #
-        # FIX v6.0 vs versión anterior:
-        #   - Código jornalero corregido: P6430=7 (CISE-93), no 8.
-        #   - Patrones grandes ahora se clasifican como formales si cumplen
-        #     ambas condiciones (tamaño + cotización), reduciendo el sesgo
-        #     de +1-3 p.p. en la medición rural.
-        #   - Si P6870 no está, se aplica la versión sin tamaño y se avisa.
-        if "P6430" in df.columns and "P6920" in df.columns:
-            pos = pd.to_numeric(df["P6430"], errors="coerce")
-            cot = pd.to_numeric(df["P6920"], errors="coerce")
-            tam = (pd.to_numeric(df["P6870"], errors="coerce")
-                   if "P6870" in df.columns else None)
-
-            informal = pd.Series(pd.NA, index=df.index, dtype="Int8")
-
-            # (a)+(b)+(e) Asalariados, doméstica y jornaleros: cotización
-            es_empleado = pos.isin([1, 2, 3, 7])
-            informal[es_empleado & (cot == 1)] = 0
-            informal[es_empleado & (cot != 1)] = 1
-
-            # (c) Cuenta propia: cotización pensional
-            informal[(pos == 4) & (cot == 1)] = 0
-            informal[(pos == 4) & (cot != 1)] = 1
-
-            # (d) Patrón / empleador: tamaño + cotización
-            if tam is not None:
-                empresa_grande = tam >= 6  # P6870: 6 = "11 a 19 personas"+
-                informal[(pos == 5) & empresa_grande & (cot == 1)] = 0
-                informal[(pos == 5) & ~(empresa_grande & (cot == 1))] = 1
-            else:
-                # Sin P6870 caemos a la regla simple (sesgo conocido)
-                informal[(pos == 5) & (cot == 1)] = 0
-                informal[(pos == 5) & (cot != 1)] = 1
-
-            # (f) Informales por definición: familiares sin rem., otro
-            informal[pos.isin([6, 8, 9])] = 1
-
-            df["INFORMAL"] = informal
-
-            if tam is None:
-                print(
-                    "ℹ️  INFORMAL calculada SIN P6870 (tamaño de empresa). "
-                    "Esperable sesgo de +1-3 p.p. vs Boletín DANE en rural. "
-                    "Agregue P6870 vía columnas_extra para definición exacta."
-                )
-        else:
-            faltantes = sorted({"P6430", "P6920"} - set(df.columns))
-            print(
-                f"ℹ️  INFORMAL no derivada: faltan {faltantes}. "
-                f"Agréguelas vía columnas_extra al consolidar."
-            )
+        # Si faltan las variables de sector (P3045S1, P3067, etc.), se cae
+        # a la aproximación simplificada (solo P6430+P6920+P3069).
+        df = self._clasificar_informalidad(df)
 
         # ── Nivel educativo ──────────────────────────────────
         if "P3042" in df.columns:
@@ -577,6 +582,41 @@ class PreparadorGEIH:
             df["INGLABO_SML"] = df["INGLABO"] / self.config.smmlv
 
         return df
+
+    # ── Informalidad 17ª CIET ──────────────────────────────────
+    # _clasificar_informalidad (delegación al módulo oficial)
+    def _clasificar_informalidad(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Clasifica informalidad laboral según SINTAXIS OFICIAL DANE.
+
+        Delega a `geih.informalidad.clasificar_informalidad_dane`, que es
+        una traducción literal del código SAS publicado por el DANE en el
+        anexo "anex-GEIHEISS-dic2025-feb2026.xlsx".
+
+        El año de referencia para la regla del registro mercantil
+        (P3067S2 >= ANIO−1) se toma de:
+        1. self.config.anio si está disponible.
+        2. Una columna PER del DataFrame.
+        3. El año actual del sistema.
+
+        Args:
+            df: DataFrame con las variables GEIH preparadas.
+
+        Returns:
+            El mismo DataFrame con la columna `INFORMAL` añadida
+            (Int8: 1=informal, 0=formal, NA=sin información).
+        """
+        # Determinar año de referencia
+        anio_ref = None
+        if hasattr(self, 'config') and hasattr(self.config, 'anio'):
+            anio_ref = self.config.anio
+
+        print("\n📊 Calculando informalidad según sintaxis OFICIAL DANE...")
+        df["INFORMAL"] = clasificar_informalidad_dane(
+            df, anio_referencia=anio_ref, verbose=True
+        )
+
+        return df
+
 
 
 class MergeCorrelativas:

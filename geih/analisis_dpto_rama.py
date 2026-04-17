@@ -128,7 +128,7 @@ class OcupadosDptoRama:
 
         Args:
             df: DataFrame consolidado con al menos las columnas
-                DPTO, FEX_C18, mes_num y la columna de rama correspondiente
+                DPTO, FEX_C18, MES_NUM y la columna de rama correspondiente
                 al nivel solicitado (RAMA2D_R4 o RAMA4D_R4).
                 Si contiene la columna OCI, se filtra automáticamente
                 por OCI==1 como protección defensiva.
@@ -182,7 +182,7 @@ class OcupadosDptoRama:
 
         # ── Paso 1: totales mensuales por celda ──
         mensual = (
-            df_lim.groupby(["DPTO", col_rama, "mes_num"], as_index=False)
+            df_lim.groupby(["DPTO", col_rama, "MES_NUM"], as_index=False)
                   .agg(total_expandido=("FEX_C18", "sum"),
                        n_muestra=("FEX_C18", "size"))
         )
@@ -494,7 +494,7 @@ class OcupadosDptoRama:
 
     @staticmethod
     def _validar_columnas(df: pd.DataFrame, col_rama: str) -> None:
-        requeridas = {"DPTO", "FEX_C18", "mes_num", col_rama}
+        requeridas = {"DPTO", "FEX_C18", "MES_NUM", col_rama}
         faltantes = requeridas - set(df.columns)
         if faltantes:
             raise KeyError(
