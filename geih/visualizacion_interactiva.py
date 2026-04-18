@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 geih.visualizacion_interactiva — Gráficos interactivos con Plotly.
 
@@ -29,15 +28,15 @@ __all__ = [
     "PlotlyComparativoAnual",
 ]
 
-from typing import Optional, Dict, List
 
 import numpy as np
 import pandas as pd
 
 try:
-    import plotly.graph_objects as go
     import plotly.express as px
+    import plotly.graph_objects as go
     from plotly.subplots import make_subplots
+
     _PLOTLY_DISPONIBLE = True
 except ImportError:
     _PLOTLY_DISPONIBLE = False
@@ -55,9 +54,15 @@ def _verificar_plotly():
 
 # Paleta de colores institucional
 _C = {
-    "azul": "#2E6DA4", "rojo": "#C0392B", "verde": "#1E8449",
-    "morado": "#7D3C98", "naranja": "#E67E22", "gris": "#7F8C8D",
-    "cyan": "#1ABC9C", "amarillo": "#F39C12", "fondo": "#F7F9FC",
+    "azul": "#2E6DA4",
+    "rojo": "#C0392B",
+    "verde": "#1E8449",
+    "morado": "#7D3C98",
+    "naranja": "#E67E22",
+    "gris": "#7F8C8D",
+    "cyan": "#1ABC9C",
+    "amarillo": "#F39C12",
+    "fondo": "#F7F9FC",
 }
 
 _LAYOUT_BASE = dict(
@@ -72,6 +77,7 @@ _LAYOUT_BASE = dict(
 # CURVA DE LORENZ INTERACTIVA
 # ═════════════════════════════════════════════════════════════════════
 
+
 class PlotlyLorenz:
     """Curva de Lorenz interactiva con hover que muestra % población y % ingreso."""
 
@@ -85,11 +91,16 @@ class PlotlyLorenz:
         _verificar_plotly()
 
         fig = go.Figure()
-        fig.add_trace(go.Scatter(
-            x=[0, 1], y=[0, 1], mode="lines",
-            line=dict(dash="dash", color="gray", width=1.5),
-            name="Igualdad perfecta", hoverinfo="skip",
-        ))
+        fig.add_trace(
+            go.Scatter(
+                x=[0, 1],
+                y=[0, 1],
+                mode="lines",
+                line=dict(dash="dash", color="gray", width=1.5),
+                name="Igualdad perfecta",
+                hoverinfo="skip",
+            )
+        )
 
         _trapz = getattr(np, "trapezoid", getattr(np, "trapz", None))
 
@@ -121,24 +132,33 @@ class PlotlyLorenz:
             step = max(1, len(w_c) // 200)
             w_s, vw_s = w_c[::step], vw_c[::step]
 
-            fig.add_trace(go.Scatter(
-                x=w_s, y=vw_s, mode="lines",
-                line=dict(color=color, width=2.5),
-                name=f"{lbl} (Gini={gini:.3f})",
-                hovertemplate=(
-                    f"<b>{lbl}</b><br>"
-                    "Población acumulada: %{x:.1%}<br>"
-                    "Ingreso acumulado: %{y:.1%}<br>"
-                    "<extra></extra>"
-                ),
-            ))
+            fig.add_trace(
+                go.Scatter(
+                    x=w_s,
+                    y=vw_s,
+                    mode="lines",
+                    line=dict(color=color, width=2.5),
+                    name=f"{lbl} (Gini={gini:.3f})",
+                    hovertemplate=(
+                        f"<b>{lbl}</b><br>"
+                        "Población acumulada: %{x:.1%}<br>"
+                        "Ingreso acumulado: %{y:.1%}<br>"
+                        "<extra></extra>"
+                    ),
+                )
+            )
             if lbl == "Nacional":
-                fig.add_trace(go.Scatter(
-                    x=np.concatenate([w_s, w_s[::-1]]),
-                    y=np.concatenate([w_s, vw_s[::-1]]),
-                    fill="toself", fillcolor=f"rgba(46,109,164,0.08)",
-                    line=dict(width=0), showlegend=False, hoverinfo="skip",
-                ))
+                fig.add_trace(
+                    go.Scatter(
+                        x=np.concatenate([w_s, w_s[::-1]]),
+                        y=np.concatenate([w_s, vw_s[::-1]]),
+                        fill="toself",
+                        fillcolor="rgba(46,109,164,0.08)",
+                        line=dict(width=0),
+                        showlegend=False,
+                        hoverinfo="skip",
+                    )
+                )
 
         fig.update_layout(
             **_LAYOUT_BASE,
@@ -146,7 +166,8 @@ class PlotlyLorenz:
             xaxis=dict(title="% acumulado de ocupados", tickformat=".0%", range=[0, 1]),
             yaxis=dict(title="% acumulado del ingreso", tickformat=".0%", range=[0, 1]),
             legend=dict(x=0.05, y=0.95),
-            width=700, height=600,
+            width=700,
+            height=600,
         )
         return fig
 
@@ -154,6 +175,7 @@ class PlotlyLorenz:
 # ═════════════════════════════════════════════════════════════════════
 # ICI BUBBLE INTERACTIVO
 # ═════════════════════════════════════════════════════════════════════
+
 
 class PlotlyICIBubble:
     """Gráfico de burbujas ICI con hover que muestra todos los indicadores."""
@@ -176,16 +198,23 @@ class PlotlyICIBubble:
         colors = df["ICI"] if "ICI" in df.columns else pd.Series(50, index=df.index)
 
         fig = px.scatter(
-            df, x=col_x, y=col_y,
-            size=sizes.values, color=colors.values,
+            df,
+            x=col_x,
+            y=col_y,
+            size=sizes.values,
+            color=colors.values,
             hover_name="Departamento",
-            hover_data={col_x: ":,.0f", col_y: ":.1f",
-                        "ICI": ":.1f" if "ICI" in df.columns else False},
+            hover_data={
+                col_x: ":,.0f",
+                col_y: ":.1f",
+                "ICI": ":.1f" if "ICI" in df.columns else False,
+            },
             color_continuous_scale="RdYlGn",
             text="Departamento",
         )
         fig.update_traces(
-            textposition="top center", textfont=dict(size=9),
+            textposition="top center",
+            textfont=dict(size=9),
             marker=dict(line=dict(width=1, color="white")),
         )
 
@@ -201,7 +230,8 @@ class PlotlyICIBubble:
             xaxis=dict(title="Costo laboral efectivo (COP)"),
             yaxis=dict(title="% universitarios"),
             coloraxis_colorbar=dict(title="ICI"),
-            width=900, height=700,
+            width=900,
+            height=700,
         )
         return fig
 
@@ -209,6 +239,7 @@ class PlotlyICIBubble:
 # ═════════════════════════════════════════════════════════════════════
 # ESTACIONALIDAD INTERACTIVA
 # ═════════════════════════════════════════════════════════════════════
+
 
 class PlotlyEstacionalidad:
     """Líneas mensuales TD/TGP/TO con hover detallado."""
@@ -232,38 +263,55 @@ class PlotlyEstacionalidad:
 
         fig = make_subplots(specs=[[{"secondary_y": True}]])
 
-        fig.add_trace(go.Scatter(
-            x=meses_labels, y=estac["TD_%"],
-            mode="lines+markers", name="TD %",
-            line=dict(color=_C["rojo"], width=3),
-            marker=dict(size=10),
-            hovertemplate="<b>%{x}</b><br>TD: %{y:.1f}%<extra></extra>",
-        ), secondary_y=False)
+        fig.add_trace(
+            go.Scatter(
+                x=meses_labels,
+                y=estac["TD_%"],
+                mode="lines+markers",
+                name="TD %",
+                line=dict(color=_C["rojo"], width=3),
+                marker=dict(size=10),
+                hovertemplate="<b>%{x}</b><br>TD: %{y:.1f}%<extra></extra>",
+            ),
+            secondary_y=False,
+        )
 
-        fig.add_trace(go.Scatter(
-            x=meses_labels, y=estac["TGP_%"],
-            mode="lines+markers", name="TGP %",
-            line=dict(color=_C["azul"], width=2),
-            marker=dict(size=7, symbol="square"),
-            hovertemplate="<b>%{x}</b><br>TGP: %{y:.1f}%<extra></extra>",
-        ), secondary_y=True)
+        fig.add_trace(
+            go.Scatter(
+                x=meses_labels,
+                y=estac["TGP_%"],
+                mode="lines+markers",
+                name="TGP %",
+                line=dict(color=_C["azul"], width=2),
+                marker=dict(size=7, symbol="square"),
+                hovertemplate="<b>%{x}</b><br>TGP: %{y:.1f}%<extra></extra>",
+            ),
+            secondary_y=True,
+        )
 
-        fig.add_trace(go.Scatter(
-            x=meses_labels, y=estac["TO_%"],
-            mode="lines+markers", name="TO %",
-            line=dict(color=_C["verde"], width=2),
-            marker=dict(size=7, symbol="triangle-up"),
-            hovertemplate="<b>%{x}</b><br>TO: %{y:.1f}%<extra></extra>",
-        ), secondary_y=True)
+        fig.add_trace(
+            go.Scatter(
+                x=meses_labels,
+                y=estac["TO_%"],
+                mode="lines+markers",
+                name="TO %",
+                line=dict(color=_C["verde"], width=2),
+                marker=dict(size=7, symbol="triangle-up"),
+                hovertemplate="<b>%{x}</b><br>TO: %{y:.1f}%<extra></extra>",
+            ),
+            secondary_y=True,
+        )
 
         fig.update_layout(
             **_LAYOUT_BASE,
             title=dict(text=titulo, font=dict(size=16)),
             legend=dict(x=0.01, y=0.99),
-            width=900, height=500,
+            width=900,
+            height=500,
         )
-        fig.update_yaxes(title_text="Tasa de Desempleo (%)", secondary_y=False,
-                         titlefont=dict(color=_C["rojo"]))
+        fig.update_yaxes(
+            title_text="Tasa de Desempleo (%)", secondary_y=False, titlefont=dict(color=_C["rojo"])
+        )
         fig.update_yaxes(title_text="TGP y TO (%)", secondary_y=True)
 
         return fig
@@ -272,6 +320,7 @@ class PlotlyEstacionalidad:
 # ═════════════════════════════════════════════════════════════════════
 # DISTRIBUCIÓN DE INGRESOS INTERACTIVA
 # ═════════════════════════════════════════════════════════════════════
+
 
 class PlotlyDistribucionIngresos:
     """Barras apiladas H/M por rango SMMLV con hover detallado."""
@@ -286,16 +335,24 @@ class PlotlyDistribucionIngresos:
         fig = go.Figure()
         if "H_M" in dist_sexo.columns and "M_M" in dist_sexo.columns:
             rangos = dist_sexo["RANGO"].astype(str).tolist()
-            fig.add_trace(go.Bar(
-                x=rangos, y=dist_sexo["H_M"], name="Hombres",
-                marker_color=_C["azul"],
-                hovertemplate="<b>%{x}</b><br>Hombres: %{y:.2f}M<extra></extra>",
-            ))
-            fig.add_trace(go.Bar(
-                x=rangos, y=dist_sexo["M_M"], name="Mujeres",
-                marker_color=_C["rojo"],
-                hovertemplate="<b>%{x}</b><br>Mujeres: %{y:.2f}M<extra></extra>",
-            ))
+            fig.add_trace(
+                go.Bar(
+                    x=rangos,
+                    y=dist_sexo["H_M"],
+                    name="Hombres",
+                    marker_color=_C["azul"],
+                    hovertemplate="<b>%{x}</b><br>Hombres: %{y:.2f}M<extra></extra>",
+                )
+            )
+            fig.add_trace(
+                go.Bar(
+                    x=rangos,
+                    y=dist_sexo["M_M"],
+                    name="Mujeres",
+                    marker_color=_C["rojo"],
+                    hovertemplate="<b>%{x}</b><br>Mujeres: %{y:.2f}M<extra></extra>",
+                )
+            )
             fig.update_layout(barmode="stack")
 
         fig.update_layout(
@@ -303,7 +360,8 @@ class PlotlyDistribucionIngresos:
             title=dict(text=titulo, font=dict(size=16)),
             xaxis=dict(title="Rango SMMLV"),
             yaxis=dict(title="Millones de personas"),
-            width=800, height=500,
+            width=800,
+            height=500,
         )
         return fig
 
@@ -311,6 +369,7 @@ class PlotlyDistribucionIngresos:
 # ═════════════════════════════════════════════════════════════════════
 # BRECHA DE GÉNERO INTERACTIVA
 # ═════════════════════════════════════════════════════════════════════
+
 
 class PlotlyBrechaGenero:
     """Barras dobles H/M con línea de brecha % en hover."""
@@ -330,40 +389,62 @@ class PlotlyBrechaGenero:
 
         fig = make_subplots(specs=[[{"secondary_y": True}]])
 
-        fig.add_trace(go.Bar(
-            x=niveles, y=h_vals, name="Hombres",
-            marker_color=_C["azul"], opacity=0.85,
-            hovertemplate="<b>%{x}</b><br>Hombres: %{y:.2f}× SMMLV<extra></extra>",
-        ), secondary_y=False)
+        fig.add_trace(
+            go.Bar(
+                x=niveles,
+                y=h_vals,
+                name="Hombres",
+                marker_color=_C["azul"],
+                opacity=0.85,
+                hovertemplate="<b>%{x}</b><br>Hombres: %{y:.2f}× SMMLV<extra></extra>",
+            ),
+            secondary_y=False,
+        )
 
-        fig.add_trace(go.Bar(
-            x=niveles, y=m_vals, name="Mujeres",
-            marker_color=_C["rojo"], opacity=0.85,
-            hovertemplate="<b>%{x}</b><br>Mujeres: %{y:.2f}× SMMLV<extra></extra>",
-        ), secondary_y=False)
+        fig.add_trace(
+            go.Bar(
+                x=niveles,
+                y=m_vals,
+                name="Mujeres",
+                marker_color=_C["rojo"],
+                opacity=0.85,
+                hovertemplate="<b>%{x}</b><br>Mujeres: %{y:.2f}× SMMLV<extra></extra>",
+            ),
+            secondary_y=False,
+        )
 
         if len(brecha) > 0 and not np.all(np.isnan(brecha)):
-            fig.add_trace(go.Scatter(
-                x=niveles, y=brecha, mode="lines+markers",
-                name="Brecha %", line=dict(color=_C["morado"], width=2.5),
-                marker=dict(size=8, symbol="square"),
-                hovertemplate="<b>%{x}</b><br>Brecha: %{y:+.1f}%<extra></extra>",
-            ), secondary_y=True)
+            fig.add_trace(
+                go.Scatter(
+                    x=niveles,
+                    y=brecha,
+                    mode="lines+markers",
+                    name="Brecha %",
+                    line=dict(color=_C["morado"], width=2.5),
+                    marker=dict(size=8, symbol="square"),
+                    hovertemplate="<b>%{x}</b><br>Brecha: %{y:+.1f}%<extra></extra>",
+                ),
+                secondary_y=True,
+            )
 
         fig.update_layout(
-            **_LAYOUT_BASE, barmode="group",
+            **_LAYOUT_BASE,
+            barmode="group",
             title=dict(text=titulo, font=dict(size=16)),
-            width=900, height=550,
+            width=900,
+            height=550,
         )
         fig.update_yaxes(title_text="Mediana (× SMMLV)", secondary_y=False)
-        fig.update_yaxes(title_text="Brecha % (M−H)/H", secondary_y=True,
-                         titlefont=dict(color=_C["morado"]))
+        fig.update_yaxes(
+            title_text="Brecha % (M−H)/H", secondary_y=True, titlefont=dict(color=_C["morado"])
+        )
         return fig
 
 
 # ═════════════════════════════════════════════════════════════════════
 # BOX PLOT SALARIOS INTERACTIVO
 # ═════════════════════════════════════════════════════════════════════
+
 
 class PlotlyBoxPlotSalarios:
     """Box plot interactivo de salarios por rama (muestra ponderada)."""
@@ -386,17 +467,20 @@ class PlotlyBoxPlotSalarios:
             df_s = df_ocu
 
         fig = px.box(
-            df_s, x="INGLABO_SML", y="RAMA", color="RAMA",
-            orientation="h", points=False,
+            df_s,
+            x="INGLABO_SML",
+            y="RAMA",
+            color="RAMA",
+            orientation="h",
+            points=False,
             labels={"INGLABO_SML": "Ingreso (× SMMLV)", "RAMA": ""},
         )
-        fig.add_vline(x=1, line_dash="dash", line_color=_C["verde"],
-                      annotation_text="1 SMMLV")
-        fig.add_vline(x=2, line_dash="dot", line_color=_C["naranja"],
-                      annotation_text="2 SMMLV")
+        fig.add_vline(x=1, line_dash="dash", line_color=_C["verde"], annotation_text="1 SMMLV")
+        fig.add_vline(x=2, line_dash="dot", line_color=_C["naranja"], annotation_text="2 SMMLV")
 
         fig.update_layout(
-            **_LAYOUT_BASE, showlegend=False,
+            **_LAYOUT_BASE,
+            showlegend=False,
             title=dict(text=titulo, font=dict(size=16)),
             xaxis=dict(range=[0, 10]),
             height=max(500, len(df_s["RAMA"].unique()) * 45),
@@ -408,6 +492,7 @@ class PlotlyBoxPlotSalarios:
 # ═════════════════════════════════════════════════════════════════════
 # SALARIO POR RAMA (BARRAS HORIZONTALES)
 # ═════════════════════════════════════════════════════════════════════
+
 
 class PlotlySalarioRama:
     """Barras horizontales de mediana salarial por rama con tooltip completo."""
@@ -422,20 +507,17 @@ class PlotlySalarioRama:
 
         df = tabla.sort_values("Mediana", ascending=True).copy()
 
-        fig = go.Figure(go.Bar(
-            y=df.index if df.index.name else df.iloc[:, 0],
-            x=df["Mediana"] / smmlv,
-            orientation="h",
-            marker_color=_C["azul"],
-            hovertemplate=(
-                "<b>%{y}</b><br>"
-                "Mediana: %{x:.2f}× SMMLV<br>"
-                "<extra></extra>"
-            ),
-        ))
+        fig = go.Figure(
+            go.Bar(
+                y=df.index if df.index.name else df.iloc[:, 0],
+                x=df["Mediana"] / smmlv,
+                orientation="h",
+                marker_color=_C["azul"],
+                hovertemplate=("<b>%{y}</b><br>" "Mediana: %{x:.2f}× SMMLV<br>" "<extra></extra>"),
+            )
+        )
 
-        fig.add_vline(x=1, line_dash="dash", line_color=_C["verde"],
-                      annotation_text="1 SMMLV")
+        fig.add_vline(x=1, line_dash="dash", line_color=_C["verde"], annotation_text="1 SMMLV")
 
         fig.update_layout(
             **_LAYOUT_BASE,
@@ -450,6 +532,7 @@ class PlotlySalarioRama:
 # ═════════════════════════════════════════════════════════════════════
 # COMPARATIVO ANUAL INTERACTIVO
 # ═════════════════════════════════════════════════════════════════════
+
 
 class PlotlyComparativoAnual:
     """Gráficos interactivos para comparación multi-año.
@@ -477,28 +560,48 @@ class PlotlyComparativoAnual:
         fig = make_subplots(specs=[[{"secondary_y": True}]])
         anios = df_ind["ANIO"].astype(str).tolist()
 
-        fig.add_trace(go.Scatter(
-            x=anios, y=df_ind["TD_%"], mode="lines+markers+text",
-            name="TD %", line=dict(color=_C["rojo"], width=3),
-            marker=dict(size=12), text=[f"{v:.1f}%" for v in df_ind["TD_%"]],
-            textposition="top center",
-        ), secondary_y=False)
+        fig.add_trace(
+            go.Scatter(
+                x=anios,
+                y=df_ind["TD_%"],
+                mode="lines+markers+text",
+                name="TD %",
+                line=dict(color=_C["rojo"], width=3),
+                marker=dict(size=12),
+                text=[f"{v:.1f}%" for v in df_ind["TD_%"]],
+                textposition="top center",
+            ),
+            secondary_y=False,
+        )
 
-        fig.add_trace(go.Scatter(
-            x=anios, y=df_ind["TGP_%"], mode="lines+markers",
-            name="TGP %", line=dict(color=_C["azul"], width=2),
-        ), secondary_y=True)
+        fig.add_trace(
+            go.Scatter(
+                x=anios,
+                y=df_ind["TGP_%"],
+                mode="lines+markers",
+                name="TGP %",
+                line=dict(color=_C["azul"], width=2),
+            ),
+            secondary_y=True,
+        )
 
-        fig.add_trace(go.Scatter(
-            x=anios, y=df_ind["TO_%"], mode="lines+markers",
-            name="TO %", line=dict(color=_C["verde"], width=2),
-        ), secondary_y=True)
+        fig.add_trace(
+            go.Scatter(
+                x=anios,
+                y=df_ind["TO_%"],
+                mode="lines+markers",
+                name="TO %",
+                line=dict(color=_C["verde"], width=2),
+            ),
+            secondary_y=True,
+        )
 
         fig.update_layout(
             **_LAYOUT_BASE,
             title=dict(text=titulo, font=dict(size=16)),
             xaxis=dict(title="Año"),
-            width=800, height=500,
+            width=800,
+            height=500,
         )
         fig.update_yaxes(title_text="TD (%)", secondary_y=False)
         fig.update_yaxes(title_text="TGP / TO (%)", secondary_y=True)
@@ -515,24 +618,37 @@ class PlotlyComparativoAnual:
         fig = make_subplots(specs=[[{"secondary_y": True}]])
         anios = df_ing["ANIO"].astype(str).tolist()
 
-        fig.add_trace(go.Bar(
-            x=anios, y=df_ing["Mediana_SMMLV"], name="Mediana (× SMMLV)",
-            marker_color=_C["azul"], opacity=0.8,
-            text=[f"{v:.2f}×" for v in df_ing["Mediana_SMMLV"]],
-            textposition="outside",
-        ), secondary_y=False)
+        fig.add_trace(
+            go.Bar(
+                x=anios,
+                y=df_ing["Mediana_SMMLV"],
+                name="Mediana (× SMMLV)",
+                marker_color=_C["azul"],
+                opacity=0.8,
+                text=[f"{v:.2f}×" for v in df_ing["Mediana_SMMLV"]],
+                textposition="outside",
+            ),
+            secondary_y=False,
+        )
 
-        fig.add_trace(go.Scatter(
-            x=anios, y=df_ing["Mediana_COP"] / 1e6, mode="lines+markers",
-            name="Mediana (M COP)", line=dict(color=_C["rojo"], width=2),
-            marker=dict(size=8),
-        ), secondary_y=True)
+        fig.add_trace(
+            go.Scatter(
+                x=anios,
+                y=df_ing["Mediana_COP"] / 1e6,
+                mode="lines+markers",
+                name="Mediana (M COP)",
+                line=dict(color=_C["rojo"], width=2),
+                marker=dict(size=8),
+            ),
+            secondary_y=True,
+        )
 
         fig.update_layout(
             **_LAYOUT_BASE,
             title=dict(text=titulo, font=dict(size=16)),
             xaxis=dict(title="Año"),
-            width=800, height=500,
+            width=800,
+            height=500,
         )
         fig.update_yaxes(title_text="× SMMLV", secondary_y=False)
         fig.update_yaxes(title_text="Millones COP", secondary_y=True)

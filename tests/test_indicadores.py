@@ -1,9 +1,8 @@
-# -*- coding: utf-8 -*-
 """Tests para geih.indicadores — Indicadores laborales."""
 
-import numpy as np
 import pandas as pd
 import pytest
+
 from geih.config import ConfigGEIH
 from geih.indicadores import IndicadoresLaborales
 
@@ -15,14 +14,16 @@ class TestIndicadoresLaboralesSinteticos:
     def df_sintetico(self):
         """100 personas: 60 OCI, 20 DSI, 20 FFT → TD=25%, TGP=80%, TO=60%."""
         n = 100
-        df = pd.DataFrame({
-            "FEX_ADJ": [100.0] * n,
-            "OCI": [1]*60 + [0]*40,
-            "FT":  [1]*80 + [0]*20,    # PEA = 80
-            "DSI": [0]*60 + [1]*20 + [0]*20,
-            "PET": [1]*n,
-            "FFT": [0]*80 + [1]*20,
-        })
+        df = pd.DataFrame(
+            {
+                "FEX_ADJ": [100.0] * n,
+                "OCI": [1] * 60 + [0] * 40,
+                "FT": [1] * 80 + [0] * 20,  # PEA = 80
+                "DSI": [0] * 60 + [1] * 20 + [0] * 20,
+                "PET": [1] * n,
+                "FFT": [0] * 80 + [1] * 20,
+            }
+        )
         return df
 
     def test_td_conocida(self, df_sintetico):
@@ -65,9 +66,13 @@ class TestSanityCheck:
         config = ConfigGEIH(anio=2025, n_meses=12)
         ind = IndicadoresLaborales(config=config)
         resultado = {
-            "TD_%": 8.9, "TGP_%": 64.3, "TO_%": 58.6,
-            "PET_M": 40.0, "PEA_M": 26.3,
-            "Ocupados_M": 23.8, "Desocupados_M": 2.1,
+            "TD_%": 8.9,
+            "TGP_%": 64.3,
+            "TO_%": 58.6,
+            "PET_M": 40.0,
+            "PEA_M": 26.3,
+            "Ocupados_M": 23.8,
+            "Desocupados_M": 2.1,
         }
         ok = ind.sanity_check(resultado, "Anual 2025")
         assert ok is True
@@ -77,9 +82,13 @@ class TestSanityCheck:
         config = ConfigGEIH(anio=2025, n_meses=12)
         ind = IndicadoresLaborales(config=config)
         resultado = {
-            "TD_%": 8.9, "TGP_%": 64.3, "TO_%": 58.6,
-            "PET_M": 400.0, "PEA_M": 56.0,
-            "Ocupados_M": 50.0, "Desocupados_M": 6.0,
+            "TD_%": 8.9,
+            "TGP_%": 64.3,
+            "TO_%": 58.6,
+            "PET_M": 400.0,
+            "PEA_M": 56.0,
+            "Ocupados_M": 50.0,
+            "Desocupados_M": 6.0,
         }
         ok = ind.sanity_check(resultado, "Anual 2025")
         assert ok is False
@@ -89,9 +98,13 @@ class TestSanityCheck:
         config = ConfigGEIH(anio=2026, n_meses=3)
         ind = IndicadoresLaborales(config=config)
         resultado = {
-            "TD_%": 10.0, "TGP_%": 65.0, "TO_%": 58.0,
-            "PET_M": 40.0, "PEA_M": 26.0,
-            "Ocupados_M": 23.5, "Desocupados_M": 2.5,
+            "TD_%": 10.0,
+            "TGP_%": 65.0,
+            "TO_%": 58.0,
+            "PET_M": 40.0,
+            "PEA_M": 26.0,
+            "Ocupados_M": 23.5,
+            "Desocupados_M": 2.5,
         }
         # No debe lanzar excepción aunque no haya ref DANE
         ok = ind.sanity_check(resultado, "Trimestre 2026")

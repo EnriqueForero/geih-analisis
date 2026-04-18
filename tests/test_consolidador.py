@@ -1,8 +1,8 @@
-# -*- coding: utf-8 -*-
 """Tests para geih.consolidador — Lógica de consolidación."""
 
 import pandas as pd
 import pytest
+
 from geih.consolidador import ConsolidadorGEIH
 
 
@@ -12,17 +12,13 @@ class TestUnirSinDuplicados:
     def test_no_multiplica_filas(self, df_merge_izq, df_merge_der):
         """LEFT JOIN no debe producir más filas que el DataFrame izquierdo."""
         llaves = ["DIRECTORIO", "SECUENCIA_P", "ORDEN"]
-        resultado = ConsolidadorGEIH._unir_sin_duplicados(
-            df_merge_izq, df_merge_der, llaves
-        )
+        resultado = ConsolidadorGEIH._unir_sin_duplicados(df_merge_izq, df_merge_der, llaves)
         assert len(resultado) == len(df_merge_izq)
 
     def test_preserva_universo(self, df_merge_izq, df_merge_der):
         """LEFT JOIN debe preservar todas las filas del DataFrame izquierdo."""
         llaves = ["DIRECTORIO", "SECUENCIA_P", "ORDEN"]
-        resultado = ConsolidadorGEIH._unir_sin_duplicados(
-            df_merge_izq, df_merge_der, llaves
-        )
+        resultado = ConsolidadorGEIH._unir_sin_duplicados(df_merge_izq, df_merge_der, llaves)
         # D3 no está en df_der → debe tener NaN en COL_B
         d3 = resultado[resultado["DIRECTORIO"] == "D3"]
         assert len(d3) == 1
@@ -31,9 +27,7 @@ class TestUnirSinDuplicados:
     def test_elimina_columnas_duplicadas(self, df_merge_izq, df_merge_der):
         """No debe traer COL_A del df_der (ya existe en df_izq)."""
         llaves = ["DIRECTORIO", "SECUENCIA_P", "ORDEN"]
-        resultado = ConsolidadorGEIH._unir_sin_duplicados(
-            df_merge_izq, df_merge_der, llaves
-        )
+        resultado = ConsolidadorGEIH._unir_sin_duplicados(df_merge_izq, df_merge_der, llaves)
         # No debe haber COL_A_x ni COL_A_y
         assert "COL_A_x" not in resultado.columns
         assert "COL_A_y" not in resultado.columns
@@ -43,9 +37,7 @@ class TestUnirSinDuplicados:
     def test_trae_columnas_nuevas(self, df_merge_izq, df_merge_der):
         """Debe traer COL_B (nueva) del df_der."""
         llaves = ["DIRECTORIO", "SECUENCIA_P", "ORDEN"]
-        resultado = ConsolidadorGEIH._unir_sin_duplicados(
-            df_merge_izq, df_merge_der, llaves
-        )
+        resultado = ConsolidadorGEIH._unir_sin_duplicados(df_merge_izq, df_merge_der, llaves)
         assert "COL_B" in resultado.columns
         # D1 debe tener COL_B=100
         d1 = resultado[resultado["DIRECTORIO"] == "D1"]

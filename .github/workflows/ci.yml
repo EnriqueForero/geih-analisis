@@ -1,0 +1,122 @@
+name: CI
+
+# ══════════════════════════════════════════════════════════════════════
+# Cuándo corre este workflow:
+#   - Cada push a main o a ramas feature/fix/refactor/docs
+#   - Cada Pull Request apuntando a main
+#
+# Qué hace:
+#   1. lint  : ruff check + ruff format (PEP 8 + imports ordenados)
+#   2. test  : pytest con matrix Python 3.9/3.10/3.11/3.12
+#              coverage gate --cov-fail-under=25 (baseline Semana 1)
+#              ROADMAP: subir 5 p.p. por trimestre → meta 55% en 2027
+#
+# branch protection exige que lint + test-3.9 + test-3.10 + test-3.11
+# + test-3.12 estén en verde antes de permitir merge a main.
+# ══════════════════════════════════════════════════════════════════════
+
+on:
+  push:
+    branches: [main, 'feature/**', 'fix/**', 'refactor/**', 'docs/**']
+  pull_request:
+    branches: [main]
+
+concurrency:
+  # Cancela runs previos de la misma rama/PR para ahorrar minutos de CI.
+  # cancel-in-progress: false para main — nunca cancelar un run de la rama
+  # principal porque es la fuente de verdad para el release workflow.
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  # ════════════════════════════════════════════════════════════════
+  # JOB 1 — Lint (ruff: PEP 8 + imports + formato)
+  # ════════════════════════════════════════════════════════════════
+  lint:
+    name: Lint (ruff)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: Instalar ruff
+        run: pip install ruff==0.5.0
+
+      - name: ruff check (errores y estilo)
+        run: ruff check geih/ tests/
+
+      - name: ruff format --check (formato de código)
+        run: ruff format --check geih/ tests/
+
+
+  # ════════════════════════════════════════════════════════════════
+  # JOB 2 — Tests con matrix de versiones Python
+  # ════════════════════════════════════════════════════════════════
+  test:
+    name: Test Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    # El linting debe pasar primero. Si hay error de sintaxis,
+    # no tiene sentido correr tests.
+    needs: lint
+
+    strategy:
+      fail-fast: false   # Muestra resultados de TODAS las versiones,
+                         # no solo de la primera que falle.
+      matrix:
+        python-version: ['3.9', '3.10', '3.11', '3.12']
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Instalar librería + dependencias de dev
+        # [dev] incluye pytest>=7.0, pytest-cov>=4.0, psutil>=5.9
+        run: pip install -e ".[dev,viz]"
+
+      - name: Verificar import del paquete (Fail Fast en __init__.py)
+        # Si __init__.py silencia un ImportError, este paso lo detecta.
+        # Es el equivalente de "encender el motor antes de salir".
+        run: |
+          python -c "
+          import geih
+          print(f'  geih v{geih.__version__} importado correctamente')
+          assert hasattr(geih, 'ConfigGEIH'), 'ConfigGEIH no disponible'
+          assert hasattr(geih, 'PreparadorGEIH'), 'PreparadorGEIH no disponible'
+          assert hasattr(geih, 'IndicadoresLaborales'), 'IndicadoresLaborales no disponible'
+          print('  Símbolos core verificados: OK')
+          "
+
+      - name: Ejecutar tests (sin canarios DANE — requieren microdatos locales)
+        # -m "not canario": excluye los tests de paridad contra el boletín DANE.
+        # Los tests de paridad sobre golden_set.parquet SÍ corren (marker "paridad").
+        # --cov-fail-under=25 es el gate del baseline de Semana 1.
+        # ROADMAP de subida: 25% (abr-2026) → 30% (jul-2026) → 40% (oct-2026)
+        #                   → 50% (ene-2027) → 55% (abr-2027)
+        run: |
+          pytest -m "not canario" \
+            --cov=geih \
+            --cov-report=xml \
+            --cov-report=term-missing \
+            --cov-fail-under=25
+
+      - name: Subir reporte de cobertura a Codecov
+        # Solo en Python 3.11 para no saturar Codecov con 4 reportes iguales.
+        if: matrix.python-version == '3.11'
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./coverage.xml
+          fail_ci_if_error: false   # Codecov está caído → no romper CI
+          verbose: false

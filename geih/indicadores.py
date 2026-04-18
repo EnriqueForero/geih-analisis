@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 geih.indicadores — Cálculo de indicadores del mercado laboral.
 
@@ -28,35 +27,25 @@ __all__ = [
 
 
 import gc
-from typing import Optional, Dict, Any, List
+from typing import Any, Optional
 
 import numpy as np
 import pandas as pd
 
 from .config import (
-    ConfigGEIH,
-    SMMLV_2025,
-    REF_DANE_2025,
-    REF_DANE,
-    RAMAS_DANE,
-    TABLA_CIIU_RAMAS,
-    DEPARTAMENTOS,
-    DPTO_A_CIUDAD,
-    RANGOS_SMMLV_LIMITES,
-    RANGOS_SMMLV_ETIQUETAS,
-    NIVELES_AGRUPADOS,
-    P3042_A_ANOS,
-    TAMANO_EMPRESA,
     AGRUPACION_DANE_8,
-    CARGA_PRESTACIONAL,
+    DEPARTAMENTOS,
+    RANGOS_SMMLV_ETIQUETAS,
+    RANGOS_SMMLV_LIMITES,
+    ConfigGEIH,
 )
-from .utils import EstadisticasPonderadas as EP, ConversorTipos
-from .preparador import PreparadorGEIH
-
+from .utils import ConversorTipos
+from .utils import EstadisticasPonderadas as EP
 
 # ═════════════════════════════════════════════════════════════════════
 # INDICADORES LABORALES FUNDAMENTALES
 # ═════════════════════════════════════════════════════════════════════
+
 
 class IndicadoresLaborales:
     """Calcula TD, TGP, TO y valida contra el boletín DANE.
@@ -76,7 +65,7 @@ class IndicadoresLaborales:
     def __init__(self, config: Optional[ConfigGEIH] = None):
         self.config = config or ConfigGEIH()
 
-    def calcular(self, df: pd.DataFrame) -> Dict[str, float]:
+    def calcular(self, df: pd.DataFrame) -> dict[str, float]:
         """Calcula indicadores nacionales a partir de la base preparada.
 
         Args:
@@ -92,9 +81,9 @@ class IndicadoresLaborales:
         ocu = df.loc[df["OCI"] == 1, fex].sum() if "OCI" in df.columns else 0
         des = df.loc[df["DSI"] == 1, fex].sum() if "DSI" in df.columns else 0
 
-        td  = (des / pea * 100) if pea > 0 else np.nan
+        td = (des / pea * 100) if pea > 0 else np.nan
         tgp = (pea / pet * 100) if pet > 0 else np.nan
-        to  = (ocu / pet * 100) if pet > 0 else np.nan
+        to = (ocu / pet * 100) if pet > 0 else np.nan
 
         resultado = {
             "PET_M": pet / 1e6,
@@ -118,7 +107,7 @@ class IndicadoresLaborales:
 
     def sanity_check(
         self,
-        resultado: Dict[str, float],
+        resultado: dict[str, float],
         periodo: str = "Anual",
         tolerancia_pp: float = 0.5,
     ) -> bool:
@@ -145,14 +134,14 @@ class IndicadoresLaborales:
         if ref is None:
             # Año sin referencia publicada (ej: 2026 parcial)
             print(f"  ⚠️  Sin referencia DANE para {self.config.anio}.")
-            print(f"     No se puede validar TD/TGP/TO contra boletín oficial.")
-            print(f"     Agregue la referencia en config.py → REF_DANE cuando")
-            print(f"     el DANE publique las cifras oficiales del año.")
+            print("     No se puede validar TD/TGP/TO contra boletín oficial.")
+            print("     Agregue la referencia en config.py → REF_DANE cuando")
+            print("     el DANE publique las cifras oficiales del año.")
         else:
             refs = {
-                "TD_%":  ref.td_anual_pct if is_anual else ref.td_dic_pct,
+                "TD_%": ref.td_anual_pct if is_anual else ref.td_dic_pct,
                 "TGP_%": ref.tgp_anual_pct if is_anual else ref.tgp_dic_pct,
-                "TO_%":  ref.to_anual_pct if is_anual else ref.to_dic_pct,
+                "TO_%": ref.to_anual_pct if is_anual else ref.to_dic_pct,
             }
             for key, ref_val in refs.items():
                 if ref_val == 0.0:
@@ -163,7 +152,9 @@ class IndicadoresLaborales:
                 estado = "✅" if diff <= tolerancia_pp else "⚠️"
                 if diff > tolerancia_pp:
                     ok = False
-                print(f"  {estado} {key:>6} = {calc:.1f}%  (ref. DANE: {ref_val:.1f}%  Δ={diff:.1f})")
+                print(
+                    f"  {estado} {key:>6} = {calc:.1f}%  (ref. DANE: {ref_val:.1f}%  Δ={diff:.1f})"
+                )
 
         for key in ["PET_M", "PEA_M", "Ocupados_M", "Desocupados_M"]:
             val = resultado.get(key, 0)
@@ -204,6 +195,7 @@ class IndicadoresLaborales:
 # DISTRIBUCIÓN DE INGRESOS
 # ═════════════════════════════════════════════════════════════════════
 
+
 class DistribucionIngresos:
     """Distribución del ingreso laboral por rangos de SMMLV.
 
@@ -214,7 +206,7 @@ class DistribucionIngresos:
     def __init__(self, config: Optional[ConfigGEIH] = None):
         self.config = config or ConfigGEIH()
 
-    def calcular(self, df: pd.DataFrame) -> Dict[str, pd.DataFrame]:
+    def calcular(self, df: pd.DataFrame) -> dict[str, pd.DataFrame]:
         """Calcula la distribución de ingresos por rangos SMMLV.
 
         Args:
@@ -234,7 +226,7 @@ class DistribucionIngresos:
         print(f"   Sin ingreso / especie : {(n_total-n_pos)/1e6:.2f} M")
 
         # Clasificar en rangos (vectorizado con pd.cut)
-        limites_cop = [l * self.config.smmlv for l in RANGOS_SMMLV_LIMITES]
+        limites_cop = [lim * self.config.smmlv for lim in RANGOS_SMMLV_LIMITES]
         df_ocu["RANGO"] = pd.cut(
             df_ocu["INGLABO"],
             bins=limites_cop,
@@ -247,7 +239,8 @@ class DistribucionIngresos:
         # Agregación total
         dist = (
             df_ocu.groupby("RANGO", observed=True)["FEX_ADJ"]
-            .sum().reset_index()
+            .sum()
+            .reset_index()
             .rename(columns={"FEX_ADJ": "Personas"})
         )
         dist["Personas_M"] = dist["Personas"] / 1e6
@@ -257,7 +250,9 @@ class DistribucionIngresos:
         # Por sexo
         dist_sexo = (
             df_ocu.groupby(["RANGO", "SEXO"], observed=True)["FEX_ADJ"]
-            .sum().unstack(fill_value=0).reset_index()
+            .sum()
+            .unstack(fill_value=0)
+            .reset_index()
         )
         for col in ["Hombres", "Mujeres"]:
             if col not in dist_sexo.columns:
@@ -270,10 +265,10 @@ class DistribucionIngresos:
 
         return {"total": dist, "por_sexo": dist_sexo}
 
-    def imprimir(self, resultado: Dict[str, pd.DataFrame], titulo: str = "") -> None:
+    def imprimir(self, resultado: dict[str, pd.DataFrame], titulo: str = "") -> None:
         """Imprime la tabla de distribución de ingresos."""
         dist = resultado["total"]
-        dist_s = resultado["por_sexo"]
+        resultado["por_sexo"]
 
         print(f"\n{'─'*70}")
         print(f"  DISTRIBUCIÓN DE INGRESOS LABORALES — {titulo}")
@@ -283,13 +278,16 @@ class DistribucionIngresos:
         print(f"  {'─'*22} {'─'*10} {'─'*7}  {'─'*7}")
 
         for _, row in dist.iterrows():
-            print(f"  {str(row['RANGO']):<22} {row['Personas_M']:>8.2f}M "
-                  f"{row['Pct']:>6.1f}%  {row['Acum_Pct']:>6.1f}%")
+            print(
+                f"  {row['RANGO']!s:<22} {row['Personas_M']:>8.2f}M "
+                f"{row['Pct']:>6.1f}%  {row['Acum_Pct']:>6.1f}%"
+            )
 
 
 # ═════════════════════════════════════════════════════════════════════
 # ANÁLISIS POR RAMA Y SEXO
 # ═════════════════════════════════════════════════════════════════════
+
 
 class AnalisisRamaSexo:
     """Ocupados por rama de actividad económica y sexo.
@@ -307,15 +305,10 @@ class AnalisisRamaSexo:
         Returns:
             DataFrame con Total, Hombres, Mujeres, y distribuciones %.
         """
-        df_calc = df[
-            (df["OCI"] == 1)
-            & df["RAMA"].notna()
-            & df["SEXO"].notna()
-        ].copy()
+        df_calc = df[(df["OCI"] == 1) & df["RAMA"].notna() & df["SEXO"].notna()].copy()
 
         pivot = (
-            df_calc.groupby(["RAMA", "SEXO"])["FEX_ADJ"]
-            .sum().unstack(fill_value=0).reset_index()
+            df_calc.groupby(["RAMA", "SEXO"])["FEX_ADJ"].sum().unstack(fill_value=0).reset_index()
         )
         for col in ["Hombres", "Mujeres"]:
             if col not in pivot.columns:
@@ -345,6 +338,7 @@ class AnalisisRamaSexo:
 # ═════════════════════════════════════════════════════════════════════
 # ESTADÍSTICAS SALARIALES POR RAMA Y EDAD
 # ═════════════════════════════════════════════════════════════════════
+
 
 class AnalisisSalarios:
     """Estadísticas de salario por rama y grupo de edad.
@@ -399,15 +393,16 @@ class AnalisisSalarios:
         Returns:
             DataFrame con estadísticas por grupo de edad.
         """
-        df_calc = df[
-            (df["INGLABO"] > 0) & df["P6040"].between(edad_min, edad_max)
-        ].copy()
+        df_calc = df[(df["INGLABO"] > 0) & df["P6040"].between(edad_min, edad_max)].copy()
 
-        bins = list(range(edad_min, edad_max + 1, bin_size)) + [edad_max + 1]
+        bins = [*list(range(edad_min, edad_max + 1, bin_size)), edad_max + 1]
         labels = [f"{b}–{b+bin_size-1}" for b in bins[:-1]]
         df_calc["GRUPO_EDAD"] = pd.cut(
-            df_calc["P6040"], bins=bins, labels=labels,
-            right=False, include_lowest=True,
+            df_calc["P6040"],
+            bins=bins,
+            labels=labels,
+            right=False,
+            include_lowest=True,
         )
 
         filas = []
@@ -430,6 +425,7 @@ class AnalisisSalarios:
 # ═════════════════════════════════════════════════════════════════════
 # BRECHA SALARIAL DE GÉNERO
 # ═════════════════════════════════════════════════════════════════════
+
 
 class BrechaGenero:
     """Brecha salarial de género por nivel educativo.
@@ -460,19 +456,22 @@ class BrechaGenero:
                 med = EP.mediana(df_calc.loc[m, "INGLABO"], df_calc.loc[m, "FEX_ADJ"])
                 mea = EP.media(df_calc.loc[m, "INGLABO"], df_calc.loc[m, "FEX_ADJ"])
                 n = EP.suma(df_calc, m)
-                filas.append({
-                    "Nivel": niv, "Sexo": sexo_lbl,
-                    "Mediana": med, "Media": mea, "N_miles": n / 1_000,
-                })
+                filas.append(
+                    {
+                        "Nivel": niv,
+                        "Sexo": sexo_lbl,
+                        "Mediana": med,
+                        "Media": mea,
+                        "N_miles": n / 1_000,
+                    }
+                )
 
         df_edu = pd.DataFrame(filas).drop_duplicates(subset=["Nivel", "Sexo"])
 
         # Calcular brecha
         pivot = df_edu.pivot_table(index="Nivel", columns="Sexo", values="Mediana")
         if "Hombres" in pivot.columns and "Mujeres" in pivot.columns:
-            pivot["Brecha_%"] = (
-                (pivot["Mujeres"] - pivot["Hombres"]) / pivot["Hombres"] * 100
-            )
+            pivot["Brecha_%"] = (pivot["Mujeres"] - pivot["Hombres"]) / pivot["Hombres"] * 100
 
         return pivot.dropna()
 
@@ -480,6 +479,7 @@ class BrechaGenero:
 # ═════════════════════════════════════════════════════════════════════
 # ANÁLISIS CRUZADO EMPRESA × DEPARTAMENTO
 # ═════════════════════════════════════════════════════════════════════
+
 
 class AnalisisCruzado:
     """Insatisfacción laboral y tamaño de empresa por departamento.
@@ -505,38 +505,33 @@ class AnalisisCruzado:
             if n_tot < 5_000:
                 continue
 
-            fila: Dict[str, Any] = {
+            fila: dict[str, Any] = {
                 "Departamento": dpto,
                 "Ocupados_M": round(n_tot / 1e6, 2),
             }
 
             # Deseo de cambio (P7130=1)
             if "P7130" in df_ocu.columns:
-                n_cambia = df_ocu.loc[
-                    m & (df_ocu["P7130"] == 1), "FEX_ADJ"
-                ].sum()
+                n_cambia = df_ocu.loc[m & (df_ocu["P7130"] == 1), "FEX_ADJ"].sum()
                 fila["Desea_cambiar_%"] = round(n_cambia / n_tot * 100, 1)
 
             # Formalidad (P6920=1 → cotiza pensión)
             if "P6920" in df_ocu.columns:
-                n_pen = df_ocu.loc[
-                    m & (df_ocu["P6920"] == 1), "FEX_ADJ"
-                ].sum()
+                n_pen = df_ocu.loc[m & (df_ocu["P6920"] == 1), "FEX_ADJ"].sum()
                 fila["Cotiza_pension_%"] = round(n_pen / n_tot * 100, 1)
 
             filas.append(fila)
 
         resultado = pd.DataFrame(filas)
         if not resultado.empty:
-            resultado = resultado.sort_values(
-                "Desea_cambiar_%", ascending=False
-            )
+            resultado = resultado.sort_values("Desea_cambiar_%", ascending=False)
         return resultado
 
 
 # ═════════════════════════════════════════════════════════════════════
 # ÍNDICES COMPUESTOS
 # ═════════════════════════════════════════════════════════════════════
+
 
 class IndicesCompuestos:
     """Calcula ICE, ICF, IVI, ICI e ITAT.
@@ -557,7 +552,9 @@ class IndicesCompuestos:
 
         df_ocu["D_PENSION"] = (df_ocu["P6920"] == 1).astype(float)
         df_ocu["D_SALUD"] = (df_ocu["P6090"] == 1).astype(float) if "P6090" in df_ocu.columns else 0
-        df_ocu["D_HORAS"] = df_ocu["P6800"].between(20, 48).astype(float) if "P6800" in df_ocu.columns else 0
+        df_ocu["D_HORAS"] = (
+            df_ocu["P6800"].between(20, 48).astype(float) if "P6800" in df_ocu.columns else 0
+        )
         df_ocu["D_INGRESO"] = (df_ocu["INGLABO"] >= self.config.smmlv).astype(float)
 
         df_ocu["ICE"] = (
@@ -581,6 +578,7 @@ class IndicesCompuestos:
 # ═════════════════════════════════════════════════════════════════════
 # ANÁLISIS POR ÁREA GEOGRÁFICA (32 CIUDADES)
 # ═════════════════════════════════════════════════════════════════════
+
 
 class AnalisisArea:
     """Análisis de ocupados por CIIU y 32 ciudades/áreas metropolitanas.
@@ -611,7 +609,7 @@ class AnalisisArea:
         )
         return pd.Series(resultado, index=serie_ciiu.index, dtype=object)
 
-    def calcular_tablas(self, df: pd.DataFrame) -> Dict[str, pd.DataFrame]:
+    def calcular_tablas(self, df: pd.DataFrame) -> dict[str, pd.DataFrame]:
         """Genera las 6 tablas de análisis por área.
 
         Returns:
@@ -624,16 +622,21 @@ class AnalisisArea:
 
         # Tabla 1: Total nacional
         total = df_ocu["FEX_ADJ"].sum()
-        tablas["tabla1"] = pd.DataFrame([{
-            "Indicador": "Total Ocupados",
-            "Valor_miles": round(total / 1_000),
-        }])
+        tablas["tabla1"] = pd.DataFrame(
+            [
+                {
+                    "Indicador": "Total Ocupados",
+                    "Valor_miles": round(total / 1_000),
+                }
+            ]
+        )
 
         # Tabla 2: Por agrupación DANE
         t2 = (
             df_ocu[df_ocu["AGRUPACION_DANE"].notna()]
             .groupby("AGRUPACION_DANE")["FEX_ADJ"]
-            .sum().reset_index()
+            .sum()
+            .reset_index()
             .rename(columns={"FEX_ADJ": "Ocupados"})
         )
         t2["Ocupados_miles"] = (t2["Ocupados"] / 1_000).round(0).astype(int)
@@ -646,7 +649,8 @@ class AnalisisArea:
             t4 = (
                 df_ocu[df_ocu["CIUDAD"].notna()]
                 .groupby("CIUDAD")["FEX_ADJ"]
-                .sum().reset_index()
+                .sum()
+                .reset_index()
                 .rename(columns={"CIUDAD": "Ciudad_AM", "FEX_ADJ": "Ocupados"})
             )
             t4["Ocupados_miles"] = (t4["Ocupados"] / 1_000).round(0).astype(int)
@@ -660,7 +664,8 @@ class AnalisisArea:
             t6 = (
                 df_ocu[df_ocu["AGRUPACION_DANE"].notna() & df_ocu["RAMA_INT"].notna()]
                 .groupby(cols_grp, dropna=True)["FEX_ADJ"]
-                .sum().reset_index()
+                .sum()
+                .reset_index()
                 .rename(columns={"FEX_ADJ": "Ocupados_miles", "RAMA_INT": "DIVISION"})
             )
             t6["Ocupados_miles"] = (t6["Ocupados_miles"] / 1_000).round(1)
@@ -671,7 +676,7 @@ class AnalisisArea:
 
     def exportar_excel(
         self,
-        tablas: Dict[str, pd.DataFrame],
+        tablas: dict[str, pd.DataFrame],
         nombre: str = "Resultados_CIIU_Area_GEIH2025.xlsx",
     ) -> None:
         """Exporta todas las tablas a un archivo Excel con múltiples hojas."""

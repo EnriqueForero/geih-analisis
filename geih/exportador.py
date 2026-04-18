@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 geih.exportador — Gestión de exportaciones con estructura de carpetas.
 
@@ -20,13 +19,14 @@ __all__ = [
 ]
 
 
+import contextlib
 import json
 from datetime import datetime
 from pathlib import Path
-from typing import Optional, Dict, Any
+from typing import Any, Optional
 
-import pandas as pd
 import matplotlib.pyplot as plt
+import pandas as pd
 
 from .config import ConfigGEIH
 
@@ -131,7 +131,7 @@ class Exportador:
 
     def guardar_excel(
         self,
-        hojas: Dict[str, pd.DataFrame],
+        hojas: dict[str, pd.DataFrame],
         nombre: str,
         formato_institucional: bool = True,
     ) -> Path:
@@ -169,14 +169,14 @@ class Exportador:
     def _aplicar_formato(writer) -> None:
         """Aplica formato institucional a todas las hojas."""
         try:
-            from openpyxl.styles import PatternFill, Font, Alignment
+            from openpyxl.styles import Alignment, Font, PatternFill
             from openpyxl.utils import get_column_letter
         except ImportError:
             return  # openpyxl no disponible, salir silenciosamente
 
         header_fill = PatternFill("solid", fgColor="8B1A4A")  # burdeos corporativo
         header_font = Font(bold=True, color="FFFFFF", size=10)
-        fill_alt = PatternFill("solid", fgColor="F5E8EF")      # rosa claro alterno
+        fill_alt = PatternFill("solid", fgColor="F5E8EF")  # rosa claro alterno
 
         for ws in writer.sheets.values():
             # Headers
@@ -189,10 +189,8 @@ class Exportador:
             for col_idx, col in enumerate(ws.columns, 1):
                 max_len = 0
                 for cell in col:
-                    try:
+                    with contextlib.suppress(Exception):
                         max_len = max(max_len, len(str(cell.value or "")))
-                    except Exception:
-                        pass
                 ws.column_dimensions[get_column_letter(col_idx)].width = min(max_len + 3, 50)
 
             # Filas alternas
@@ -207,7 +205,7 @@ class Exportador:
     def guardar_metadata(
         self,
         config: ConfigGEIH,
-        stats: Optional[Dict[str, Any]] = None,
+        stats: Optional[dict[str, Any]] = None,
     ) -> Path:
         """Guarda metadata de la corrida para trazabilidad.
 
@@ -231,13 +229,13 @@ class Exportador:
         ruta = self.raiz / "metadata.json"
         with open(ruta, "w", encoding="utf-8") as f:
             json.dump(meta, f, indent=2, ensure_ascii=False)
-        print(f"   📋 metadata.json")
+        print("   📋 metadata.json")
         return ruta
 
     def resumen(self) -> None:
         """Imprime un resumen de todos los archivos exportados."""
         print(f"\n{'='*60}")
-        print(f"  RESUMEN DE EXPORTACIÓN")
+        print("  RESUMEN DE EXPORTACIÓN")
         print(f"  {self.raiz}")
         print(f"{'='*60}")
         for carpeta, icono in [
@@ -254,4 +252,4 @@ class Exportador:
         # Metadata
         meta_path = self.raiz / "metadata.json"
         if meta_path.exists():
-            print(f"\n  📋 metadata.json")
+            print("\n  📋 metadata.json")

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 geih.analisis_area — Ocupados por CIIU y 32 ciudades/áreas metropolitanas.
 
@@ -21,25 +20,23 @@ __all__ = [
 
 import gc
 from pathlib import Path
-from typing import Optional, Dict, List
+from typing import Optional
 
 import numpy as np
 import pandas as pd
 
 from .config import (
-    ConfigGEIH,
-    AREA_A_CIUDAD,
-    DPTO_A_CIUDAD,
-    CIUDADES_13_PRINCIPALES,
-    CIUDADES_10_INTERMEDIAS,
     _AGRUP_DANE_POR_DIVISION,
-    REF_DANE_2025,
-    REF_DANE,
+    AREA_A_CIUDAD,
+    CIUDADES_10_INTERMEDIAS,
+    CIUDADES_13_PRINCIPALES,
+    DPTO_A_CIUDAD,
+    ConfigGEIH,
 )
 from .utils import ConversorTipos
 
 try:
-    from .muestreo import evaluar_total, ConfigMuestreo
+    from .muestreo import ConfigMuestreo, evaluar_total
 except ImportError:
     evaluar_total = None  # type: ignore
     ConfigMuestreo = None  # type: ignore
@@ -76,8 +73,11 @@ class AnalisisOcupadosCiudad:
         fig = analisis.graficar(tablas)
     """
 
-    def __init__(self, config: Optional[ConfigGEIH] = None,
-                 config_muestreo: Optional["ConfigMuestreo"] = None):
+    def __init__(
+        self,
+        config: Optional[ConfigGEIH] = None,
+        config_muestreo: Optional["ConfigMuestreo"] = None,
+    ):
         self.config = config or ConfigGEIH()
         self.config_muestreo = config_muestreo
 
@@ -89,7 +89,7 @@ class AnalisisOcupadosCiudad:
         self,
         df_raw: pd.DataFrame,
         ruta_ciiu: Optional[str] = None,
-    ) -> Dict[str, pd.DataFrame]:
+    ) -> dict[str, pd.DataFrame]:
         """Calcula las 6 tablas de ocupados por CIIU y área geográfica.
 
         Args:
@@ -118,8 +118,9 @@ class AnalisisOcupadosCiudad:
             "df_trabajo": df,
         }
 
-        print(f"\n   ✅ 6 tablas calculadas — {len(df):,} ocupados, "
-              f"{total/1e6:.2f}M expandidos")
+        print(
+            f"\n   ✅ 6 tablas calculadas — {len(df):,} ocupados, " f"{total/1e6:.2f}M expandidos"
+        )
         return tablas
 
     # ═══════════════════════════════════════════════════════════════
@@ -146,8 +147,7 @@ class AnalisisOcupadosCiudad:
         n_total = df["FEX_ADJ"].sum()
         ref = self.config.referencia_dane
         ref_ocu = f"~{ref.ocupados_anual_m} M" if ref else "N/D"
-        print(f"   Ocupados totales (anual): {n_total/1e6:.2f} M  "
-              f"(ref. DANE: {ref_ocu})")
+        print(f"   Ocupados totales (anual): {n_total/1e6:.2f} M  " f"(ref. DANE: {ref_ocu})")
 
         # Área geográfica → Ciudad/AM
         df["DPTO_STR"] = ConversorTipos.estandarizar_dpto(df["DPTO"])
@@ -158,10 +158,10 @@ class AnalisisOcupadosCiudad:
             # Fallback con DPTO para registros sin match en AREA
             fallback = df["DPTO_STR"].map(DPTO_A_CIUDAD)
             df["CIUDAD_AM"] = df["CIUDAD_AM"].fillna(fallback)
-            print(f"   ✅ Variable AREA disponible — análisis por 32 ciudades habilitado")
+            print("   ✅ Variable AREA disponible — análisis por 32 ciudades habilitado")
         else:
             df["CIUDAD_AM"] = df["DPTO_STR"].map(DPTO_A_CIUDAD)
-            print(f"   ⚠️ AREA no disponible — usando DPTO como proxy")
+            print("   ⚠️ AREA no disponible — usando DPTO como proxy")
 
         # Dominio geográfico
         df["DOMINIO"] = df["CIUDAD_AM"].apply(self._asignar_dominio)
@@ -195,7 +195,8 @@ class AnalisisOcupadosCiudad:
         """Merge con correlativa CIIU para agregar descripción textual."""
         try:
             df_ciiu = pd.read_excel(
-                ruta_ciiu, sheet_name="CIIU 2022",
+                ruta_ciiu,
+                sheet_name="CIIU 2022",
                 converters={"RAMA4D_R4": str},
             )
             df_ciiu["RAMA4D_STD"] = ConversorTipos.estandarizar_ciiu4(df_ciiu["RAMA4D_R4"])
@@ -221,18 +222,23 @@ class AnalisisOcupadosCiudad:
             ref = 0
             diff_pct = 0.0
         calc = round(total / 1_000)
-        return pd.DataFrame([{
-            "Período": self.config.periodo_etiqueta,
-            "Ocupados_miles": calc,
-            "Referencia_DANE_miles": ref if ref > 0 else "N/D",
-            "Diferencia_%": diff_pct if ref > 0 else "N/D",
-        }])
+        return pd.DataFrame(
+            [
+                {
+                    "Período": self.config.periodo_etiqueta,
+                    "Ocupados_miles": calc,
+                    "Referencia_DANE_miles": ref if ref > 0 else "N/D",
+                    "Diferencia_%": diff_pct if ref > 0 else "N/D",
+                }
+            ]
+        )
 
     @staticmethod
     def _tabla2_agrupacion(df: pd.DataFrame, total: float) -> pd.DataFrame:
         t = (
             df.groupby("AGRUPACION_DANE")["FEX_ADJ"]
-            .sum().reset_index()
+            .sum()
+            .reset_index()
             .rename(columns={"FEX_ADJ": "Ocupados"})
             .sort_values("Ocupados", ascending=False)
         )
@@ -244,7 +250,8 @@ class AnalisisOcupadosCiudad:
     def _tabla3_dominio(df: pd.DataFrame, total: float) -> pd.DataFrame:
         t = (
             df.groupby("DOMINIO")["FEX_ADJ"]
-            .sum().reset_index()
+            .sum()
+            .reset_index()
             .rename(columns={"FEX_ADJ": "Ocupados"})
             .sort_values("Ocupados", ascending=False)
         )
@@ -257,7 +264,8 @@ class AnalisisOcupadosCiudad:
         t = (
             df[df["CIUDAD_AM"].notna()]
             .groupby("CIUDAD_AM")["FEX_ADJ"]
-            .sum().reset_index()
+            .sum()
+            .reset_index()
             .rename(columns={"CIUDAD_AM": "Ciudad_AM", "FEX_ADJ": "Ocupados"})
             .sort_values("Ocupados", ascending=False)
         )
@@ -285,24 +293,20 @@ class AnalisisOcupadosCiudad:
         """
         cols = ["AGRUPACION_DANE", "DIVISION", "RAMA4D_STD", "CIUDAD_AM"]
         if "DESCRIPCION_CIIU" in df.columns:
-            cols = ["AGRUPACION_DANE", "DIVISION", "RAMA4D_STD",
-                    "DESCRIPCION_CIIU", "CIUDAD_AM"]
+            cols = ["AGRUPACION_DANE", "DIVISION", "RAMA4D_STD", "DESCRIPCION_CIIU", "CIUDAD_AM"]
 
         df_val = df[df["CIUDAD_AM"].notna() & df["DIVISION"].notna()]
 
         t = (
             df_val.groupby(cols, dropna=True)
-            .agg(Ocupados=("FEX_ADJ", "sum"),
-                 n_anual=("FEX_ADJ", "size"))
+            .agg(Ocupados=("FEX_ADJ", "sum"), n_anual=("FEX_ADJ", "size"))
             .reset_index()
         )
         t["Ocupados_miles"] = (t["Ocupados"] / 1_000).round(1)
 
         # Estadísticas del dominio (ciudad)
-        ciudad_stats = (
-            df_val.groupby("CIUDAD_AM")
-            .agg(n_base_ciudad=("FEX_ADJ", "size"),
-                 ocu_ciudad=("FEX_ADJ", "sum"))
+        ciudad_stats = df_val.groupby("CIUDAD_AM").agg(
+            n_base_ciudad=("FEX_ADJ", "size"), ocu_ciudad=("FEX_ADJ", "sum")
         )
 
         # Totales por ciudad en la tabla agregada
@@ -343,13 +347,13 @@ class AnalisisOcupadosCiudad:
                 cvs.append(np.nan)
                 n_bases.append(
                     int(ciudad_stats.loc[ciudad, "n_base_ciudad"])
-                    if ciudad in ciudad_stats.index else 0
+                    if ciudad in ciudad_stats.index
+                    else 0
                 )
                 continue
 
             # Dominio: ciudad (fallback a general si celda única)
-            if (n_celdas > 1 and ocu_cd > 0
-                    and ciudad in ciudad_stats.index):
+            if n_celdas > 1 and ocu_cd > 0 and ciudad in ciudad_stats.index:
                 prop = ocu / ocu_cd
                 n_base = int(ciudad_stats.loc[ciudad, "n_base_ciudad"])
                 universo = ocu_cd
@@ -368,13 +372,9 @@ class AnalisisOcupadosCiudad:
                     proporcion_universo=max(0.001, min(prop, 0.999)),
                     config=cfg,
                 )
-                etiqueta = _MAPEO_CLASIFICACION.get(
-                    prec.clasificacion, "No publicable"
-                )
+                etiqueta = _MAPEO_CLASIFICACION.get(prec.clasificacion, "No publicable")
                 calidades.append(etiqueta)
-                cvs.append(
-                    prec.cv_pct / 100 if pd.notna(prec.cv_pct) else np.nan
-                )
+                cvs.append(prec.cv_pct / 100 if pd.notna(prec.cv_pct) else np.nan)
             else:
                 # Fallback sin módulo muestreo
                 calidades.append("Sin dato")
@@ -397,15 +397,13 @@ class AnalisisOcupadosCiudad:
         """
         cols = ["AGRUPACION_DANE", "DIVISION", "RAMA4D_STD"]
         if "DESCRIPCION_CIIU" in df.columns:
-            cols = ["AGRUPACION_DANE", "DIVISION", "RAMA4D_STD",
-                    "DESCRIPCION_CIIU"]
+            cols = ["AGRUPACION_DANE", "DIVISION", "RAMA4D_STD", "DESCRIPCION_CIIU"]
 
         df_val = df[df["DIVISION"].notna()]
 
         t = (
             df_val.groupby(cols, dropna=True)
-            .agg(Ocupados=("FEX_ADJ", "sum"),
-                 n_anual=("FEX_ADJ", "size"))
+            .agg(Ocupados=("FEX_ADJ", "sum"), n_anual=("FEX_ADJ", "size"))
             .reset_index()
         )
         t["Ocupados_miles"] = (t["Ocupados"] / 1_000).round(1)
@@ -444,13 +442,9 @@ class AnalisisOcupadosCiudad:
                     proporcion_universo=max(0.001, min(prop, 0.999)),
                     config=cfg,
                 )
-                etiqueta = _MAPEO_CLASIFICACION.get(
-                    prec.clasificacion, "No publicable"
-                )
+                etiqueta = _MAPEO_CLASIFICACION.get(prec.clasificacion, "No publicable")
                 calidades.append(etiqueta)
-                cvs.append(
-                    prec.cv_pct / 100 if pd.notna(prec.cv_pct) else np.nan
-                )
+                cvs.append(prec.cv_pct / 100 if pd.notna(prec.cv_pct) else np.nan)
             else:
                 calidades.append("Sin dato")
                 cvs.append(np.nan)
@@ -469,7 +463,7 @@ class AnalisisOcupadosCiudad:
     # IMPRESIÓN DE TABLAS
     # ═══════════════════════════════════════════════════════════════
 
-    def imprimir(self, tablas: Dict[str, pd.DataFrame]) -> None:
+    def imprimir(self, tablas: dict[str, pd.DataFrame]) -> None:
         """Imprime las 6 tablas en formato legible para el notebook."""
         print(f"\n{'='*70}")
         print(f"  OCUPADOS POR CIIU Y ÁREA — GEIH {self.config.periodo_etiqueta}")
@@ -478,44 +472,48 @@ class AnalisisOcupadosCiudad:
 
         # Tabla 1
         print(f"\n{'─'*50}")
-        print(f"  TABLA 1: Total nacional")
+        print("  TABLA 1: Total nacional")
         print(f"{'─'*50}")
         print(tablas["tabla1"].to_string(index=False))
 
         # Tabla 2
         t2 = tablas["tabla2"]
         print(f"\n{'─'*70}")
-        print(f"  TABLA 2: Agrupación DANE (8 grupos CIIU)")
+        print("  TABLA 2: Agrupación DANE (8 grupos CIIU)")
         print(f"{'─'*70}")
         print(f"  {'Agrupación DANE':<55} {'Miles':>7} {'%':>6}")
         print(f"  {'─'*55} {'─'*7} {'─'*6}")
         for _, row in t2.iterrows():
-            print(f"  {str(row['AGRUPACION_DANE']):<55} "
-                  f"{row['Ocupados_miles']:>7,} {row['Pct_%']:>5.1f}%")
+            print(
+                f"  {row['AGRUPACION_DANE']!s:<55} "
+                f"{row['Ocupados_miles']:>7,} {row['Pct_%']:>5.1f}%"
+            )
         print(f"  {'─'*55} {'─'*7}")
         print(f"  {'TOTAL':<55} {t2['Ocupados_miles'].sum():>7,}")
 
         # Tabla 3
         print(f"\n{'─'*60}")
-        print(f"  TABLA 3: Dominio geográfico DANE")
+        print("  TABLA 3: Dominio geográfico DANE")
         print(f"{'─'*60}")
         print(tablas["tabla3"][["DOMINIO", "Ocupados_miles", "Pct_%"]].to_string(index=False))
 
         # Tabla 4
         t4 = tablas["tabla4"]
         print(f"\n{'─'*65}")
-        print(f"  TABLA 4: Top 23 ciudades y áreas metropolitanas")
+        print("  TABLA 4: Top 23 ciudades y áreas metropolitanas")
         print(f"{'─'*65}")
         print(f"  {'Ciudad / AM':<35} {'Miles':>7} {'%':>6} {'Dominio'}")
         print(f"  {'─'*35} {'─'*7} {'─'*6} {'─'*25}")
         for _, row in t4.head(23).iterrows():
-            print(f"  {str(row['Ciudad_AM']):<35} {row['Ocupados_miles']:>7,} "
-                  f"{row['Pct_%']:>5.1f}%  {row['Dominio']}")
+            print(
+                f"  {row['Ciudad_AM']!s:<35} {row['Ocupados_miles']:>7,} "
+                f"{row['Pct_%']:>5.1f}%  {row['Dominio']}"
+            )
 
         # Tablas 5 y 6 (resumen con calidad)
         t5 = tablas["tabla5"]
         print(f"\n{'─'*50}")
-        print(f"  TABLA 5: Granular (Agrupación × CIIU × Ciudad)")
+        print("  TABLA 5: Granular (Agrupación × CIIU × Ciudad)")
         print(f"  {len(t5):,} combinaciones únicas")
         if "calidad" in t5.columns:
             total_ocu5 = t5["Ocupados_miles"].sum()
@@ -529,7 +527,7 @@ class AnalisisOcupadosCiudad:
 
         t6 = tablas["tabla6"]
         print(f"\n{'─'*65}")
-        print(f"  TABLA 6: Top 20 actividades CIIU nacional")
+        print("  TABLA 6: Top 20 actividades CIIU nacional")
         if "calidad" in t6.columns:
             total_ocu6 = t6["Ocupados_miles"].sum()
             for cal in ["Confiable", "Aceptable con reserva", "No publicable"]:
@@ -544,21 +542,27 @@ class AnalisisOcupadosCiudad:
     # GRÁFICOS
     # ═══════════════════════════════════════════════════════════════
 
-    def graficar(self, tablas: Dict[str, pd.DataFrame]):
+    def graficar(self, tablas: dict[str, pd.DataFrame]):
         """Genera panel de 3 gráficos: agrupación, ciudades, heatmap.
 
         Returns:
             Figura matplotlib.
         """
-        import matplotlib.pyplot as plt
-        import matplotlib.patches as mpatches
         import matplotlib.colors as mcolors
+        import matplotlib.patches as mpatches
+        import matplotlib.pyplot as plt
         from matplotlib.gridspec import GridSpec
 
         FONDO = "#F7F9FC"
         COLORES_AGRUP = [
-            "#2E6DA4", "#C0392B", "#1E8449", "#8E44AD",
-            "#E67E22", "#1ABC9C", "#F39C12", "#7F8C8D",
+            "#2E6DA4",
+            "#C0392B",
+            "#1E8449",
+            "#8E44AD",
+            "#E67E22",
+            "#1ABC9C",
+            "#F39C12",
+            "#7F8C8D",
         ]
 
         fig = plt.figure(figsize=(20, 12))
@@ -577,12 +581,15 @@ class AnalisisOcupadosCiudad:
         # ── Panel 1: Agrupación DANE ───────────────────────────
         t2p = t2.sort_values("Ocupados_miles", ascending=True)
         y1 = range(len(t2p))
-        ax1.barh(y1, t2p["Ocupados_miles"], 0.65,
-                 color=COLORES_AGRUP[:len(t2p)], alpha=0.88)
+        ax1.barh(y1, t2p["Ocupados_miles"], 0.65, color=COLORES_AGRUP[: len(t2p)], alpha=0.88)
         for i, (_, row) in enumerate(t2p.iterrows()):
-            ax1.text(row["Ocupados_miles"] + 30, i,
-                     f"{row['Ocupados_miles']:,.0f}K  ({row['Pct_%']:.1f}%)",
-                     va="center", fontsize=8.5)
+            ax1.text(
+                row["Ocupados_miles"] + 30,
+                i,
+                f"{row['Ocupados_miles']:,.0f}K  ({row['Pct_%']:.1f}%)",
+                va="center",
+                fontsize=8.5,
+            )
         ax1.set_yticks(y1)
         ax1.set_yticklabels([str(r)[:35] for r in t2p["AGRUPACION_DANE"]], fontsize=8.5)
         ax1.set_xlabel("Miles de ocupados", fontsize=10)
@@ -592,14 +599,20 @@ class AnalisisOcupadosCiudad:
         # ── Panel 2: Top 15 ciudades ──────────────────────────
         t4top = t4.head(15).sort_values("Ocupados_miles", ascending=True)
         col_c = [
-            "#2E6DA4" if d == "13 ciudades y A.M."
+            "#2E6DA4"
+            if d == "13 ciudades y A.M."
             else ("#1ABC9C" if d == "10 ciudades intermedias" else "#7F8C8D")
             for d in t4top["Dominio"]
         ]
         ax2.barh(range(len(t4top)), t4top["Ocupados_miles"], 0.65, color=col_c, alpha=0.88)
         for i, (_, row) in enumerate(t4top.iterrows()):
-            ax2.text(row["Ocupados_miles"] + 10, i, f"{row['Ocupados_miles']:,.0f}K",
-                     va="center", fontsize=8.5)
+            ax2.text(
+                row["Ocupados_miles"] + 10,
+                i,
+                f"{row['Ocupados_miles']:,.0f}K",
+                va="center",
+                fontsize=8.5,
+            )
         ax2.set_yticks(range(len(t4top)))
         ax2.set_yticklabels(t4top["Ciudad_AM"], fontsize=9)
         ax2.set_xlabel("Miles de ocupados", fontsize=10)
@@ -630,20 +643,27 @@ class AnalisisOcupadosCiudad:
             for j in range(len(ciudades_top)):
                 v = hm[i, j]
                 if v >= 10:
-                    ax3.text(j, i, f"{v:,.0f}K", ha="center", va="center",
-                             fontsize=7.5, fontweight="bold",
-                             color="white" if v > hm.max() * 0.5 else "#1A1A1A")
+                    ax3.text(
+                        j,
+                        i,
+                        f"{v:,.0f}K",
+                        ha="center",
+                        va="center",
+                        fontsize=7.5,
+                        fontweight="bold",
+                        color="white" if v > hm.max() * 0.5 else "#1A1A1A",
+                    )
         ax3.set_xticks(range(len(ciudades_top)))
         ax3.set_xticklabels(ciudades_top, fontsize=9, rotation=20, ha="right")
         ax3.set_yticks(range(len(agrup_orden)))
         ax3.set_yticklabels([str(a)[:40] for a in agrup_orden], fontsize=8.5)
-        ax3.set_title("Heatmap: Agrupación DANE × Ciudad principal",
-                       fontsize=11, fontweight="bold")
+        ax3.set_title("Heatmap: Agrupación DANE × Ciudad principal", fontsize=11, fontweight="bold")
 
         fig.suptitle(
             f"Ocupados por CIIU y Área Geográfica — GEIH {self.config.periodo_etiqueta}\n"
             f"Ponderado FEX_C18/{self.config.n_meses} | 8 grupos DANE | 32 ciudades",
-            fontsize=13, fontweight="bold",
+            fontsize=13,
+            fontweight="bold",
         )
         fig.tight_layout(rect=[0, 0, 1, 0.94])
         return fig
@@ -654,7 +674,7 @@ class AnalisisOcupadosCiudad:
 
     def exportar_excel(
         self,
-        tablas: Dict[str, pd.DataFrame],
+        tablas: dict[str, pd.DataFrame],
         ruta: str = "Resultados_CIIU_Area_GEIH2025.xlsx",
     ) -> None:
         """Exporta las 6 tablas a un Excel multi-hoja con calidad estadística.
@@ -672,61 +692,64 @@ class AnalisisOcupadosCiudad:
         t6 = tablas["tabla6"]
 
         # Metadatos metodológicos
-        metadatos = pd.DataFrame({
-            "Campo": [
-                "Fuente",
-                "Período",
-                "Universo",
-                "Unidad de análisis",
-                "Variable de peso",
-                "Cálculo del promedio anual",
-                "Clasificación sectorial",
-                "División geográfica",
-                "Evaluación de calidad",
-                "Calidad — Confiable",
-                "Calidad — Aceptable con reserva",
-                "Calidad — No publicable",
-                "Dominio tabla 5",
-                "Dominio tabla 6",
-                "Limitaciones",
-                "Fecha de generación",
-            ],
-            "Valor": [
-                "DANE — GEIH, marco 2018",
-                "Enero a diciembre 2025 (12 meses)",
-                "Población ocupada residente en hogares particulares",
-                "Persona ocupada en la semana de referencia",
-                "FEX_C18 / 12 (promedio anual)",
-                "Suma del factor ajustado por celda CIIU×Ciudad",
-                "CIIU Rev. 4 A.C. (divisiones y clases)",
-                "32 ciudades y áreas metropolitanas DANE",
-                "CV muestral con DEFF (diseño complejo DANE/OIT, Cochran 1977)",
-                f"CV ≤ {_UMBRAL_CONFIABLE:.0%}",
-                f"{_UMBRAL_CONFIABLE:.0%} < CV ≤ {_UMBRAL_ACEPTABLE:.0%}",
-                f"CV > {_UMBRAL_ACEPTABLE:.0%} o muestra < 100 registros",
-                "Ciudad/AM (n_base = muestra de la ciudad)",
-                "Total nacional (n_base = muestra nacional)",
-                ("Representativa para 13 ciudades principales + AM y "
-                 "10 intermedias. NO a nivel municipal general."),
-                datetime.now().strftime("%Y-%m-%d %H:%M"),
-            ],
-        })
+        metadatos = pd.DataFrame(
+            {
+                "Campo": [
+                    "Fuente",
+                    "Período",
+                    "Universo",
+                    "Unidad de análisis",
+                    "Variable de peso",
+                    "Cálculo del promedio anual",
+                    "Clasificación sectorial",
+                    "División geográfica",
+                    "Evaluación de calidad",
+                    "Calidad — Confiable",
+                    "Calidad — Aceptable con reserva",
+                    "Calidad — No publicable",
+                    "Dominio tabla 5",
+                    "Dominio tabla 6",
+                    "Limitaciones",
+                    "Fecha de generación",
+                ],
+                "Valor": [
+                    "DANE — GEIH, marco 2018",
+                    "Enero a diciembre 2025 (12 meses)",
+                    "Población ocupada residente en hogares particulares",
+                    "Persona ocupada en la semana de referencia",
+                    "FEX_C18 / 12 (promedio anual)",
+                    "Suma del factor ajustado por celda CIIU×Ciudad",
+                    "CIIU Rev. 4 A.C. (divisiones y clases)",
+                    "32 ciudades y áreas metropolitanas DANE",
+                    "CV muestral con DEFF (diseño complejo DANE/OIT, Cochran 1977)",
+                    f"CV ≤ {_UMBRAL_CONFIABLE:.0%}",
+                    f"{_UMBRAL_CONFIABLE:.0%} < CV ≤ {_UMBRAL_ACEPTABLE:.0%}",
+                    f"CV > {_UMBRAL_ACEPTABLE:.0%} o muestra < 100 registros",
+                    "Ciudad/AM (n_base = muestra de la ciudad)",
+                    "Total nacional (n_base = muestra nacional)",
+                    (
+                        "Representativa para 13 ciudades principales + AM y "
+                        "10 intermedias. NO a nivel municipal general."
+                    ),
+                    datetime.now().strftime("%Y-%m-%d %H:%M"),
+                ],
+            }
+        )
 
         hojas = {
-            "metadatos":              metadatos,
-            "Total Nacional":         tablas["tabla1"],
-            "Agrupación DANE":        tablas["tabla2"][
-                ["AGRUPACION_DANE", "Ocupados_miles", "Pct_%"]],
-            "Dominio Geográfico":     tablas["tabla3"][
-                ["DOMINIO", "Ocupados_miles", "Pct_%"]],
-            "Ciudad-AM":              tablas["tabla4"][
-                ["Ciudad_AM", "Dominio", "Ocupados_miles", "Pct_%"]],
+            "metadatos": metadatos,
+            "Total Nacional": tablas["tabla1"],
+            "Agrupación DANE": tablas["tabla2"][["AGRUPACION_DANE", "Ocupados_miles", "Pct_%"]],
+            "Dominio Geográfico": tablas["tabla3"][["DOMINIO", "Ocupados_miles", "Pct_%"]],
+            "Ciudad-AM": tablas["tabla4"][["Ciudad_AM", "Dominio", "Ocupados_miles", "Pct_%"]],
             "CIIU×Ciudad (completo)": t5,
-            "CIIU×Ciudad (publicabl)": t5[t5["calidad"].isin(
-                _ETIQUETAS_PUBLICABLES)] if "calidad" in t5.columns else t5,
+            "CIIU×Ciudad (publicabl)": t5[t5["calidad"].isin(_ETIQUETAS_PUBLICABLES)]
+            if "calidad" in t5.columns
+            else t5,
             "CIIU Nacional (completo)": t6,
-            "CIIU Nacional (publica)": t6[t6["calidad"].isin(
-                _ETIQUETAS_PUBLICABLES)] if "calidad" in t6.columns else t6,
+            "CIIU Nacional (publica)": t6[t6["calidad"].isin(_ETIQUETAS_PUBLICABLES)]
+            if "calidad" in t6.columns
+            else t6,
         }
 
         with pd.ExcelWriter(ruta, engine="openpyxl") as writer:
@@ -736,6 +759,7 @@ class AnalisisOcupadosCiudad:
         # Auto-ajustar anchos
         try:
             from openpyxl import load_workbook
+
             wb = load_workbook(ruta)
             for ws in wb.worksheets:
                 for col in ws.columns:
@@ -743,9 +767,7 @@ class AnalisisOcupadosCiudad:
                         (len(str(c.value)) for c in col if c.value is not None),
                         default=10,
                     )
-                    ws.column_dimensions[col[0].column_letter].width = min(
-                        max_len + 2, 50
-                    )
+                    ws.column_dimensions[col[0].column_letter].width = min(max_len + 2, 50)
             wb.save(ruta)
         except ImportError:
             pass

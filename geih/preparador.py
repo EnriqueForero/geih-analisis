@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 geih.preparador — Preparación y enriquecimiento de la base GEIH.
 
@@ -28,160 +27,149 @@ __all__ = [
 
 
 import gc
-from pathlib import Path
-from typing import Optional, List, Union
+from typing import Optional, Union
 
 import numpy as np
 import pandas as pd
 
 from .config import (
-    ConfigGEIH,
-    RAMAS_DANE,
-    TABLA_CIIU_RAMAS,
+    AREA_GEIH_A_CIUDAD,  # v6.0 — mapeo correcto de AREA (2 dígitos)
+    CIIU_DESCRIPCION_FALLBACK,
     DEPARTAMENTOS,
     DPTO_A_CIUDAD,
-    AREA_A_CIUDAD,
-    AREA_GEIH_A_CIUDAD,    # v6.0 — mapeo correcto de AREA (2 dígitos)
-    DPTOS_13_CIUDADES,     # v6.0 — set oficial de las 13 A.M. del boletín
-    DPTOS_10_CIUDADES,     # v6.0 — set oficial de las 10 ciudades intermedias
-    POSICION_OCUPACIONAL,  # v6.0 — mapa CISE-93 (jornalero=7, no 8)
+    DPTOS_10_CIUDADES,  # v6.0 — set oficial de las 10 ciudades intermedias
+    DPTOS_13_CIUDADES,  # v6.0 — set oficial de las 13 A.M. del boletín
     NIVELES_AGRUPADOS,
     P3042_A_ANOS,
-    CIIU_DESCRIPCION_FALLBACK,
+    POSICION_OCUPACIONAL,  # v6.0 — mapa CISE-93 (jornalero=7, no 8)
+    RAMAS_DANE,
+    TABLA_CIIU_RAMAS,
+    ConfigGEIH,
 )
-from .utils import ConversorTipos
 from .informalidad import clasificar_informalidad_dane
+from .utils import ConversorTipos
 
 # ═════════════════════════════════════════════════════════════════════
 # COLUMNAS POR DEFECTO — EXTENSIBLE DESDE EL NOTEBOOK
 # ═════════════════════════════════════════════════════════════════════
 
-COLUMNAS_DEFAULT: List[str] = [
-
+COLUMNAS_DEFAULT: list[str] = [
     # ── Identificación y factor de expansión ──────────────────────
-    "FEX_C18", "MES_NUM",
-
+    "FEX_C18",
+    "MES_NUM",
     # ── Características generales (E/F/G) ─────────────────────────
-    "P3271",      # Sexo (1=H, 2=M)
-    "P6040",      # Edad
-    "P6080",      # Autorreconocimiento étnico
-    "P3042",      # Nivel educativo (1-13)
-    "P3043S1",    # Campo de formación (CINE-F) — proxy bilingüismo
-    "P6090",      # Afiliado salud (1=Sí)
-    "CLASE",      # Zona (1=Cabecera/Urbano, 2=Rural)
-    "DPTO",       # Departamento (código 2 dígitos)
-    "P2057",      # ¿Se considera campesino?
-    "P2059",      # ¿Alguna vez fue campesino?
+    "P3271",  # Sexo (1=H, 2=M)
+    "P6040",  # Edad
+    "P6080",  # Autorreconocimiento étnico
+    "P3042",  # Nivel educativo (1-13)
+    "P3043S1",  # Campo de formación (CINE-F) — proxy bilingüismo
+    "P6090",  # Afiliado salud (1=Sí)
+    "CLASE",  # Zona (1=Cabecera/Urbano, 2=Rural)
+    "DPTO",  # Departamento (código 2 dígitos)
+    "P2057",  # ¿Se considera campesino?
+    "P2059",  # ¿Alguna vez fue campesino?
     # Discapacidad — Escala Washington (8 dimensiones)
-    "P1906S1", "P1906S2", "P1906S3", "P1906S4",
-    "P1906S5", "P1906S6", "P1906S7", "P1906S8",
-
+    "P1906S1",
+    "P1906S2",
+    "P1906S3",
+    "P1906S4",
+    "P1906S5",
+    "P1906S6",
+    "P1906S7",
+    "P1906S8",
     # ── Fuerza de trabajo (H) ─────────────────────────────────────
-    "FT", "PET", "OCI", "DSI", "FFT",
-    "P6240",      # Actividad semana pasada
-
+    "FT",
+    "PET",
+    "OCI",
+    "DSI",
+    "FFT",
+    "P6240",  # Actividad semana pasada
     # ── Ocupados (I) — ingresos y tiempo ──────────────────────────
-    "INGLABO",    # Ingreso laboral mensual
-    "P6500",      # Salario bruto declarado
-    "P6800",      # Horas normales semana
-    "P6850",      # Horas reales semana pasada
-    "P7130",      # Desea cambiar trabajo
-    "AREA",       # Municipio 5 dígitos (32 ciudades)
-
+    "INGLABO",  # Ingreso laboral mensual
+    "P6500",  # Salario bruto declarado
+    "P6800",  # Horas normales semana
+    "P6850",  # Horas reales semana pasada
+    "P7130",  # Desea cambiar trabajo
+    "AREA",  # Municipio 5 dígitos (32 ciudades)
     # ── Posición ocupacional ───────────────────────────────────────
-    "P6430",      # Posición ocupacional (CISE-93 1-9)
-
+    "P6430",  # Posición ocupacional (CISE-93 1-9)
     # ── Forma de trabajo (independientes) ─────────────────────────
-    "P6765",      # 1-8. P6765=7 → "tiene negocio"
-
+    "P6765",  # 1-8. P6765=7 → "tiene negocio"
     # ── Informalidad 17ª CIET (sector + ocupación) ────────────────
     # Sector — ASALARIADOS
-    "P3045S1",    # ¿Empresa registrada CC? (asalariados)
-    "P3046",      # ¿Empresa tiene contabilidad? (asalariados)
+    "P3045S1",  # ¿Empresa registrada CC? (asalariados)
+    "P3046",  # ¿Empresa tiene contabilidad? (asalariados)
     # Sector — INDEPENDIENTES SIN NEGOCIO
-    "P3051",      # ¿Tiene negocio, empresa, finca?
-    "P3065",      # ¿Registrada CC? (sin negocio)
-    "P3066",      # ¿Tiene contabilidad? (sin negocio) — CRÍTICA
+    "P3051",  # ¿Tiene negocio, empresa, finca?
+    "P3065",  # ¿Registrada CC? (sin negocio)
+    "P3066",  # ¿Tiene contabilidad? (sin negocio) — CRÍTICA
     # Sector — INDEPENDIENTES CON NEGOCIO
-    "P3067",      # ¿Registró negocio CC? (con negocio)
-    "P3067S1",    # ¿Renovó registro? (1=Sí, 2=No)
-    "P3067S2",    # Año de última renovación                        ← NUEVA
-    "P6775",      # ¿Lleva contabilidad? (negocio)                  ← NUEVA
-    "P3068",      # ¿Separa gastos negocio/hogar?
-
+    "P3067",  # ¿Registró negocio CC? (con negocio)
+    "P3067S1",  # ¿Renovó registro? (1=Sí, 2=No)
+    "P3067S2",  # Año de última renovación                        ← NUEVA
+    "P6775",  # ¿Lleva contabilidad? (negocio)                  ← NUEVA
+    "P3068",  # ¿Separa gastos negocio/hogar?
     # ── Tamaño y oficio ───────────────────────────────────────────
-    "P3069",      # Tamaño empresa (1=solo, 4=6-10, ...)
+    "P3069",  # Tamaño empresa (1=solo, 4=6-10, ...)
     "OFICIO_C8",  # Oficio CIUO-08 (4 caracteres) — CRÍTICA
-
     # ── Rama de actividad ─────────────────────────────────────────
     "RAMA2D_R4",  # CIIU 2 dígitos (excluir ramas 84 y 99)
     "RAMA4D_R4",  # CIIU 4 dígitos
-
     # ── Salud ─────────────────────────────────────────────────────
     # P6090 ya capturado en Características generales (informativa)
-    "P6100",      # Régimen (1=Contrib, 2=Esp, 3=Subs, 9=NS)       ← NUEVA
-    "P6110",      # ¿Quién paga salud? (1, 2, 4 = empleador)        ← NUEVA
-
+    "P6100",  # Régimen (1=Contrib, 2=Esp, 3=Subs, 9=NS)       ← NUEVA
+    "P6110",  # ¿Quién paga salud? (1, 2, 4 = empleador)        ← NUEVA
     # ── Pensión ───────────────────────────────────────────────────
-    "P6920",      # ¿Cotiza pensión? (1=Sí, 3=Pensionado)
-    "P6930",      # Fondo de pensiones (1, 2, 3 = válidos)
-    "P6940",      # ¿Quién paga pensión? (1, 3 = empleador)         ← NUEVA
-
+    "P6920",  # ¿Cotiza pensión? (1=Sí, 3=Pensionado)
+    "P6930",  # Fondo de pensiones (1, 2, 3 = válidos)
+    "P6940",  # ¿Quién paga pensión? (1, 3 = empleador)         ← NUEVA
     # ── Contrato ──────────────────────────────────────────────────
-    "P6440",      # ¿Tiene contrato?
-    "P6450",      # ¿Verbal o escrito? (2=Escrito)
-    "P6460",      # ¿Contrato indefinido?
-
+    "P6440",  # ¿Tiene contrato?
+    "P6450",  # ¿Verbal o escrito? (2=Escrito)
+    "P6460",  # ¿Contrato indefinido?
     # ── Autonomía laboral ─────────────────────────────────────────
-    "P3047",      # ¿Quién decide horario?
-    "P3048",      # ¿Quién decide qué producir?
-    "P3049",      # ¿Quién decide precio?
-
+    "P3047",  # ¿Quién decide horario?
+    "P3048",  # ¿Quién decide qué producir?
+    "P3049",  # ¿Quién decide precio?
     # ── Tenencia de tierra y actividad agropecuaria (v5.1) ────────
-    "P3056",      # Tipo actividad negocio (1=mercancías, 2=agropecuario)
-    "P3064",      # ¿Propietario de la tierra? (1=Sí, 2=No)
-    "P3064S1",    # Valor estimado arriendo terreno (COP/mes)
-
+    "P3056",  # Tipo actividad negocio (1=mercancías, 2=agropecuario)
+    "P3064",  # ¿Propietario de la tierra? (1=Sí, 2=No)
+    "P3064S1",  # Valor estimado arriendo terreno (COP/mes)
     # ── Compensación ──────────────────────────────────────────────
-    "P6510S1",    # Horas extras
-    "P6580S1",    # Bonificaciones
+    "P6510S1",  # Horas extras
+    "P6580S1",  # Bonificaciones
     "P6585S1A1",  # Auxilio alimentación
     "P6585S2A1",  # Auxilio transporte
-
     # ── Variables de alto valor analítico ─────────────────────────
-    "P1802",      # Alcance mercado (1-6, 6=Exportación)
-    "P3363",      # ¿Cómo consiguió empleo?
-    "P3364",      # ¿Retención en la fuente?
-    "P6400",      # ¿Trabaja donde lo contrataron?
-    "P6410",      # Tipo intermediación (EST, CTA)
-
+    "P1802",  # Alcance mercado (1-6, 6=Exportación)
+    "P3363",  # ¿Cómo consiguió empleo?
+    "P3364",  # ¿Retención en la fuente?
+    "P6400",  # ¿Trabaja donde lo contrataron?
+    "P6410",  # Tipo intermediación (EST, CTA)
     # ── No ocupados (J) ───────────────────────────────────────────
-    "P7250",      # Semanas buscando trabajo
-    "P6300",      # ¿Desea trabajar? (FFT con deseo)
-    "P6310",      # ¿Disponible para trabajar?
-    "P7140S2",    # Razón: mejorar ingresos
-
+    "P7250",  # Semanas buscando trabajo
+    "P6300",  # ¿Desea trabajar? (FFT con deseo)
+    "P6310",  # ¿Disponible para trabajar?
+    "P7140S2",  # Razón: mejorar ingresos
     # ── Otras formas de trabajo (K) ───────────────────────────────
-    "P3054",      # Autoconsumo bienes
-    "P3054S1",    # Horas autoconsumo bienes
-    "P3055",      # Autoconsumo servicios
-    "P3055S1",    # Horas autoconsumo servicios
-    "P3057",      # Formación no remunerada
-
+    "P3054",  # Autoconsumo bienes
+    "P3054S1",  # Horas autoconsumo bienes
+    "P3055",  # Autoconsumo servicios
+    "P3055S1",  # Horas autoconsumo servicios
+    "P3057",  # Formación no remunerada
     # ── Migración (L) ─────────────────────────────────────────────
-    "P3370",      # ¿Dónde vivía hace 12 meses?
-    "P3370S1",    # Departamento hace 12 meses
-    "P3376",      # País de nacimiento
-    "P3378S1",    # Año de llegada a Colombia
-
+    "P3370",  # ¿Dónde vivía hace 12 meses?
+    "P3370S1",  # Departamento hace 12 meses
+    "P3376",  # País de nacimiento
+    "P3378S1",  # Año de llegada a Colombia
     # ── Otros ingresos (M) ────────────────────────────────────────
-    "P7422",      # Arriendos recibidos
-    "P7500S1",    # Pensiones
+    "P7422",  # Arriendos recibidos
+    "P7500S1",  # Pensiones
     "P7500S1A1",  # Monto pensiones
-    "P7500S2",    # Ayudas hogares nacionales
+    "P7500S2",  # Ayudas hogares nacionales
     "P7500S2A1",  # Monto ayudas
-    "P7500S3",    # Ayudas institucionales
-    "P7510S2",    # Remesas del exterior
+    "P7500S3",  # Ayudas institucionales
+    "P7510S2",  # Remesas del exterior
     "P7510S2A1",  # Monto remesas
 ]
 """Columnas extraídas por defecto en preparar_base().
@@ -200,7 +188,7 @@ existe en la base, se ignora silenciosamente (sin error).
 # variables necesarias para replicar el Boletín DANE. Se expone como
 # COLUMNAS_BOLETIN para que el código del usuario sea explícito sobre
 # su intención cuando esté replicando indicadores oficiales.
-COLUMNAS_BOLETIN: List[str] = list(COLUMNAS_DEFAULT)
+COLUMNAS_BOLETIN: list[str] = list(COLUMNAS_DEFAULT)
 """Preset documentado para replicar el Boletín GEIH del DANE.
 
 Equivale a COLUMNAS_DEFAULT pero el nombre comunica la intención al
@@ -208,7 +196,6 @@ lector del código:
 
     df = prep.preparar_base(geih, columnas=COLUMNAS_BOLETIN)
 """
-
 
 
 class PreparadorGEIH:
@@ -247,9 +234,9 @@ class PreparadorGEIH:
     def preparar_base(
         self,
         df_raw: pd.DataFrame,
-        columnas: Optional[List[str]] = None,
-        columnas_extra: Optional[List[str]] = None,
-        meses_filtro: Optional[Union[int, List[int]]] = None,
+        columnas: Optional[list[str]] = None,
+        columnas_extra: Optional[list[str]] = None,
+        meses_filtro: Optional[Union[int, list[int]]] = None,
         solo_ocupados: bool = False,
         solo_ingreso_positivo: bool = False,
         derivar: bool = True,
@@ -305,14 +292,11 @@ class PreparadorGEIH:
             # legítimamente si no se consolidó con todos los módulos)
             extra_faltantes = cols_faltantes & set(columnas_extra or [])
             if extra_faltantes:
-                print(
-                    f"⚠️  Columnas extra no encontradas en la base: "
-                    f"{sorted(extra_faltantes)}"
-                )
+                print(f"⚠️  Columnas extra no encontradas en la base: " f"{sorted(extra_faltantes)}")
 
         # ── Resolver filtro de meses ───────────────────────────
         # Prioridad: meses_filtro explícito > config.meses_rango > None
-        filtro_final: Optional[Union[int, List[int]]] = meses_filtro
+        filtro_final: Optional[Union[int, list[int]]] = meses_filtro
         if filtro_final is None and self.config.meses_rango:
             filtro_final = self.config.meses_rango
 
@@ -325,8 +309,7 @@ class PreparadorGEIH:
                 mask = df_raw["MES_NUM"].isin(filtro_final)
             else:
                 raise TypeError(
-                    f"meses_filtro debe ser int o list[int], "
-                    f"recibido: {type(filtro_final)}"
+                    f"meses_filtro debe ser int o list[int], " f"recibido: {type(filtro_final)}"
                 )
             df = df_raw.loc[mask, cols_ok].copy()
         else:
@@ -336,9 +319,7 @@ class PreparadorGEIH:
 
         # ── Convertir tipos numéricos ──────────────────────────
         cols_str = {"DPTO", "RAMA2D_R4", "RAMA4D_R4", "AREA", "CLASE"}
-        self._conversor.convertir_columnas_numericas(
-            df, cols_ok, excluir=list(cols_str)
-        )
+        self._conversor.convertir_columnas_numericas(df, cols_ok, excluir=list(cols_str))
 
         # ── Factor de expansión ajustado ───────────────────────
         # Regla unificada (v6.0): el divisor FEX es siempre el número de
@@ -380,6 +361,7 @@ class PreparadorGEIH:
         filtro_desc = "todos los meses"
         if isinstance(filtro_final, int):
             from .config import MESES_NOMBRES
+
             filtro_desc = f"mes {filtro_final} ({MESES_NOMBRES[filtro_final - 1]})"
         elif isinstance(filtro_final, list):
             filtro_desc = f"meses {filtro_final}"
@@ -474,9 +456,9 @@ class PreparadorGEIH:
 
         # ── Rama CIIU ─────────────────────────────────────────
         if "RAMA2D_R4" in df.columns:
-            df["RAMA_INT"] = pd.to_numeric(
-                df["RAMA2D_R4"], errors="coerce"
-            ).round(0).astype("Int64")
+            df["RAMA_INT"] = (
+                pd.to_numeric(df["RAMA2D_R4"], errors="coerce").round(0).astype("Int64")
+            )
             df["RAMA"] = self.mapear_rama_ciiu(df["RAMA2D_R4"])
 
         # ── Ciudad (por DPTO y AREA) ──────────────────────────
@@ -527,9 +509,9 @@ class PreparadorGEIH:
         # Se usa el diccionario POSICION_OCUPACIONAL del config para
         # mantener una sola fuente de verdad.
         if "P6430" in df.columns:
-            df["POSICION_OCU"] = pd.to_numeric(
-                df["P6430"], errors="coerce"
-            ).map(POSICION_OCUPACIONAL)
+            df["POSICION_OCU"] = pd.to_numeric(df["P6430"], errors="coerce").map(
+                POSICION_OCUPACIONAL
+            )
 
         # ── Rango de edad (rangos del boletín DANE) ──────────
         if "P6040" in df.columns:
@@ -607,16 +589,13 @@ class PreparadorGEIH:
         """
         # Determinar año de referencia
         anio_ref = None
-        if hasattr(self, 'config') and hasattr(self.config, 'anio'):
+        if hasattr(self, "config") and hasattr(self.config, "anio"):
             anio_ref = self.config.anio
 
         print("\n📊 Calculando informalidad según sintaxis OFICIAL DANE...")
-        df["INFORMAL"] = clasificar_informalidad_dane(
-            df, anio_referencia=anio_ref, verbose=True
-        )
+        df["INFORMAL"] = clasificar_informalidad_dane(df, anio_referencia=anio_ref, verbose=True)
 
         return df
-
 
 
 class MergeCorrelativas:
@@ -661,14 +640,13 @@ class MergeCorrelativas:
         print("\n🔗 Merge con correlativa CIIU Rev.4...")
 
         df_ciiu = pd.read_excel(
-            ruta_ciiu, sheet_name=sheet_name,
+            ruta_ciiu,
+            sheet_name=sheet_name,
             converters={"RAMA4D_R4": str},
         )
 
         df["RAMA4D_STD"] = self._conversor.estandarizar_ciiu4(df["RAMA4D_R4"])
-        df_ciiu["RAMA4D_STD"] = self._conversor.estandarizar_ciiu4(
-            df_ciiu["RAMA4D_R4"]
-        )
+        df_ciiu["RAMA4D_STD"] = self._conversor.estandarizar_ciiu4(df_ciiu["RAMA4D_R4"])
 
         rama_df = set(df["RAMA4D_STD"].dropna().unique())
         rama_ciiu = set(df_ciiu["RAMA4D_STD"].dropna().unique())
@@ -680,9 +658,7 @@ class MergeCorrelativas:
         if sin_match:
             print(f"   Sin match (top 10): {sorted(sin_match)[:10]}")
 
-        ciiu_slim = df_ciiu[["RAMA4D_STD", "DESCRIPCION_CIIU"]].drop_duplicates(
-            "RAMA4D_STD"
-        )
+        ciiu_slim = df_ciiu[["RAMA4D_STD", "DESCRIPCION_CIIU"]].drop_duplicates("RAMA4D_STD")
         df = df.merge(ciiu_slim, on="RAMA4D_STD", how="left")
 
         n_con = df["DESCRIPCION_CIIU"].notna().sum()
@@ -720,8 +696,10 @@ class MergeCorrelativas:
         print("\n🔗 Merge con DIVIPOLA...")
 
         df_depto = pd.read_excel(
-            ruta_divipola, sheet_name=sheet_name,
-            skiprows=skiprows, converters={"Código": str},
+            ruta_divipola,
+            sheet_name=sheet_name,
+            skiprows=skiprows,
+            converters={"Código": str},
         )
 
         df["DPTO_STR"] = self._conversor.estandarizar_dpto(df["DPTO"])
@@ -745,13 +723,20 @@ class MergeCorrelativas:
         rama2d = pd.to_numeric(df.loc[sin_desc, "RAMA2D_R4"], errors="coerce")
 
         for rango, desc in CIIU_DESCRIPCION_FALLBACK:
-            mask_rango = rama2d.apply(lambda x: x in rango if pd.notna(x) else False)
+            # mask_rango = rama2d.apply(lambda x: x in rango if pd.notna(x) else False)
+            mask_rango = rama2d.apply(lambda x, r=rango: x in r if pd.notna(x) else False)
             if mask_rango.any():
-                df.loc[sin_desc & mask_rango.reindex(df.index, fill_value=False),
-                       "DESCRIPCION_CIIU"] = desc
+                df.loc[
+                    sin_desc & mask_rango.reindex(df.index, fill_value=False), "DESCRIPCION_CIIU"
+                ] = desc
 
         n_recuperados = sin_desc.sum() - df["DESCRIPCION_CIIU"].isna().sum()
         if n_recuperados > 0:
             print(f"   Fallback CIIU 2D  : {n_recuperados:,} registros recuperados")
 
         return df
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# 📄 geih/profiler.py
+#    Categoría: codigo

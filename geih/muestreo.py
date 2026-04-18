@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 geih.muestreo — Precisión muestral y significancia estadística.
 
@@ -41,11 +40,10 @@ __all__ = [
 ]
 
 
-from dataclasses import dataclass, field
-from typing import Optional, Dict, Any
+from dataclasses import dataclass
+from typing import Optional
 
 import numpy as np
-
 
 # ═════════════════════════════════════════════════════════════════════
 # CONSTANTES DE CLASIFICACIÓN
@@ -60,6 +58,7 @@ NO_CONFIABLE: str = "❌ No confiable"
 # ═════════════════════════════════════════════════════════════════════
 # CONFIGURACIÓN DE MUESTREO
 # ═════════════════════════════════════════════════════════════════════
+
 
 @dataclass
 class ConfigMuestreo:
@@ -84,6 +83,7 @@ class ConfigMuestreo:
         muestra_minima_expandida: Personas expandidas mínimas (FEX_ADJ).
         nivel_confianza: Nivel de confianza para intervalos (0.90, 0.95, 0.99).
     """
+
     deff: float = 2.5
     cv_preciso_pct: float = 7.0
     cv_aceptable_pct: float = 15.0
@@ -99,9 +99,7 @@ class ConfigMuestreo:
                 f"Un diseño muestral complejo siempre tiene DEFF ≥ 1."
             )
         if not 0.80 <= self.nivel_confianza <= 0.999:
-            raise ValueError(
-                f"nivel_confianza={self.nivel_confianza} fuera de rango [0.80, 0.999]"
-            )
+            raise ValueError(f"nivel_confianza={self.nivel_confianza} fuera de rango [0.80, 0.999]")
 
     @property
     def z_alpha(self) -> float:
@@ -114,12 +112,14 @@ class ConfigMuestreo:
           0.99 → 2.576
         """
         from scipy.stats import norm
+
         return float(norm.ppf((1 + self.nivel_confianza) / 2))
 
 
 # ═════════════════════════════════════════════════════════════════════
 # RESULTADO DE EVALUACIÓN DE PRECISIÓN
 # ═════════════════════════════════════════════════════════════════════
+
 
 @dataclass(frozen=True)
 class PrecisionEstimacion:
@@ -142,6 +142,7 @@ class PrecisionEstimacion:
         es_confiable: True si CV ≤ umbral de precisión aceptable.
         dominio: Nombre del dominio de estimación (ej: "Antioquia").
     """
+
     estimacion: float
     error_estandar: float
     cv_pct: float
@@ -171,6 +172,7 @@ class PrecisionEstimacion:
 # ═════════════════════════════════════════════════════════════════════
 # FUNCIONES DE EVALUACIÓN DE PRECISIÓN
 # ═════════════════════════════════════════════════════════════════════
+
 
 def clasificar_precision(cv_pct: float, config: Optional[ConfigMuestreo] = None) -> str:
     """Clasifica la precisión de una estimación según su CV.
@@ -347,9 +349,7 @@ def evaluar_total(
     cfg = config or ConfigMuestreo()
 
     p = max(0.001, min(proporcion_universo, 0.999))
-    precision_prop = evaluar_proporcion(
-        p, n_registros, n_expandido, dominio, cfg
-    )
+    precision_prop = evaluar_proporcion(p, n_registros, n_expandido, dominio, cfg)
 
     # Transferir el CV de la proporción al total
     cv_pct = precision_prop.cv_pct
@@ -401,9 +401,7 @@ def advertencia_muestral(
     mensajes = []
 
     if n_registros < cfg.muestra_minima_registros:
-        mensajes.append(
-            f"n={n_registros:,} registros < mínimo {cfg.muestra_minima_registros:,}"
-        )
+        mensajes.append(f"n={n_registros:,} registros < mínimo {cfg.muestra_minima_registros:,}")
     if n_expandido < cfg.muestra_minima_expandida:
         mensajes.append(
             f"N̂={n_expandido:,.0f} expandidos < mínimo {cfg.muestra_minima_expandida:,.0f}"
@@ -416,3 +414,8 @@ def advertencia_muestral(
             + ". Las estimaciones pueden no ser confiables."
         )
     return None
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# 📄 geih/preparador.py
+#    Categoría: codigo

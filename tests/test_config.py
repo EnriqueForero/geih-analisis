@@ -1,11 +1,16 @@
-# -*- coding: utf-8 -*-
 """Tests para geih.config — Configuración multi-año."""
 
 import pytest
+
 from geih.config import (
-    ConfigGEIH, SMMLV_POR_ANIO, REF_DANE, SMMLV_2025,
-    MESES_CARPETAS, REF_DANE_2025, MESES_NOMBRES,
-    generar_carpetas_mensuales, generar_etiqueta_periodo,
+    MESES_CARPETAS,
+    REF_DANE,
+    REF_DANE_2025,
+    SMMLV_2025,
+    SMMLV_POR_ANIO,
+    ConfigGEIH,
+    generar_carpetas_mensuales,
+    generar_etiqueta_periodo,
 )
 
 
@@ -106,7 +111,7 @@ class TestRetrocompatibilidad:
 
     def test_ref_dane_2025_existe(self):
         assert REF_DANE_2025 is not None
-        assert REF_DANE_2025 == REF_DANE[2025]
+        assert REF_DANE[2025] == REF_DANE_2025
 
     def test_meses_carpetas_existe(self):
         assert len(MESES_CARPETAS) == 12
@@ -124,7 +129,7 @@ class TestFuncionesAuxiliares:
 
     def test_generar_carpetas_clamp(self):
         """n_meses se clampea a [1, 12]."""
-        assert len(generar_carpetas_mensuales(2025, 0)) == 1   # clamp a 1
+        assert len(generar_carpetas_mensuales(2025, 0)) == 1  # clamp a 1
         assert len(generar_carpetas_mensuales(2025, 99)) == 12  # clamp a 12
 
     def test_etiqueta_1_mes(self):

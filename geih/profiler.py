@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 geih.profiler — Profiling de memoria y rendimiento del pipeline.
 
@@ -34,14 +33,14 @@ __all__ = [
     "tamano_objeto",
 ]
 
+import functools
 import gc
 import os
 import sys
 import time
-import functools
-from typing import Optional, List, Dict, Any, Union
 from contextlib import contextmanager
 from datetime import timedelta
+from typing import Any, Optional
 
 import pandas as pd
 
@@ -53,6 +52,7 @@ log = get_logger(__name__)
 # ═════════════════════════════════════════════════════════════════════
 # PERFIL DE MEMORIA
 # ═════════════════════════════════════════════════════════════════════
+
 
 class PerfilMemoria:
     """Registra snapshots de uso de RAM a lo largo del pipeline.
@@ -83,7 +83,7 @@ class PerfilMemoria:
     """
 
     def __init__(self):
-        self._snapshots: List[Dict[str, Any]] = []
+        self._snapshots: list[dict[str, Any]] = []
         self._inicio = time.time()
 
     def snapshot(
@@ -91,7 +91,7 @@ class PerfilMemoria:
         etapa: str,
         df: Optional[pd.DataFrame] = None,
         gc_collect: bool = True,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Captura un snapshot de memoria.
 
         Args:
@@ -144,43 +144,44 @@ class PerfilMemoria:
         log.info(f"\n{'='*70}")
         log.info(f"  PERFIL DE MEMORIA — {len(self._snapshots)} snapshots")
         log.info(f"{'='*70}")
-        log.info(f"  {'Etapa':<25} {'RAM(GB)':>8} {'Δ RAM':>8} "
-                 f"{'DF(MB)':>8} {'Tiempo':>10}")
+        log.info(f"  {'Etapa':<25} {'RAM(GB)':>8} {'Δ RAM':>8} " f"{'DF(MB)':>8} {'Tiempo':>10}")
         log.info(f"  {'─'*25} {'─'*8} {'─'*8} {'─'*8} {'─'*10}")
 
         rows = []
         for i, snap in enumerate(self._snapshots):
             delta = "—"
             if i > 0:
-                diff = snap["ram_usada_gb"] - self._snapshots[i-1]["ram_usada_gb"]
+                diff = snap["ram_usada_gb"] - self._snapshots[i - 1]["ram_usada_gb"]
                 delta = f"{diff:+.2f}"
 
-            t_prev = self._snapshots[i-1]["timestamp"] if i > 0 else 0
+            t_prev = self._snapshots[i - 1]["timestamp"] if i > 0 else 0
             dt = snap["timestamp"] - t_prev
             tiempo_str = str(timedelta(seconds=int(dt)))
 
             df_str = f"{snap['df_mb']:.0f}" if snap["df_mb"] else "—"
 
-            log.info(f"  {snap['etapa']:<25} {snap['ram_usada_gb']:>7.2f} "
-                     f"{delta:>8} {df_str:>8} {tiempo_str:>10}")
+            log.info(
+                f"  {snap['etapa']:<25} {snap['ram_usada_gb']:>7.2f} "
+                f"{delta:>8} {df_str:>8} {tiempo_str:>10}"
+            )
 
-            rows.append({
-                "Etapa": snap["etapa"],
-                "RAM_GB": snap["ram_usada_gb"],
-                "Delta_GB": float(delta) if delta != "—" else 0,
-                "DF_MB": snap["df_mb"],
-                "Tiempo_s": dt,
-            })
+            rows.append(
+                {
+                    "Etapa": snap["etapa"],
+                    "RAM_GB": snap["ram_usada_gb"],
+                    "Delta_GB": float(delta) if delta != "—" else 0,
+                    "DF_MB": snap["df_mb"],
+                    "Tiempo_s": dt,
+                }
+            )
 
         # Alerta si RAM > 80% del total
         total = self._ram_total_gb()
         ultimo = self._snapshots[-1]["ram_usada_gb"]
         pct = ultimo / total * 100 if total > 0 else 0
         if pct > 80:
-            log.warning(f"\n  ⚠️  RAM al {pct:.0f}% de capacidad "
-                       f"({ultimo:.1f}/{total:.1f} GB)")
-            log.warning(f"     Considere liberar DataFrames intermedios con "
-                       f"del df; gc.collect()")
+            log.warning(f"\n  ⚠️  RAM al {pct:.0f}% de capacidad " f"({ultimo:.1f}/{total:.1f} GB)")
+            log.warning("     Considere liberar DataFrames intermedios con " "del df; gc.collect()")
         elif pct > 60:
             log.info(f"\n  RAM al {pct:.0f}% ({ultimo:.1f}/{total:.1f} GB)")
         else:
@@ -201,6 +202,7 @@ class PerfilMemoria:
         """RAM usada por el proceso actual en GB."""
         try:
             import psutil
+
             return psutil.Process(os.getpid()).memory_info().rss / 1e9
         except ImportError:
             return 0.0
@@ -210,6 +212,7 @@ class PerfilMemoria:
         """RAM libre del sistema en GB."""
         try:
             import psutil
+
             return psutil.virtual_memory().available / 1e9
         except ImportError:
             return 0.0
@@ -219,6 +222,7 @@ class PerfilMemoria:
         """RAM total del sistema en GB."""
         try:
             import psutil
+
             return psutil.virtual_memory().total / 1e9
         except ImportError:
             return 12.0  # default Colab
@@ -227,6 +231,7 @@ class PerfilMemoria:
 # ═════════════════════════════════════════════════════════════════════
 # MEDICIÓN DE TIEMPO
 # ═════════════════════════════════════════════════════════════════════
+
 
 @contextmanager
 def medir_tiempo(nombre: str = "Operación"):
@@ -263,6 +268,7 @@ def cronometrar(func):
 
     Output: ⏱️  mi_funcion_pesada: 0:01:23
     """
+
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
         inicio = time.time()
@@ -271,12 +277,14 @@ def cronometrar(func):
         tiempo_str = str(timedelta(seconds=round(elapsed, 1)))
         log.info(f"⏱️  {func.__name__}: {tiempo_str}")
         return resultado
+
     return wrapper
 
 
 # ═════════════════════════════════════════════════════════════════════
 # UTILIDADES DE TAMAÑO
 # ═════════════════════════════════════════════════════════════════════
+
 
 def tamano_objeto(obj, nombre: str = "Objeto") -> float:
     """Mide y reporta el tamaño en memoria de un objeto.

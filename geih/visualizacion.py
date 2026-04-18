@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 geih.visualizacion — Generación de gráficos para el análisis GEIH.
 
@@ -24,16 +23,13 @@ __all__ = [
 ]
 
 
-from typing import Optional, Dict
-
-import numpy as np
-import pandas as pd
+import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
-import matplotlib.patches as mpatches
-from matplotlib.gridspec import GridSpec
+import numpy as np
+import pandas as pd
 
-from .config import COLORES, SMMLV_2025, ConfigGEIH
+from .config import COLORES, SMMLV_2025
 
 
 class EstiloBase:
@@ -86,7 +82,9 @@ class GraficoDistribucionIngresos(EstiloBase):
             Figura matplotlib lista para .show() o .savefig().
         """
         fig, (ax1, ax2) = plt.subplots(
-            1, 2, figsize=(18, 7),
+            1,
+            2,
+            figsize=(18, 7),
             gridspec_kw={"width_ratios": [1.8, 1]},
         )
         fig.patch.set_facecolor(self.FONDO)
@@ -102,11 +100,20 @@ class GraficoDistribucionIngresos(EstiloBase):
         tot = h_vals + m_vals
 
         ax1.bar(x, h_vals, w, label="Hombres", color=self.C["azul"], alpha=0.88, zorder=3)
-        ax1.bar(x, m_vals, w, bottom=h_vals, label="Mujeres", color=self.C["rojo"], alpha=0.88, zorder=3)
+        ax1.bar(
+            x, m_vals, w, bottom=h_vals, label="Mujeres", color=self.C["rojo"], alpha=0.88, zorder=3
+        )
 
         for i, (t, pct) in enumerate(zip(tot, dist["Pct"])):
-            ax1.text(i, t + 0.03, f"{t:.2f}M\n{pct:.1f}%",
-                     ha="center", va="bottom", fontsize=8, fontweight="bold")
+            ax1.text(
+                i,
+                t + 0.03,
+                f"{t:.2f}M\n{pct:.1f}%",
+                ha="center",
+                va="bottom",
+                fontsize=8,
+                fontweight="bold",
+            )
 
         ax1.axvline(x=1.5, color=self.C["verde"], ls="--", lw=1.8, alpha=0.75)
         ax1.set_xticks(x)
@@ -115,8 +122,9 @@ class GraficoDistribucionIngresos(EstiloBase):
 
         # Panel derecho: curva acumulada
         self.configurar_ejes(ax2, titulo="Distribución acumulada", ylabel="% acumulado")
-        ax2.plot(x, dist["Acum_Pct"], color=self.C["morado"],
-                 lw=2.5, marker="o", markersize=6, zorder=3)
+        ax2.plot(
+            x, dist["Acum_Pct"], color=self.C["morado"], lw=2.5, marker="o", markersize=6, zorder=3
+        )
         ax2.axhline(50, color=self.C["gris"], ls="--", lw=1, alpha=0.6)
         ax2.set_xticks(x)
         ax2.set_xticklabels(labels, fontsize=8, rotation=25, ha="right")
@@ -171,30 +179,54 @@ class GraficoBoxPlotSalarios(EstiloBase):
 
             # Caja IQR
             rect = plt.Rectangle(
-                (p25, i - 0.28), p75 - p25, 0.56,
-                facecolor=self.C["azul"], alpha=0.22,
-                edgecolor=self.C["azul"], linewidth=1.6, zorder=3,
+                (p25, i - 0.28),
+                p75 - p25,
+                0.56,
+                facecolor=self.C["azul"],
+                alpha=0.22,
+                edgecolor=self.C["azul"],
+                linewidth=1.6,
+                zorder=3,
             )
             ax.add_patch(rect)
 
             # Mediana
-            ax.plot([med, med], [i - 0.28, i + 0.28],
-                    color=self.C["azul"], lw=2.8, zorder=5)
+            ax.plot([med, med], [i - 0.28, i + 0.28], color=self.C["azul"], lw=2.8, zorder=5)
 
             # Media (diamante)
-            ax.scatter(mea, i, marker="D", s=38, color=self.C["rojo"],
-                       zorder=6, edgecolors="white", linewidth=0.8)
+            ax.scatter(
+                mea,
+                i,
+                marker="D",
+                s=38,
+                color=self.C["rojo"],
+                zorder=6,
+                edgecolors="white",
+                linewidth=0.8,
+            )
 
             # Etiqueta
-            ax.text(p90 + smmlv * 0.05, i,
-                    f'{row["Mediana_SMMLV"]:.1f}× | CV:{row["CV_%"]:.0f}%',
-                    va="center", fontsize=7.8, color=self.C["negro"])
+            ax.text(
+                p90 + smmlv * 0.05,
+                i,
+                f'{row["Mediana_SMMLV"]:.1f}× | CV:{row["CV_%"]:.0f}%',
+                va="center",
+                fontsize=7.8,
+                color=self.C["negro"],
+            )
 
         # Líneas de referencia SMMLV
         for mult, alpha in [(1, 0.55), (2, 0.35), (3, 0.25), (4, 0.18)]:
             ax.axvline(mult * smmlv, color=self.C["verde"], ls="--", lw=1, alpha=alpha)
-            ax.text(mult * smmlv, n - 0.3, f"{mult} SML",
-                    ha="center", fontsize=8, color=self.C["verde"], alpha=0.8)
+            ax.text(
+                mult * smmlv,
+                n - 0.3,
+                f"{mult} SML",
+                ha="center",
+                fontsize=8,
+                color=self.C["verde"],
+                alpha=0.8,
+            )
 
         ax.set_yticks(y_pos)
         ax.set_yticklabels(ramas_orden, fontsize=9.5)
@@ -205,11 +237,22 @@ class GraficoBoxPlotSalarios(EstiloBase):
 
         # Leyenda
         leyenda = [
-            mpatches.Patch(facecolor=self.C["azul"], alpha=0.22,
-                           edgecolor=self.C["azul"], label="Caja IQR (P25–P75)"),
+            mpatches.Patch(
+                facecolor=self.C["azul"],
+                alpha=0.22,
+                edgecolor=self.C["azul"],
+                label="Caja IQR (P25–P75)",
+            ),
             plt.Line2D([0], [0], color=self.C["azul"], lw=2.8, label="Mediana (P50)"),
-            plt.Line2D([0], [0], marker="D", color="w", markerfacecolor=self.C["rojo"],
-                       markersize=8, label="Media ponderada"),
+            plt.Line2D(
+                [0],
+                [0],
+                marker="D",
+                color="w",
+                markerfacecolor=self.C["rojo"],
+                markersize=8,
+                label="Media ponderada",
+            ),
             plt.Line2D([0], [0], color=self.C["gris"], lw=1.4, label="Bigotes P10–P90"),
         ]
         ax.legend(handles=leyenda, loc="lower right", fontsize=9, framealpha=0.92)
@@ -245,8 +288,8 @@ class GraficoBrechaGenero(EstiloBase):
         h_vals = (pivot_edu["Hombres"] / smmlv).values
         m_vals = (pivot_edu["Mujeres"] / smmlv).values
 
-        ax1.bar(x - w/2, h_vals, w, color=self.C["azul"], alpha=0.85, label="Hombres")
-        ax1.bar(x + w/2, m_vals, w, color=self.C["rojo"], alpha=0.85, label="Mujeres")
+        ax1.bar(x - w / 2, h_vals, w, color=self.C["azul"], alpha=0.85, label="Hombres")
+        ax1.bar(x + w / 2, m_vals, w, color=self.C["rojo"], alpha=0.85, label="Mujeres")
 
         ax1.set_xticks(x)
         ax1.set_xticklabels(niveles, fontsize=9, rotation=15, ha="right")
@@ -256,8 +299,15 @@ class GraficoBrechaGenero(EstiloBase):
         # Eje secundario: brecha %
         if "Brecha_%" in pivot_edu.columns:
             ax2 = ax1.twinx()
-            ax2.plot(x, pivot_edu["Brecha_%"], color=self.C["morado"],
-                     lw=2.5, marker="s", markersize=7, label="Brecha %")
+            ax2.plot(
+                x,
+                pivot_edu["Brecha_%"],
+                color=self.C["morado"],
+                lw=2.5,
+                marker="s",
+                markersize=7,
+                label="Brecha %",
+            )
             ax2.axhline(0, color=self.C["gris"], ls="--", lw=0.8, alpha=0.5)
             ax2.set_ylabel("Brecha % (M − H) / H", fontsize=11, color=self.C["morado"])
             ax2.legend(fontsize=9, loc="upper left")
@@ -297,8 +347,7 @@ class GraficoRamaSexo(EstiloBase):
         ax.barh(y, m, 0.65, left=h, color=self.C["rojo"], alpha=0.85, label="Mujeres")
 
         for i, (hv, mv) in enumerate(zip(h, m)):
-            ax.text(hv + mv + 20, i, f"{hv+mv:,.0f}K",
-                    va="center", fontsize=8)
+            ax.text(hv + mv + 20, i, f"{hv+mv:,.0f}K", va="center", fontsize=8)
 
         ax.set_yticks(y)
         ax.set_yticklabels(pivot["RAMA"], fontsize=9)
@@ -310,6 +359,7 @@ class GraficoRamaSexo(EstiloBase):
 # ═════════════════════════════════════════════════════════════════════
 # NUEVOS EN v4.0: 4 GRÁFICOS ADICIONALES
 # ═════════════════════════════════════════════════════════════════════
+
 
 class GraficoCurvaLorenz(EstiloBase):
     """Curva de Lorenz del ingreso laboral con shading de desigualdad.
@@ -344,8 +394,7 @@ class GraficoCurvaLorenz(EstiloBase):
         ax.set_facecolor("white")
 
         # Línea de perfecta igualdad
-        ax.plot([0, 1], [0, 1], "k--", lw=1.5, alpha=0.7,
-                label="Perfecta igualdad")
+        ax.plot([0, 1], [0, 1], "k--", lw=1.5, alpha=0.7, label="Perfecta igualdad")
 
         # Configuraciones: (subset, color, label)
         configs = [(df, self.C["azul"], "Nacional")]
@@ -372,8 +421,7 @@ class GraficoCurvaLorenz(EstiloBase):
             w_c = np.insert(w_cum, 0, 0)
             vw_c = np.insert(vw_cum, 0, 0)
             gini = 1.0 - 2.0 * _trapz(vw_c, w_c) if _trapz else np.nan
-            ax.plot(w_c, vw_c, lw=2.2, color=color,
-                    label=f"{lbl} (Gini={gini:.3f})")
+            ax.plot(w_c, vw_c, lw=2.2, color=color, label=f"{lbl} (Gini={gini:.3f})")
             if lbl == "Nacional":
                 ax.fill_between(w_c, w_c, vw_c, alpha=0.08, color=color)
 
@@ -433,13 +481,20 @@ class GraficoICIBubble(EstiloBase):
 
         # Color por ICI
         ici_vals = ici["ICI"] if "ICI" in ici.columns else pd.Series(50, index=ici.index)
-        colors = [self.C["verde"] if v > 55 else
-                  (self.C["naranja"] if v > 45 else self.C["rojo"])
-                  for v in ici_vals]
+        colors = [
+            self.C["verde"] if v > 55 else (self.C["naranja"] if v > 45 else self.C["rojo"])
+            for v in ici_vals
+        ]
 
         ax.scatter(
-            ici[col_x], ici[col_y], s=sizes,
-            c=colors, alpha=0.72, edgecolors="white", linewidth=1.2, zorder=3,
+            ici[col_x],
+            ici[col_y],
+            s=sizes,
+            c=colors,
+            alpha=0.72,
+            edgecolors="white",
+            linewidth=1.2,
+            zorder=3,
         )
 
         # Etiquetas de departamento
@@ -447,8 +502,11 @@ class GraficoICIBubble(EstiloBase):
             ax.annotate(
                 row.get("Departamento", "")[:12],
                 (row[col_x], row[col_y]),
-                fontsize=7.5, ha="center", va="bottom",
-                textcoords="offset points", xytext=(0, 6),
+                fontsize=7.5,
+                ha="center",
+                va="bottom",
+                textcoords="offset points",
+                xytext=(0, 6),
             )
 
         # Líneas de referencia (medianas)
@@ -458,21 +516,31 @@ class GraficoICIBubble(EstiloBase):
         ax.axhline(med_y, color=self.C["gris"], ls="--", lw=1, alpha=0.5)
 
         # Etiquetas de cuadrantes
-        ax.text(ici[col_x].min(), ici[col_y].max(),
-                " ★ Alto talento\n    Bajo costo",
-                fontsize=9, color=self.C["verde"], fontweight="bold",
-                va="top", ha="left")
-        ax.text(ici[col_x].max(), ici[col_y].max(),
-                "Alto talento\nAlto costo ",
-                fontsize=9, color=self.C["naranja"], fontweight="bold",
-                va="top", ha="right")
+        ax.text(
+            ici[col_x].min(),
+            ici[col_y].max(),
+            " ★ Alto talento\n    Bajo costo",
+            fontsize=9,
+            color=self.C["verde"],
+            fontweight="bold",
+            va="top",
+            ha="left",
+        )
+        ax.text(
+            ici[col_x].max(),
+            ici[col_y].max(),
+            "Alto talento\nAlto costo ",
+            fontsize=9,
+            color=self.C["naranja"],
+            fontweight="bold",
+            va="top",
+            ha="right",
+        )
 
         ax.set_xlabel("Costo laboral efectivo (COP)", fontsize=11)
         ax.set_ylabel("% universitarios (proxy talento)", fontsize=11)
         ax.set_title(titulo, fontsize=12, fontweight="bold")
-        ax.xaxis.set_major_formatter(
-            mticker.FuncFormatter(lambda v, _: f"${v/1e6:.1f}M")
-        )
+        ax.xaxis.set_major_formatter(mticker.FuncFormatter(lambda v, _: f"${v/1e6:.1f}M"))
         ax.grid(alpha=0.2)
         ax.spines[["top", "right"]].set_visible(False)
         fig.tight_layout(pad=2.5)
@@ -511,22 +579,47 @@ class GraficoEstacionalidad(EstiloBase):
 
         # Eje izquierdo: TD
         color_td = self.C["rojo"]
-        ax1.plot(x_pos, estac["TD_%"], color=color_td, lw=2.5,
-                 marker="o", markersize=7, label="TD %", zorder=3)
+        ax1.plot(
+            x_pos,
+            estac["TD_%"],
+            color=color_td,
+            lw=2.5,
+            marker="o",
+            markersize=7,
+            label="TD %",
+            zorder=3,
+        )
         ax1.set_ylabel("Tasa de Desempleo (%)", fontsize=11, color=color_td)
         ax1.tick_params(axis="y", labelcolor=color_td)
 
         # Anotar valores TD
         for i, v in enumerate(estac["TD_%"]):
-            ax1.text(i, v + 0.15, f"{v:.1f}", ha="center", fontsize=8,
-                     color=color_td, fontweight="bold")
+            ax1.text(
+                i, v + 0.15, f"{v:.1f}", ha="center", fontsize=8, color=color_td, fontweight="bold"
+            )
 
         # Eje derecho: TGP y TO
         ax2 = ax1.twinx()
-        ax2.plot(x_pos, estac["TGP_%"], color=self.C["azul"], lw=2,
-                 marker="s", markersize=5, label="TGP %", zorder=2)
-        ax2.plot(x_pos, estac["TO_%"], color=self.C["verde"], lw=2,
-                 marker="^", markersize=5, label="TO %", zorder=2)
+        ax2.plot(
+            x_pos,
+            estac["TGP_%"],
+            color=self.C["azul"],
+            lw=2,
+            marker="s",
+            markersize=5,
+            label="TGP %",
+            zorder=2,
+        )
+        ax2.plot(
+            x_pos,
+            estac["TO_%"],
+            color=self.C["verde"],
+            lw=2,
+            marker="^",
+            markersize=5,
+            label="TO %",
+            zorder=2,
+        )
         ax2.set_ylabel("TGP y TO (%)", fontsize=11)
 
         # Eje X
@@ -535,7 +628,8 @@ class GraficoEstacionalidad(EstiloBase):
             labels = [str(m)[:3] for m in x]
         else:
             from .config import MESES_NOMBRES
-            labels = [MESES_NOMBRES[int(m)-1][:3] if 1 <= m <= 12 else str(m) for m in x]
+
+            labels = [MESES_NOMBRES[int(m) - 1][:3] if 1 <= m <= 12 else str(m) for m in x]
         ax1.set_xticklabels(labels, fontsize=10)
 
         ax1.set_title(titulo, fontsize=12, fontweight="bold")
@@ -546,8 +640,9 @@ class GraficoEstacionalidad(EstiloBase):
         # Leyenda combinada
         lines1, labels1 = ax1.get_legend_handles_labels()
         lines2, labels2 = ax2.get_legend_handles_labels()
-        ax1.legend(lines1 + lines2, labels1 + labels2,
-                   fontsize=10, loc="upper left", framealpha=0.92)
+        ax1.legend(
+            lines1 + lines2, labels1 + labels2, fontsize=10, loc="upper left", framealpha=0.92
+        )
 
         fig.tight_layout(pad=2.5)
         return fig
@@ -581,8 +676,7 @@ class GraficoContribucionHeatmap(EstiloBase):
         # Si es long format, pivotar
         if col_valor in contrib.columns and col_rama in contrib.columns:
             pivot = contrib.pivot_table(
-                index=col_rama, columns=col_mes, values=col_valor,
-                aggfunc="sum"
+                index=col_rama, columns=col_mes, values=col_valor, aggfunc="sum"
             )
         else:
             # Asumir que ya está en formato wide (ramas como filas, meses como cols)
@@ -600,17 +694,18 @@ class GraficoContribucionHeatmap(EstiloBase):
         vmax = max(abs(pivot.values.min()), abs(pivot.values.max()), 0.5)
 
         import matplotlib.colors as mcolors
+
         cmap = mcolors.LinearSegmentedColormap.from_list(
             "contrib", [self.C["rojo"], "white", self.C["verde"]]
         )
 
-        im = ax.imshow(pivot.values, cmap=cmap, aspect="auto",
-                       vmin=-vmax, vmax=vmax)
+        im = ax.imshow(pivot.values, cmap=cmap, aspect="auto", vmin=-vmax, vmax=vmax)
 
         # Etiquetas
         ax.set_xticks(np.arange(pivot.shape[1]))
-        if hasattr(pivot.columns, 'tolist'):
+        if hasattr(pivot.columns, "tolist"):
             from .config import MESES_NOMBRES
+
             cols = pivot.columns.tolist()
             x_labels = []
             for c in cols:
@@ -629,8 +724,16 @@ class GraficoContribucionHeatmap(EstiloBase):
                 val = pivot.values[i, j]
                 if not np.isnan(val):
                     color = "white" if abs(val) > vmax * 0.6 else "black"
-                    ax.text(j, i, f"{val:+.2f}", ha="center", va="center",
-                            fontsize=7, color=color, fontweight="bold")
+                    ax.text(
+                        j,
+                        i,
+                        f"{val:+.2f}",
+                        ha="center",
+                        va="center",
+                        fontsize=7,
+                        color=color,
+                        fontweight="bold",
+                    )
 
         ax.set_title(titulo, fontsize=12, fontweight="bold", pad=12)
         fig.colorbar(im, ax=ax, label="Contribución (p.p.)", shrink=0.8)

@@ -1,0 +1,186 @@
+name: Release
+
+# ══════════════════════════════════════════════════════════════════════
+# Cuándo corre: SOLO cuando se empuja un tag vX.Y.Z a GitHub.
+# El notebook de publicación (Celda D) crea y empuja el tag.
+#
+# Flujo protegido (4 jobs en cadena, sin || skipped):
+#
+#   test ──► build ──► publish-pypi ──► github-release
+#
+#   Si test falla → build NO corre → PyPI NO recibe nada.
+#   No hay `always()`. No hay `|| skipped`. No hay bypass.
+#
+# Trusted Publishing (sin PYPI_TOKEN manual):
+#   Requiere configurar una sola vez en PyPI:
+#   https://pypi.org/manage/account/publishing/
+#   → Publisher: GitHub Actions
+#   → Owner: tu_usuario_github
+#   → Repo: geih-analisis
+#   → Workflow: release.yml
+#   → Environment: pypi
+# ══════════════════════════════════════════════════════════════════════
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'   # solo tags semver: v0.3.0, v1.0.0, etc.
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false   # NUNCA cancelar un release a medias.
+
+jobs:
+  # ════════════════════════════════════════════════════════════════
+  # JOB 1 — Tests (obligatorios, sin excepción)
+  # ════════════════════════════════════════════════════════════════
+  test:
+    name: Tests pre-release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: Instalar librería + dev
+        run: pip install -e ".[dev,viz]"
+
+      - name: Verificar import del paquete
+        run: |
+          python -c "
+          import geih
+          print(f'  geih v{geih.__version__} — import OK')
+          assert hasattr(geih, 'IndicadoresLaborales')
+          "
+
+      - name: Ejecutar tests con coverage gate
+        # Mismas condiciones que CI. Si algún test de paridad rompe
+        # con el código a publicar, la publicación se bloquea aquí.
+        run: |
+          pytest -m "not canario" \
+            --cov=geih \
+            --cov-fail-under=25 \
+            --tb=short \
+            -q
+
+      - name: Verificar consistencia de versión
+        # El __version__ del paquete instalado debe coincidir con el tag.
+        # Ejemplo: tag v0.3.0 → geih.__version__ debe ser "0.3.0".
+        run: |
+          python - <<'EOF'
+          import geih, sys, os
+
+          tag = os.environ.get('GITHUB_REF_NAME', '')   # "v0.3.0"
+          version_tag = tag.lstrip('v')                  # "0.3.0"
+          version_pkg = geih.__version__
+
+          if version_pkg == '0.0.0+dev':
+              print('ERROR: la librería reporta 0.0.0+dev.'
+                    ' Verifica que pyproject.toml tiene la versión correcta.', file=sys.stderr)
+              sys.exit(1)
+
+          if version_tag and version_pkg != version_tag:
+              print(f'ERROR: tag={version_tag!r} pero __version__={version_pkg!r}', file=sys.stderr)
+              sys.exit(1)
+
+          print(f'Versión OK: tag={version_tag!r} == __version__={version_pkg!r}')
+          EOF
+        env:
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+
+
+  # ════════════════════════════════════════════════════════════════
+  # JOB 2 — Build (solo si test pasó)
+  # ════════════════════════════════════════════════════════════════
+  build:
+    name: Build distribución
+    runs-on: ubuntu-latest
+    needs: test   # Sin || skipped. Si test falla → este job no corre.
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Build wheel + sdist
+        run: |
+          pip install build
+          python -m build
+
+      - name: Verificar distribución (twine check)
+        run: |
+          pip install twine
+          twine check dist/*
+
+      - name: Subir artefactos al workflow
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          retention-days: 7
+
+
+  # ════════════════════════════════════════════════════════════════
+  # JOB 3 — Publicar a PyPI (Trusted Publishing)
+  # ════════════════════════════════════════════════════════════════
+  publish-pypi:
+    name: Publicar a PyPI
+    runs-on: ubuntu-latest
+    needs: build   # Solo si build pasó (que ya implica que test pasó).
+
+    environment:
+      name: pypi
+      url: https://pypi.org/p/geih-analisis
+
+    permissions:
+      id-token: write   # Requerido por Trusted Publishing (OIDC).
+                        # Sin este permiso, pypa/gh-action-pypi-publish falla.
+
+    steps:
+      - name: Descargar artefactos
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Publicar a PyPI (Trusted Publishing)
+        uses: pypa/gh-action-pypi-publish@release/v1
+        # Sin parámetros adicionales: usa Trusted Publishing OIDC.
+        # No se necesita PYPI_TOKEN como secret.
+
+
+  # ════════════════════════════════════════════════════════════════
+  # JOB 4 — GitHub Release (solo si PyPI publicó)
+  # ════════════════════════════════════════════════════════════════
+  github-release:
+    name: GitHub Release
+    runs-on: ubuntu-latest
+    needs: publish-pypi
+
+    permissions:
+      contents: write   # Requerido para crear/modificar releases.
+
+    steps:
+      - name: Descargar artefactos
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Crear GitHub Release con notas auto-generadas
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true   # Genera changelog desde commits.
+          draft: false
+          prerelease: false

@@ -1,0 +1,15 @@
+{
+  "_meta": {
+    "generado_con": "tests/generar_golden_expected.py",
+    "n_columnas_preparado": 71,
+    "n_filas_preparado": 1000,
+    "n_filas_raw": 1000,
+    "version_libreria": "0.3.0"
+  },
+  "dataset.n_filas": 1000,
+  "indicadores.PEA_M": 0.05666666666666667,
+  "indicadores.TD_%": 11.8,
+  "indicadores.TGP_%": 68.0,
+  "indicadores.TO_%": 60.0,
+  "indices.gini": 0.34973923639517657
+}

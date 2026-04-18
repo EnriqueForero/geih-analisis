@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 geih.analisis_poblacional — Análisis de poblaciones y módulos especiales.
 
@@ -36,13 +35,12 @@ __all__ = [
 ]
 
 
-import gc
-from typing import Optional, Dict, Any, List
+from typing import Any, Optional
 
 import numpy as np
 import pandas as pd
 
-from .config import ConfigGEIH, SMMLV_2025, DEPARTAMENTOS
+from .config import ConfigGEIH
 from .utils import EstadisticasPonderadas as EP
 
 
@@ -55,6 +53,7 @@ def _tasa(df, mask_num, mask_den, col_peso="FEX_ADJ"):
 # ═════════════════════════════════════════════════════════════════════
 # POBLACIÓN CAMPESINA (P2057 / P2059)
 # ═════════════════════════════════════════════════════════════════════
+
 
 class AnalisisCampesino:
     """Análisis del mercado laboral de la población campesina.
@@ -78,25 +77,33 @@ class AnalisisCampesino:
         for val, etiq in [(1, "Se considera campesino"), (2, "No se considera campesino")]:
             m = df["P2057"] == val
             pea = df.loc[m & (df.get("FT", 0) == 1), "FEX_ADJ"].sum()
-            ocu = df.loc[m & (df["OCI"] == 1), "FEX_ADJ"].sum()
+            df.loc[m & (df["OCI"] == 1), "FEX_ADJ"].sum()
             des = df.loc[m & (df.get("DSI", 0) == 1), "FEX_ADJ"].sum()
             mediana = EP.mediana(
                 df.loc[m & (df["OCI"] == 1) & (df["INGLABO"] > 0), "INGLABO"],
-                df.loc[m & (df["OCI"] == 1) & (df["INGLABO"] > 0), "FEX_ADJ"]
+                df.loc[m & (df["OCI"] == 1) & (df["INGLABO"] > 0), "FEX_ADJ"],
             )
-            pct_pen = _tasa(df, m & (df.get("P6920", 0) == 1) & (df["OCI"] == 1), m & (df["OCI"] == 1))
-            filas.append({
-                "Grupo": etiq, "Poblacion_M": round(df.loc[m, "FEX_ADJ"].sum() / 1e6, 2),
-                "TD_%": round(des / pea * 100, 1) if pea > 0 else np.nan,
-                "Mediana_SMMLV": round(mediana / self.config.smmlv, 2) if not np.isnan(mediana) else np.nan,
-                "Formalidad_%": round(pct_pen, 1),
-            })
+            pct_pen = _tasa(
+                df, m & (df.get("P6920", 0) == 1) & (df["OCI"] == 1), m & (df["OCI"] == 1)
+            )
+            filas.append(
+                {
+                    "Grupo": etiq,
+                    "Poblacion_M": round(df.loc[m, "FEX_ADJ"].sum() / 1e6, 2),
+                    "TD_%": round(des / pea * 100, 1) if pea > 0 else np.nan,
+                    "Mediana_SMMLV": round(mediana / self.config.smmlv, 2)
+                    if not np.isnan(mediana)
+                    else np.nan,
+                    "Formalidad_%": round(pct_pen, 1),
+                }
+            )
         return pd.DataFrame(filas)
 
 
 # ═════════════════════════════════════════════════════════════════════
 # DISCAPACIDAD (P1906S1-S8 — ESCALA WASHINGTON)
 # ═════════════════════════════════════════════════════════════════════
+
 
 class AnalisisDiscapacidad:
     """Indicadores laborales por condición de discapacidad.
@@ -107,13 +114,17 @@ class AnalisisDiscapacidad:
     """
 
     DIMENSIONES = {
-        "P1906S1": "Oír",      "P1906S2": "Hablar",
-        "P1906S3": "Ver",      "P1906S4": "Moverse",
-        "P1906S5": "Agarrar",  "P1906S6": "Entender",
-        "P1906S7": "Autocuidado", "P1906S8": "Relacionarse",
+        "P1906S1": "Oír",
+        "P1906S2": "Hablar",
+        "P1906S3": "Ver",
+        "P1906S4": "Moverse",
+        "P1906S5": "Agarrar",
+        "P1906S6": "Entender",
+        "P1906S7": "Autocuidado",
+        "P1906S8": "Relacionarse",
     }
 
-    def calcular(self, df: pd.DataFrame) -> Dict[str, Any]:
+    def calcular(self, df: pd.DataFrame) -> dict[str, Any]:
         """Indicadores por presencia de discapacidad (criterio ONU)."""
         dims_ok = [d for d in self.DIMENSIONES if d in df.columns]
         if not dims_ok:
@@ -150,6 +161,7 @@ class AnalisisDiscapacidad:
 # MIGRACIÓN (P3370-P3379)
 # ═════════════════════════════════════════════════════════════════════
 
+
 class AnalisisMigracion:
     """Análisis del mercado laboral por condición migratoria.
 
@@ -176,11 +188,15 @@ class AnalisisMigracion:
                 des = df.loc[m & (df.get("DSI", 0) == 1), "FEX_ADJ"].sum()
                 pea = df.loc[m & (df.get("FT", 0) == 1), "FEX_ADJ"].sum()
                 td = (des / pea * 100) if pea > 0 else np.nan
-                filas.append({
-                    "Tipo_migracion": etiq, "Periodo": "12 meses",
-                    "Poblacion_M": round(n / 1e6, 2), "TD_%": round(td, 1),
-                    "Ocupados_M": round(ocu / 1e6, 2),
-                })
+                filas.append(
+                    {
+                        "Tipo_migracion": etiq,
+                        "Periodo": "12 meses",
+                        "Poblacion_M": round(n / 1e6, 2),
+                        "TD_%": round(td, 1),
+                        "Ocupados_M": round(ocu / 1e6, 2),
+                    }
+                )
 
         # Nacidos en el extranjero
         if "P3376" in df.columns:
@@ -196,13 +212,19 @@ class AnalisisMigracion:
                 td = (des / pea * 100) if pea > 0 else np.nan
                 mediana = EP.mediana(
                     df.loc[m & (df["OCI"] == 1) & (df["INGLABO"] > 0), "INGLABO"],
-                    df.loc[m & (df["OCI"] == 1) & (df["INGLABO"] > 0), "FEX_ADJ"]
+                    df.loc[m & (df["OCI"] == 1) & (df["INGLABO"] > 0), "FEX_ADJ"],
                 )
-                filas.append({
-                    "Tipo_migracion": etiq, "Periodo": "Nacimiento",
-                    "Poblacion_M": round(n / 1e6, 2), "TD_%": round(td, 1),
-                    "Mediana_SMMLV": round(mediana / self.config.smmlv, 2) if not np.isnan(mediana) else np.nan,
-                })
+                filas.append(
+                    {
+                        "Tipo_migracion": etiq,
+                        "Periodo": "Nacimiento",
+                        "Poblacion_M": round(n / 1e6, 2),
+                        "TD_%": round(td, 1),
+                        "Mediana_SMMLV": round(mediana / self.config.smmlv, 2)
+                        if not np.isnan(mediana)
+                        else np.nan,
+                    }
+                )
 
         return pd.DataFrame(filas)
 
@@ -210,6 +232,7 @@ class AnalisisMigracion:
 # ═════════════════════════════════════════════════════════════════════
 # OTRAS FORMAS DE TRABAJO (P3054-P3057)
 # ═════════════════════════════════════════════════════════════════════
+
 
 class AnalisisOtrasFormas:
     """Trabajo no remunerado: autoconsumo, voluntariado, formación.
@@ -233,17 +256,21 @@ class AnalisisOtrasFormas:
         for var, nombre in formas.items():
             if var in df.columns:
                 n = df.loc[df[var] == 1, "FEX_ADJ"].sum()
-                filas.append({
-                    "Forma_trabajo": nombre, "Variable": var,
-                    "Personas_M": round(n / 1e6, 2),
-                    "Pct_%": round(n / total * 100, 1),
-                })
+                filas.append(
+                    {
+                        "Forma_trabajo": nombre,
+                        "Variable": var,
+                        "Personas_M": round(n / 1e6, 2),
+                        "Pct_%": round(n / total * 100, 1),
+                    }
+                )
         return pd.DataFrame(filas)
 
 
 # ═════════════════════════════════════════════════════════════════════
 # OTROS INGRESOS (P7422-P7510)
 # ═════════════════════════════════════════════════════════════════════
+
 
 class AnalisisOtrosIngresos:
     """Ingresos no laborales del hogar — insumo para pobreza monetaria.
@@ -261,7 +288,7 @@ class AnalisisOtrosIngresos:
             "P7500S2": ("Ayudas hogares nacionales", "P7500S2A1"),
             "P7500S3": ("Ayudas institucionales", "P7500S3A1"),
             "P7510S2": ("Remesas del exterior", "P7510S2A1"),
-            "P7422":   ("Arriendos recibidos", "P7422S1"),
+            "P7422": ("Arriendos recibidos", "P7422S1"),
         }
         filas = []
         total = df["FEX_ADJ"].sum()
@@ -272,17 +299,21 @@ class AnalisisOtrosIngresos:
                 monto_med = np.nan
                 if var_monto in df.columns:
                     monto_med = EP.mediana(df.loc[m, var_monto], df.loc[m, "FEX_ADJ"])
-                filas.append({
-                    "Fuente": nombre, "Receptores_M": round(n / 1e6, 2),
-                    "Pct_%": round(n / total * 100, 1),
-                    "Mediana_monto": round(monto_med) if not np.isnan(monto_med) else np.nan,
-                })
+                filas.append(
+                    {
+                        "Fuente": nombre,
+                        "Receptores_M": round(n / 1e6, 2),
+                        "Pct_%": round(n / total * 100, 1),
+                        "Mediana_monto": round(monto_med) if not np.isnan(monto_med) else np.nan,
+                    }
+                )
         return pd.DataFrame(filas)
 
 
 # ═════════════════════════════════════════════════════════════════════
 # SOBRECALIFICACIÓN (P3042 × P6430)
 # ═════════════════════════════════════════════════════════════════════
+
 
 class AnalisisSobrecalificacion:
     """Universitarios en empleos de baja complejidad.
@@ -294,7 +325,7 @@ class AnalisisSobrecalificacion:
     def __init__(self, config: Optional[ConfigGEIH] = None):
         self.config = config or ConfigGEIH()
 
-    def calcular(self, df: pd.DataFrame) -> Dict[str, Any]:
+    def calcular(self, df: pd.DataFrame) -> dict[str, Any]:
         if "P3042" not in df.columns or "P6430" not in df.columns:
             return {}
         df_ocu = df[(df["OCI"] == 1)].copy()
@@ -313,23 +344,28 @@ class AnalisisSobrecalificacion:
                 n_u_r = df_ocu.loc[m_r & m_univ, "FEX_ADJ"].sum()
                 n_s_r = df_ocu.loc[m_r & m_sobre, "FEX_ADJ"].sum()
                 if n_u_r > 5_000:
-                    por_rama.append({
-                        "Rama": rama,
-                        "Universitarios_miles": round(n_u_r / 1_000),
-                        "Sobrecalificados_%": round(n_s_r / n_u_r * 100, 1),
-                    })
+                    por_rama.append(
+                        {
+                            "Rama": rama,
+                            "Universitarios_miles": round(n_u_r / 1_000),
+                            "Sobrecalificados_%": round(n_s_r / n_u_r * 100, 1),
+                        }
+                    )
 
         return {
             "total_universitarios_M": round(total_univ / 1e6, 2),
             "sobrecalificados_M": round(n_sobre / 1e6, 2),
             "pct_sobrecalificacion": round(pct, 1),
-            "por_rama": pd.DataFrame(por_rama).sort_values("Sobrecalificados_%", ascending=False) if por_rama else pd.DataFrame(),
+            "por_rama": pd.DataFrame(por_rama).sort_values("Sobrecalificados_%", ascending=False)
+            if por_rama
+            else pd.DataFrame(),
         }
 
 
 # ═════════════════════════════════════════════════════════════════════
 # FORMALIDAD CONTRACTUAL REAL (P6440/P6450/P6460/P6765)
 # ═════════════════════════════════════════════════════════════════════
+
 
 class AnalisisContractual:
     """Mapa de formalidad contractual real.
@@ -346,21 +382,33 @@ class AnalisisContractual:
         filas = []
 
         niveles = [
-            ("Contrato escrito indefinido",
-             lambda d: (d.get("P6440", 0) == 1) & (d.get("P6450", 0) == 1) & (d.get("P6460", 0) == 1)),
-            ("Contrato escrito temporal",
-             lambda d: (d.get("P6440", 0) == 1) & (d.get("P6450", 0) == 1) & (d.get("P6460", 0) != 1)),
-            ("Contrato verbal",
-             lambda d: (d.get("P6440", 0) == 1) & (d.get("P6450", 0) != 1)),
-            ("Sin contrato",
-             lambda d: (d.get("P6440", 0) != 1)),
+            (
+                "Contrato escrito indefinido",
+                lambda d: (d.get("P6440", 0) == 1)
+                & (d.get("P6450", 0) == 1)
+                & (d.get("P6460", 0) == 1),
+            ),
+            (
+                "Contrato escrito temporal",
+                lambda d: (d.get("P6440", 0) == 1)
+                & (d.get("P6450", 0) == 1)
+                & (d.get("P6460", 0) != 1),
+            ),
+            ("Contrato verbal", lambda d: (d.get("P6440", 0) == 1) & (d.get("P6450", 0) != 1)),
+            ("Sin contrato", lambda d: (d.get("P6440", 0) != 1)),
         ]
 
         for nombre, fn_mask in niveles:
             try:
                 m = fn_mask(df_ocu)
                 n = df_ocu.loc[m, "FEX_ADJ"].sum()
-                filas.append({"Tipo_contrato": nombre, "Personas_M": round(n / 1e6, 2), "Pct_%": round(n / total * 100, 1)})
+                filas.append(
+                    {
+                        "Tipo_contrato": nombre,
+                        "Personas_M": round(n / 1e6, 2),
+                        "Pct_%": round(n / total * 100, 1),
+                    }
+                )
             except Exception:
                 continue
 
@@ -370,6 +418,7 @@ class AnalisisContractual:
 # ═════════════════════════════════════════════════════════════════════
 # AUTONOMÍA LABORAL (P3047/P3048/P3049)
 # ═════════════════════════════════════════════════════════════════════
+
 
 class AnalisisAutonomia:
     """Identifica contratistas dependientes disfrazados de independientes.
@@ -381,7 +430,7 @@ class AnalisisAutonomia:
     Cuenta propia (P6430=4) con P3047/P3048=3 → asalariado disfrazado.
     """
 
-    def calcular(self, df: pd.DataFrame) -> Dict[str, Any]:
+    def calcular(self, df: pd.DataFrame) -> dict[str, Any]:
         vars_req = ["P3047", "P3048", "P6430"]
         if not all(v in df.columns for v in vars_req):
             return {}
@@ -405,6 +454,7 @@ class AnalisisAutonomia:
 # ALCANCE DE MERCADO (P1802)
 # ═════════════════════════════════════════════════════════════════════
 
+
 class AnalisisAlcanceMercado:
     """Alcance geográfico del mercado de la empresa del trabajador.
 
@@ -417,8 +467,12 @@ class AnalisisAlcanceMercado:
             return pd.DataFrame()
 
         ALCANCES = {
-            1: "Hogar/vecinos", 2: "Barrio", 3: "Municipio",
-            4: "Departamento", 5: "Nacional", 6: "Exportación ★",
+            1: "Hogar/vecinos",
+            2: "Barrio",
+            3: "Municipio",
+            4: "Departamento",
+            5: "Nacional",
+            6: "Exportación ★",
         }
         df_ocu = df[(df["OCI"] == 1)].copy()
         total = df_ocu["FEX_ADJ"].sum()
@@ -428,19 +482,23 @@ class AnalisisAlcanceMercado:
             n = df_ocu.loc[m, "FEX_ADJ"].sum()
             mediana = EP.mediana(
                 df_ocu.loc[m & (df_ocu["INGLABO"] > 0), "INGLABO"],
-                df_ocu.loc[m & (df_ocu["INGLABO"] > 0), "FEX_ADJ"]
+                df_ocu.loc[m & (df_ocu["INGLABO"] > 0), "FEX_ADJ"],
             )
-            filas.append({
-                "Alcance": nombre, "Personas_M": round(n / 1e6, 2),
-                "Pct_%": round(n / total * 100, 1),
-                "Mediana_COP": round(mediana) if not np.isnan(mediana) else np.nan,
-            })
+            filas.append(
+                {
+                    "Alcance": nombre,
+                    "Personas_M": round(n / 1e6, 2),
+                    "Pct_%": round(n / total * 100, 1),
+                    "Mediana_COP": round(mediana) if not np.isnan(mediana) else np.nan,
+                }
+            )
         return pd.DataFrame(filas)
 
 
 # ═════════════════════════════════════════════════════════════════════
 # DESANIMADOS / POTENCIAL LATENTE (P6300/P6310)
 # ═════════════════════════════════════════════════════════════════════
+
 
 class AnalisisDesanimados:
     """Personas fuera de la FT que desean trabajar (potencial laboral latente).
@@ -449,13 +507,13 @@ class AnalisisDesanimados:
     P6310: ¿Disponible para trabajar? (1=Sí, semana pasada)
     """
 
-    def calcular(self, df: pd.DataFrame) -> Dict[str, Any]:
+    def calcular(self, df: pd.DataFrame) -> dict[str, Any]:
         if "P6300" not in df.columns:
             return {}
 
         m_fft = df.get("FFT", pd.Series(dtype=float)) == 1
-        m_desea = (df["P6300"] == 1)
-        m_disponible = (df.get("P6310", pd.Series(dtype=float)) == 1)
+        m_desea = df["P6300"] == 1
+        m_disponible = df.get("P6310", pd.Series(dtype=float)) == 1
 
         n_fft = df.loc[m_fft, "FEX_ADJ"].sum()
         n_desea = df.loc[m_fft & m_desea, "FEX_ADJ"].sum()

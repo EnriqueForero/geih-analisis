@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 geih.utils — Funciones utilitarias transversales.
 
@@ -22,16 +21,15 @@ __all__ = [
 
 import gc
 import os
-import sys
-from typing import Optional, List, Dict, Any
+from typing import Any, Optional
 
 import numpy as np
 import pandas as pd
 
-
 # ═════════════════════════════════════════════════════════════════════
 # 1. GESTIÓN DE MEMORIA RAM
 # ═════════════════════════════════════════════════════════════════════
+
 
 class GestorMemoria:
     """Monitoreo y liberación de memoria RAM en Google Colab.
@@ -46,7 +44,7 @@ class GestorMemoria:
     """
 
     @staticmethod
-    def estado() -> Dict[str, float]:
+    def estado() -> dict[str, float]:
         """Muestra y retorna el uso actual de RAM en GB.
 
         Returns:
@@ -55,6 +53,7 @@ class GestorMemoria:
         """
         try:
             import psutil
+
             proceso = psutil.Process(os.getpid())
             ram_usada = proceso.memory_info().rss / 1e9
             vm = psutil.virtual_memory()
@@ -68,9 +67,9 @@ class GestorMemoria:
             return {}
 
     @staticmethod
-    def liberar(variables: Optional[List[str]] = None,
-                scope: Optional[dict] = None,
-                verbose: bool = True) -> None:
+    def liberar(
+        variables: Optional[list[str]] = None, scope: Optional[dict] = None, verbose: bool = True
+    ) -> None:
         """Libera memoria eliminando variables del scope dado.
 
         Args:
@@ -100,6 +99,7 @@ class GestorMemoria:
 # ═════════════════════════════════════════════════════════════════════
 # 2. CONVERSIÓN DE TIPOS DE DATOS
 # ═════════════════════════════════════════════════════════════════════
+
 
 class ConversorTipos:
     """Convierte columnas GEIH al tipo de dato correcto.
@@ -148,9 +148,9 @@ class ConversorTipos:
             Serie con códigos de exactamente 4 dígitos o NaN.
         """
         s = serie.astype(str).str.strip()
-        s = s.str.replace(r"\.0$", "", regex=True)      # quitar .0
-        s = s.str.split(".").str[0]                      # parte entera
-        s = s.str.zfill(4)                               # rellenar ceros
+        s = s.str.replace(r"\.0$", "", regex=True)  # quitar .0
+        s = s.str.split(".").str[0]  # parte entera
+        s = s.str.zfill(4)  # rellenar ceros
         s = s.where(s.str.match(r"^\d{4}$"), other=np.nan)
         return s
 
@@ -183,8 +183,8 @@ class ConversorTipos:
     @staticmethod
     def convertir_columnas_numericas(
         df: pd.DataFrame,
-        columnas: List[str],
-        excluir: Optional[List[str]] = None,
+        columnas: list[str],
+        excluir: Optional[list[str]] = None,
     ) -> pd.DataFrame:
         """Convierte múltiples columnas a numérico in-place.
 
@@ -206,6 +206,7 @@ class ConversorTipos:
 # ═════════════════════════════════════════════════════════════════════
 # 3. ESTADÍSTICAS PONDERADAS
 # ═════════════════════════════════════════════════════════════════════
+
 
 class EstadisticasPonderadas:
     """Calcula estadísticas descriptivas usando pesos de frecuencia (FEX).
@@ -290,8 +291,7 @@ class EstadisticasPonderadas:
         return float(std / media * 100)
 
     @staticmethod
-    def suma(df: pd.DataFrame, mask: pd.Series,
-             col_peso: str = "FEX_ADJ") -> float:
+    def suma(df: pd.DataFrame, mask: pd.Series, col_peso: str = "FEX_ADJ") -> float:
         """Suma ponderada filtrada por una máscara.
 
         Uso típico: w_sum(df, df['OCI']==1) → total de ocupados expandidos.
@@ -303,7 +303,7 @@ class EstadisticasPonderadas:
         valores: pd.Series,
         pesos: pd.Series,
         smmlv: int = 1_423_500,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Calcula todas las estadísticas descriptivas ponderadas.
 
         Retorna un diccionario listo para convertir en fila de DataFrame.
@@ -320,26 +320,26 @@ class EstadisticasPonderadas:
         n_pond = pesos[pesos.notna() & (pesos > 0)].sum()
         if n_pond == 0:
             return {}
-        media   = ep.media(valores, pesos)
+        media = ep.media(valores, pesos)
         mediana = ep.mediana(valores, pesos)
-        std     = ep.desviacion_estandar(valores, pesos)
-        cv      = ep.coeficiente_variacion(valores, pesos)
-        p10     = ep.percentil(valores, pesos, 0.10)
-        p25     = ep.percentil(valores, pesos, 0.25)
-        p75     = ep.percentil(valores, pesos, 0.75)
-        p90     = ep.percentil(valores, pesos, 0.90)
+        std = ep.desviacion_estandar(valores, pesos)
+        cv = ep.coeficiente_variacion(valores, pesos)
+        p10 = ep.percentil(valores, pesos, 0.10)
+        p25 = ep.percentil(valores, pesos, 0.25)
+        p75 = ep.percentil(valores, pesos, 0.75)
+        p90 = ep.percentil(valores, pesos, 0.90)
         return {
-            "N_personas":    round(n_pond / 1_000),
-            "Media":         round(media),
-            "Mediana":       round(mediana),
-            "P10":           round(p10),
-            "P25":           round(p25),
-            "P75":           round(p75),
-            "P90":           round(p90),
-            "Std":           round(std),
-            "CV_%":          round(cv, 1),
-            "IQR":           round(p75 - p25),
-            "Media_SMMLV":   round(media / smmlv, 2),
+            "N_personas": round(n_pond / 1_000),
+            "Media": round(media),
+            "Mediana": round(mediana),
+            "P10": round(p10),
+            "P25": round(p25),
+            "P75": round(p75),
+            "P90": round(p90),
+            "Std": round(std),
+            "CV_%": round(cv, 1),
+            "IQR": round(p75 - p25),
+            "Media_SMMLV": round(media / smmlv, 2),
             "Mediana_SMMLV": round(mediana / smmlv, 2),
         }
 
@@ -366,9 +366,15 @@ class EstadisticasPonderadas:
         total_vw = acum_vw[-1]
         # Proporción acumulada de población y de ingreso
         p = acum_w / total_w
-        l = acum_vw / total_vw
+        # l = acum_vw / total_vw
+        lorenz = acum_vw / total_vw
         # Gini usando la regla del trapecio
         # np.trapz fue renombrado a np.trapezoid en NumPy ≥ 2.0
         _trapz = getattr(np, "trapezoid", getattr(np, "trapz", None))
-        gini_val = 1.0 - 2.0 * _trapz(l, p)
+        gini_val = 1.0 - 2.0 * _trapz(lorenz, p)
         return float(gini_val)
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# 📄 geih/visualizacion.py
+#    Categoría: codigo

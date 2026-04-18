@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 geih.analisis_tierra — Distribución salarial por tenencia de tierra agropecuaria.
 
@@ -37,41 +36,34 @@ __all__ = [
 ]
 
 
-from typing import Optional, Dict, Any, List
+from typing import Any, Optional
 
 import numpy as np
 import pandas as pd
 
 from .config import (
-    ConfigGEIH,
-    DEPARTAMENTOS,
-    CIIU_SECTOR_PRIMARIO,
     CIIU_AGRICULTURA_DETALLE,
-    NIVELES_AGRUPADOS,
-    RANGOS_SMMLV_LIMITES,
-    RANGOS_SMMLV_ETIQUETAS,
+    CIIU_SECTOR_PRIMARIO,
+    DEPARTAMENTOS,
+    ConfigGEIH,
 )
-from .utils import EstadisticasPonderadas as EP, ConversorTipos
 from .muestreo import (
-    ConfigMuestreo,
-    PrecisionEstimacion,
-    evaluar_proporcion,
-    evaluar_media,
     advertencia_muestral,
-    clasificar_precision,
+    evaluar_media,
 )
-
+from .utils import ConversorTipos
+from .utils import EstadisticasPonderadas as EP
 
 # ═════════════════════════════════════════════════════════════════════
 # CONSTANTES DEL MÓDULO
 # ═════════════════════════════════════════════════════════════════════
 
-_TENENCIA_MAP: Dict[int, str] = {
+_TENENCIA_MAP: dict[int, str] = {
     1: "Propietario",
     2: "No propietario",
 }
 
-_TIPO_ACTIVIDAD_MAP: Dict[int, str] = {
+_TIPO_ACTIVIDAD_MAP: dict[int, str] = {
     1: "Mercancías/servicios",
     2: "Producción agropecuaria",
 }
@@ -149,9 +141,13 @@ class AnalisisTierraAgropecuario:
 
         # Subcategoría CIIU
         if "RAMA2D_R4" in df_agro.columns:
-            rama2d_str = pd.to_numeric(
-                df_agro["RAMA2D_R4"], errors="coerce"
-            ).round(0).astype("Int64").astype(str).str.zfill(2)
+            rama2d_str = (
+                pd.to_numeric(df_agro["RAMA2D_R4"], errors="coerce")
+                .round(0)
+                .astype("Int64")
+                .astype(str)
+                .str.zfill(2)
+            )
             df_agro["SUBCATEGORIA_CIIU"] = rama2d_str.map(CIIU_SECTOR_PRIMARIO)
 
         # Detalle CIIU 4 dígitos si disponible
@@ -168,7 +164,9 @@ class AnalisisTierraAgropecuario:
         print(f"{'='*60}")
         print(f"  Registros en muestra     : {n_total:,}")
         print(f"  Personas expandidas      : {n_expandido/1e6:.3f} M")
-        print(f"  Con dato de tenencia     : {n_con_tenencia:,} ({n_con_tenencia/max(n_total,1)*100:.1f}%)")
+        print(
+            f"  Con dato de tenencia     : {n_con_tenencia:,} ({n_con_tenencia/max(n_total,1)*100:.1f}%)"
+        )
         print(f"{'='*60}")
 
         return df_agro
@@ -197,7 +195,7 @@ class AnalisisTierraAgropecuario:
             print("⚠️  No hay registros con ingreso y tenencia válidos.")
             return pd.DataFrame()
 
-        filas: List[Dict[str, Any]] = []
+        filas: list[dict[str, Any]] = []
         for tenencia in ["Propietario", "No propietario"]:
             mask = df_ing["TENENCIA"] == tenencia
             n_reg = int(mask.sum())
@@ -206,10 +204,13 @@ class AnalisisTierraAgropecuario:
             adv = advertencia_muestral(n_reg, n_exp, tenencia, self._config_muestreo)
 
             if n_reg < 30:
-                filas.append({
-                    "Tenencia": tenencia, "n_registros": n_reg,
-                    "Advertencia": adv or "Muestra muy pequeña",
-                })
+                filas.append(
+                    {
+                        "Tenencia": tenencia,
+                        "n_registros": n_reg,
+                        "Advertencia": adv or "Muestra muy pequeña",
+                    }
+                )
                 continue
 
             mediana = EP.mediana(df_ing.loc[mask, "INGLABO"], df_ing.loc[mask, "FEX_ADJ"])
@@ -219,24 +220,33 @@ class AnalisisTierraAgropecuario:
             prec = evaluar_media(mediana, var_sal, n_reg, n_exp, tenencia, self._config_muestreo)
 
             # Distribución por rangos SMMLV (vectorizado)
-            inglabo_sml = df_ing.loc[mask, "INGLABO"] / self.config.smmlv
+            df_ing.loc[mask, "INGLABO"] / self.config.smmlv
             pct_bajo_1sml = (
-                df_ing.loc[mask & (df_ing["INGLABO"] < self.config.smmlv), "FEX_ADJ"].sum()
-                / n_exp * 100
-            ) if n_exp > 0 else np.nan
+                (
+                    df_ing.loc[mask & (df_ing["INGLABO"] < self.config.smmlv), "FEX_ADJ"].sum()
+                    / n_exp
+                    * 100
+                )
+                if n_exp > 0
+                else np.nan
+            )
 
-            filas.append({
-                "Tenencia": tenencia,
-                "n_registros": n_reg,
-                "N_expandido_M": round(n_exp / 1e6, 3),
-                "Mediana_COP": round(mediana),
-                "Media_COP": round(media),
-                "Mediana_SMMLV": round(mediana / self.config.smmlv, 2),
-                "Pct_bajo_1SMMLV_%": round(pct_bajo_1sml, 1) if not np.isnan(pct_bajo_1sml) else np.nan,
-                "CV_%": prec.cv_pct,
-                "Precision": prec.clasificacion,
-                "Advertencia": adv or "",
-            })
+            filas.append(
+                {
+                    "Tenencia": tenencia,
+                    "n_registros": n_reg,
+                    "N_expandido_M": round(n_exp / 1e6, 3),
+                    "Mediana_COP": round(mediana),
+                    "Media_COP": round(media),
+                    "Mediana_SMMLV": round(mediana / self.config.smmlv, 2),
+                    "Pct_bajo_1SMMLV_%": round(pct_bajo_1sml, 1)
+                    if not np.isnan(pct_bajo_1sml)
+                    else np.nan,
+                    "CV_%": prec.cv_pct,
+                    "Precision": prec.clasificacion,
+                    "Advertencia": adv or "",
+                }
+            )
 
         resultado = pd.DataFrame(filas)
         self._imprimir_brecha(resultado)
@@ -277,30 +287,32 @@ class AnalisisTierraAgropecuario:
 
         renta_col = pd.to_numeric(df_prop["P3064S1"], errors="coerce")
 
-        filas: List[Dict[str, Any]] = []
+        filas: list[dict[str, Any]] = []
 
         # Nacional
         n_reg = len(df_prop)
-        n_exp = df_prop["FEX_ADJ"].sum()
+        df_prop["FEX_ADJ"].sum()
         med_ingreso = EP.mediana(df_prop["INGLABO"], df_prop["FEX_ADJ"])
         med_renta = EP.mediana(renta_col, df_prop["FEX_ADJ"])
 
         ratio = med_ingreso / med_renta if med_renta > 0 else np.nan
         excedente = med_ingreso - med_renta
 
-        filas.append({
-            "Dominio": "Nacional",
-            "n_registros": n_reg,
-            "Mediana_ingreso_COP": round(med_ingreso),
-            "Mediana_renta_COP": round(med_renta),
-            "Ratio_ingreso_renta": round(ratio, 2) if not np.isnan(ratio) else np.nan,
-            "Excedente_COP": round(excedente),
-            "Interpretacion": (
-                "Ingreso > Renta → Trabaja la tierra es más rentable"
-                if excedente > 0 else
-                "Ingreso < Renta → Arrendar sería más rentable"
-            ),
-        })
+        filas.append(
+            {
+                "Dominio": "Nacional",
+                "n_registros": n_reg,
+                "Mediana_ingreso_COP": round(med_ingreso),
+                "Mediana_renta_COP": round(med_renta),
+                "Ratio_ingreso_renta": round(ratio, 2) if not np.isnan(ratio) else np.nan,
+                "Excedente_COP": round(excedente),
+                "Interpretacion": (
+                    "Ingreso > Renta → Trabaja la tierra es más rentable"
+                    if excedente > 0
+                    else "Ingreso < Renta → Arrendar sería más rentable"
+                ),
+            }
+        )
 
         # Por departamento (si hay muestra)
         if "NOMBRE_DPTO" in df_prop.columns:
@@ -314,20 +326,22 @@ class AnalisisTierraAgropecuario:
                 r = med_i / med_r if med_r > 0 else np.nan
                 exc = med_i - med_r
 
-                adv = advertencia_muestral(n, df_prop.loc[m, "FEX_ADJ"].sum(), dpto, self._config_muestreo)
+                adv = advertencia_muestral(
+                    n, df_prop.loc[m, "FEX_ADJ"].sum(), dpto, self._config_muestreo
+                )
 
-                filas.append({
-                    "Dominio": dpto,
-                    "n_registros": n,
-                    "Mediana_ingreso_COP": round(med_i),
-                    "Mediana_renta_COP": round(med_r),
-                    "Ratio_ingreso_renta": round(r, 2) if not np.isnan(r) else np.nan,
-                    "Excedente_COP": round(exc),
-                    "Interpretacion": (
-                        "Ingreso > Renta" if exc > 0 else "Ingreso < Renta"
-                    ),
-                    "Advertencia": adv or "",
-                })
+                filas.append(
+                    {
+                        "Dominio": dpto,
+                        "n_registros": n,
+                        "Mediana_ingreso_COP": round(med_i),
+                        "Mediana_renta_COP": round(med_r),
+                        "Ratio_ingreso_renta": round(r, 2) if not np.isnan(r) else np.nan,
+                        "Excedente_COP": round(exc),
+                        "Interpretacion": ("Ingreso > Renta" if exc > 0 else "Ingreso < Renta"),
+                        "Advertencia": adv or "",
+                    }
+                )
 
         return pd.DataFrame(filas)
 
@@ -355,7 +369,7 @@ class AnalisisTierraAgropecuario:
         df_val = df_agro[df_agro["TENENCIA"].notna() & (df_agro["INGLABO"] > 0)]
         df_val["SEXO"] = df_val["P3271"].map({1: "Hombres", 2: "Mujeres"})
 
-        filas: List[Dict[str, Any]] = []
+        filas: list[dict[str, Any]] = []
         for sexo in ["Hombres", "Mujeres"]:
             mask_sexo = df_val["SEXO"] == sexo
             n_reg = int(mask_sexo.sum())
@@ -363,7 +377,9 @@ class AnalisisTierraAgropecuario:
                 continue
 
             n_exp = df_val.loc[mask_sexo, "FEX_ADJ"].sum()
-            n_propietario = df_val.loc[mask_sexo & (df_val["TENENCIA"] == "Propietario"), "FEX_ADJ"].sum()
+            n_propietario = df_val.loc[
+                mask_sexo & (df_val["TENENCIA"] == "Propietario"), "FEX_ADJ"
+            ].sum()
             pct_propietario = round(n_propietario / n_exp * 100, 1) if n_exp > 0 else np.nan
 
             mediana = EP.mediana(
@@ -378,23 +394,33 @@ class AnalisisTierraAgropecuario:
             mask_no_prop = mask_sexo & (df_val["TENENCIA"] == "No propietario")
 
             if mask_prop.sum() > 20:
-                med_prop = EP.mediana(df_val.loc[mask_prop, "INGLABO"], df_val.loc[mask_prop, "FEX_ADJ"])
+                med_prop = EP.mediana(
+                    df_val.loc[mask_prop, "INGLABO"], df_val.loc[mask_prop, "FEX_ADJ"]
+                )
             if mask_no_prop.sum() > 20:
-                med_no_prop = EP.mediana(df_val.loc[mask_no_prop, "INGLABO"], df_val.loc[mask_no_prop, "FEX_ADJ"])
+                med_no_prop = EP.mediana(
+                    df_val.loc[mask_no_prop, "INGLABO"], df_val.loc[mask_no_prop, "FEX_ADJ"]
+                )
 
             adv = advertencia_muestral(n_reg, n_exp, sexo, self._config_muestreo)
 
-            filas.append({
-                "Sexo": sexo,
-                "n_registros": n_reg,
-                "N_expandido_M": round(n_exp / 1e6, 3),
-                "Pct_propietario_%": pct_propietario,
-                "Mediana_general_COP": round(mediana),
-                "Mediana_propietario_COP": round(med_prop) if not np.isnan(med_prop) else np.nan,
-                "Mediana_no_propietario_COP": round(med_no_prop) if not np.isnan(med_no_prop) else np.nan,
-                "Mediana_SMMLV": round(mediana / self.config.smmlv, 2),
-                "Advertencia": adv or "",
-            })
+            filas.append(
+                {
+                    "Sexo": sexo,
+                    "n_registros": n_reg,
+                    "N_expandido_M": round(n_exp / 1e6, 3),
+                    "Pct_propietario_%": pct_propietario,
+                    "Mediana_general_COP": round(mediana),
+                    "Mediana_propietario_COP": round(med_prop)
+                    if not np.isnan(med_prop)
+                    else np.nan,
+                    "Mediana_no_propietario_COP": round(med_no_prop)
+                    if not np.isnan(med_no_prop)
+                    else np.nan,
+                    "Mediana_SMMLV": round(mediana / self.config.smmlv, 2),
+                    "Advertencia": adv or "",
+                }
+            )
 
         resultado = pd.DataFrame(filas)
 
@@ -403,7 +429,7 @@ class AnalisisTierraAgropecuario:
             pct_h = resultado.loc[resultado["Sexo"] == "Hombres", "Pct_propietario_%"].iloc[0]
             pct_m = resultado.loc[resultado["Sexo"] == "Mujeres", "Pct_propietario_%"].iloc[0]
             if not np.isnan(pct_h) and not np.isnan(pct_m):
-                print(f"\n   📊 Brecha de propiedad de tierra:")
+                print("\n   📊 Brecha de propiedad de tierra:")
                 print(f"      Hombres propietarios: {pct_h:.1f}%")
                 print(f"      Mujeres propietarias: {pct_m:.1f}%")
                 print(f"      Brecha: {pct_h - pct_m:+.1f} p.p.")
@@ -433,7 +459,7 @@ class AnalisisTierraAgropecuario:
 
         df_val = df_agro[df_agro["TENENCIA"].notna() & (df_agro["INGLABO"] > 0)]
 
-        filas: List[Dict[str, Any]] = []
+        filas: list[dict[str, Any]] = []
         for dpto, nombre in DEPARTAMENTOS.items():
             mask = df_val["DPTO_STR"] == dpto
             n_reg = int(mask.sum())
@@ -455,11 +481,19 @@ class AnalisisTierraAgropecuario:
             n_no_prop = int(mask_no_prop.sum())
 
             if n_prop > 20:
-                med_prop = EP.mediana(df_val.loc[mask_prop, "INGLABO"], df_val.loc[mask_prop, "FEX_ADJ"])
+                med_prop = EP.mediana(
+                    df_val.loc[mask_prop, "INGLABO"], df_val.loc[mask_prop, "FEX_ADJ"]
+                )
             if n_no_prop > 20:
-                med_no_prop = EP.mediana(df_val.loc[mask_no_prop, "INGLABO"], df_val.loc[mask_no_prop, "FEX_ADJ"])
+                med_no_prop = EP.mediana(
+                    df_val.loc[mask_no_prop, "INGLABO"], df_val.loc[mask_no_prop, "FEX_ADJ"]
+                )
 
-            brecha = round(med_prop - med_no_prop) if not (np.isnan(med_prop) or np.isnan(med_no_prop)) else np.nan
+            brecha = (
+                round(med_prop - med_no_prop)
+                if not (np.isnan(med_prop) or np.isnan(med_no_prop))
+                else np.nan
+            )
 
             # Precisión
             var_sal = df_val.loc[mask, "INGLABO"].var()
@@ -469,21 +503,27 @@ class AnalisisTierraAgropecuario:
             n_exp_prop = df_val.loc[mask_prop, "FEX_ADJ"].sum()
             pct_prop = round(n_exp_prop / n_exp * 100, 1) if n_exp > 0 else np.nan
 
-            filas.append({
-                "Departamento": nombre,
-                "DPTO": dpto,
-                "n_registros": n_reg,
-                "N_expandido_M": round(n_exp / 1e6, 3),
-                "Mediana_general_COP": round(mediana),
-                "Mediana_propietario_COP": round(med_prop) if not np.isnan(med_prop) else np.nan,
-                "Mediana_no_propietario_COP": round(med_no_prop) if not np.isnan(med_no_prop) else np.nan,
-                "Brecha_COP": brecha,
-                "Pct_propietario_%": pct_prop,
-                "Mediana_SMMLV": round(mediana / self.config.smmlv, 2),
-                "CV_%": prec.cv_pct,
-                "Precision": prec.clasificacion,
-                "Advertencia": adv or "",
-            })
+            filas.append(
+                {
+                    "Departamento": nombre,
+                    "DPTO": dpto,
+                    "n_registros": n_reg,
+                    "N_expandido_M": round(n_exp / 1e6, 3),
+                    "Mediana_general_COP": round(mediana),
+                    "Mediana_propietario_COP": round(med_prop)
+                    if not np.isnan(med_prop)
+                    else np.nan,
+                    "Mediana_no_propietario_COP": round(med_no_prop)
+                    if not np.isnan(med_no_prop)
+                    else np.nan,
+                    "Brecha_COP": brecha,
+                    "Pct_propietario_%": pct_prop,
+                    "Mediana_SMMLV": round(mediana / self.config.smmlv, 2),
+                    "CV_%": prec.cv_pct,
+                    "Precision": prec.clasificacion,
+                    "Advertencia": adv or "",
+                }
+            )
 
         return pd.DataFrame(filas).sort_values("Mediana_general_COP", ascending=False)
 
@@ -506,7 +546,7 @@ class AnalisisTierraAgropecuario:
 
         df_val = df_agro[df_agro["INGLABO"] > 0]
 
-        filas: List[Dict[str, Any]] = []
+        filas: list[dict[str, Any]] = []
 
         # Por CIIU 2 dígitos
         if "SUBCATEGORIA_CIIU" in df_val.columns:
@@ -520,22 +560,26 @@ class AnalisisTierraAgropecuario:
 
                 pct_prop = np.nan
                 if "TENENCIA" in df_val.columns:
-                    n_prop = df_val.loc[mask & (df_val["TENENCIA"] == "Propietario"), "FEX_ADJ"].sum()
+                    n_prop = df_val.loc[
+                        mask & (df_val["TENENCIA"] == "Propietario"), "FEX_ADJ"
+                    ].sum()
                     pct_prop = round(n_prop / n_exp * 100, 1) if n_exp > 0 else np.nan
 
                 var_sal = df_val.loc[mask, "INGLABO"].var()
                 prec = evaluar_media(mediana, var_sal, n_reg, n_exp, subcat, self._config_muestreo)
 
-                filas.append({
-                    "Subcategoria": subcat,
-                    "n_registros": n_reg,
-                    "N_expandido_M": round(n_exp / 1e6, 3),
-                    "Mediana_COP": round(mediana),
-                    "Mediana_SMMLV": round(mediana / self.config.smmlv, 2),
-                    "Pct_propietario_%": pct_prop,
-                    "CV_%": prec.cv_pct,
-                    "Precision": prec.clasificacion,
-                })
+                filas.append(
+                    {
+                        "Subcategoria": subcat,
+                        "n_registros": n_reg,
+                        "N_expandido_M": round(n_exp / 1e6, 3),
+                        "Mediana_COP": round(mediana),
+                        "Mediana_SMMLV": round(mediana / self.config.smmlv, 2),
+                        "Pct_propietario_%": pct_prop,
+                        "CV_%": prec.cv_pct,
+                        "Precision": prec.clasificacion,
+                    }
+                )
 
         return pd.DataFrame(filas).sort_values("Mediana_COP", ascending=False)
 
@@ -561,7 +605,7 @@ class AnalisisTierraAgropecuario:
 
         df_val = df_agro[df_agro["TENENCIA"].notna()]
 
-        filas: List[Dict[str, Any]] = []
+        filas: list[dict[str, Any]] = []
         for tenencia in ["Propietario", "No propietario"]:
             mask = df_val["TENENCIA"] == tenencia
             n_reg = int(mask.sum())
@@ -581,14 +625,16 @@ class AnalisisTierraAgropecuario:
 
             adv = advertencia_muestral(n_reg, n_exp, tenencia, self._config_muestreo)
 
-            filas.append({
-                "Tenencia": tenencia,
-                "n_registros": n_reg,
-                "N_expandido_M": round(n_exp / 1e6, 3),
-                "Cotiza_pension_%": pct_pension,
-                "Contrato_escrito_%": pct_contrato,
-                "Advertencia": adv or "",
-            })
+            filas.append(
+                {
+                    "Tenencia": tenencia,
+                    "n_registros": n_reg,
+                    "N_expandido_M": round(n_exp / 1e6, 3),
+                    "Cotiza_pension_%": pct_pension,
+                    "Contrato_escrito_%": pct_contrato,
+                    "Advertencia": adv or "",
+                }
+            )
 
         return pd.DataFrame(filas)
 
@@ -596,7 +642,7 @@ class AnalisisTierraAgropecuario:
     # 7. REPORTE COMPLETO
     # ══════════════════════════════════════════════════════════════
 
-    def reporte_completo(self, df: pd.DataFrame) -> Dict[str, pd.DataFrame]:
+    def reporte_completo(self, df: pd.DataFrame) -> dict[str, pd.DataFrame]:
         """Genera el reporte completo de análisis agropecuario por tierra.
 
         Ejecuta todos los análisis disponibles y retorna un diccionario
@@ -611,7 +657,7 @@ class AnalisisTierraAgropecuario:
               - 'formalidad': formalidad por tenencia
               - 'costo_oportunidad': ingreso vs renta (si P3064S1 disponible)
         """
-        resultados: Dict[str, pd.DataFrame] = {}
+        resultados: dict[str, pd.DataFrame] = {}
 
         print("\n" + "═" * 60)
         print("  REPORTE COMPLETO: TIERRA Y MERCADO LABORAL AGROPECUARIO")
@@ -639,7 +685,7 @@ class AnalisisTierraAgropecuario:
 
     def exportar_excel(
         self,
-        resultados: Dict[str, pd.DataFrame],
+        resultados: dict[str, pd.DataFrame],
         nombre: str = "Analisis_Tierra_GEIH.xlsx",
     ) -> None:
         """Exporta todos los resultados a Excel con múltiples hojas."""
@@ -664,7 +710,7 @@ class AnalisisTierraAgropecuario:
     def _imprimir_brecha(self, resultado: pd.DataFrame) -> None:
         """Imprime resumen de brecha de ingresos por tenencia."""
         print(f"\n{'─'*60}")
-        print(f"  BRECHA DE INGRESOS POR TENENCIA DE TIERRA")
+        print("  BRECHA DE INGRESOS POR TENENCIA DE TIERRA")
         print(f"{'─'*60}")
         for _, r in resultado.iterrows():
             tenencia = r.get("Tenencia", "")
@@ -674,8 +720,10 @@ class AnalisisTierraAgropecuario:
             prec = r.get("Precision", "")
 
             if not np.isnan(mediana):
-                print(f"  {tenencia:<20s} ${mediana:>12,.0f} ({sml:.2f}× SMMLV)  "
-                      f"<1SML: {pct_bajo:.1f}%  {prec}")
+                print(
+                    f"  {tenencia:<20s} ${mediana:>12,.0f} ({sml:.2f}× SMMLV)  "
+                    f"<1SML: {pct_bajo:.1f}%  {prec}"
+                )
             else:
                 adv = r.get("Advertencia", "")
                 print(f"  {tenencia:<20s} — {adv}")

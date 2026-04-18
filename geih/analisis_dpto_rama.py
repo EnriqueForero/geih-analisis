@@ -47,11 +47,12 @@ Uso típico:
         ruta="resultados/Ocupados_DPTO_CIIU_2025.xlsx",
     )
 """
+
 from __future__ import annotations
 
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Optional, Union
+from typing import Optional, Union
 
 import numpy as np
 import pandas as pd
@@ -62,7 +63,7 @@ except ImportError:  # permite uso fuera del paquete
     ConfigGEIH = None  # type: ignore
 
 try:
-    from .muestreo import evaluar_total, ConfigMuestreo
+    from .muestreo import ConfigMuestreo, evaluar_total
 except ImportError:  # permite uso fuera del paquete
     evaluar_total = None  # type: ignore
     ConfigMuestreo = None  # type: ignore
@@ -95,6 +96,7 @@ _MAPEO_CLASIFICACION = {
 # CLASE PRINCIPAL
 # ═════════════════════════════════════════════════════════════════════
 
+
 class OcupadosDptoRama:
     """Ocupados promedio anual por departamento × rama CIIU.
 
@@ -108,8 +110,8 @@ class OcupadosDptoRama:
 
     def __init__(
         self,
-        config: Optional["ConfigGEIH"] = None,
-        config_muestreo: Optional["ConfigMuestreo"] = None,
+        config: Optional[ConfigGEIH] = None,
+        config_muestreo: Optional[ConfigMuestreo] = None,
     ) -> None:
         self.config = config
         self.config_muestreo = config_muestreo
@@ -141,9 +143,7 @@ class OcupadosDptoRama:
             calidad.
         """
         if nivel_ciiu not in _NIVELES_VALIDOS:
-            raise ValueError(
-                f"nivel_ciiu debe ser '2d' o '4d', recibido: {nivel_ciiu!r}"
-            )
+            raise ValueError(f"nivel_ciiu debe ser '2d' o '4d', recibido: {nivel_ciiu!r}")
 
         meta = _NIVELES_VALIDOS[nivel_ciiu]
         col_rama = meta["col_origen"]
@@ -153,10 +153,7 @@ class OcupadosDptoRama:
 
         # Higiene: filas válidas
         mask = (
-            df["DPTO"].notna()
-            & df["FEX_C18"].notna()
-            & (df["FEX_C18"] > 0)
-            & df[col_rama].notna()
+            df["DPTO"].notna() & df["FEX_C18"].notna() & (df["FEX_C18"] > 0) & df[col_rama].notna()
         )
 
         # Filtro defensivo: si OCI existe, usar solo ocupados.
@@ -171,40 +168,34 @@ class OcupadosDptoRama:
             if verbose:
                 n_no_oci = ((oci != 1) & oci.notna()).sum()
                 if n_no_oci:
-                    print(f"   ⓘ Filtro OCI: excluidos {n_no_oci:,} "
-                          f"registros no ocupados")
+                    print(f"   ⓘ Filtro OCI: excluidos {n_no_oci:,} " f"registros no ocupados")
 
         df_lim = df.loc[mask].copy()
         descartadas = (~mask).sum()
         if verbose and descartadas:
-            print(f"   ⓘ {col_rama}: descartados {descartadas:,} registros "
-                  f"(sin DPTO, FEX, rama codificada, o no ocupados)")
+            print(
+                f"   ⓘ {col_rama}: descartados {descartadas:,} registros "
+                f"(sin DPTO, FEX, rama codificada, o no ocupados)"
+            )
 
         # ── Paso 1: totales mensuales por celda ──
-        mensual = (
-            df_lim.groupby(["DPTO", col_rama, "MES_NUM"], as_index=False)
-                  .agg(total_expandido=("FEX_C18", "sum"),
-                       n_muestra=("FEX_C18", "size"))
+        mensual = df_lim.groupby(["DPTO", col_rama, "MES_NUM"], as_index=False).agg(
+            total_expandido=("FEX_C18", "sum"), n_muestra=("FEX_C18", "size")
         )
 
         # ── Paso 2: agregación anual ──
-        anual = (
-            mensual.groupby(["DPTO", col_rama], as_index=False)
-                   .agg(ocupados_promedio=("total_expandido", "mean"),
-                        desv_mensual    =("total_expandido", "std"),
-                        meses_con_dato  =("total_expandido", "size"),
-                        n_anual         =("n_muestra", "sum"))
+        anual = mensual.groupby(["DPTO", col_rama], as_index=False).agg(
+            ocupados_promedio=("total_expandido", "mean"),
+            desv_mensual=("total_expandido", "std"),
+            meses_con_dato=("total_expandido", "size"),
+            n_anual=("n_muestra", "sum"),
         )
 
         # Reponderación: meses faltantes son ceros reales
-        anual["ocupados_promedio"] = (
-            anual["ocupados_promedio"] * anual["meses_con_dato"] / 12
-        )
+        anual["ocupados_promedio"] = anual["ocupados_promedio"] * anual["meses_con_dato"] / 12
 
         # ── CV temporal (informativo, se conserva por compatibilidad) ──
-        anual["ee_aprox"] = (
-            anual["desv_mensual"] / np.sqrt(anual["meses_con_dato"])
-        )
+        anual["ee_aprox"] = anual["desv_mensual"] / np.sqrt(anual["meses_con_dato"])
         anual["cv_aprox"] = np.where(
             anual["ocupados_promedio"] > 0,
             anual["ee_aprox"] / anual["ocupados_promedio"],
@@ -214,33 +205,28 @@ class OcupadosDptoRama:
         # ── Universo departamental: n_base y total expandido ──
         # n_base_dpto = total de registros muestrales del departamento
         # (es el n correcto para Var(p) = DEFF * p(1-p) / n_base)
-        dpto_stats = (
-            df_lim.groupby("DPTO")
-                  .agg(n_base_dpto=("FEX_C18", "size"),
-                       fex_total_dpto=("FEX_C18", "sum"))
+        dpto_stats = df_lim.groupby("DPTO").agg(
+            n_base_dpto=("FEX_C18", "size"), fex_total_dpto=("FEX_C18", "sum")
         )
 
         # ── CV muestral (riguroso, determina la calidad) ──
-        anual["calidad"], anual["cv_muestral"] = (
-            self._calcular_calidad_muestral(anual, dpto_stats)
-        )
+        anual["calidad"], anual["cv_muestral"] = self._calcular_calidad_muestral(anual, dpto_stats)
 
         # Renombrar columna final y ordenar
         anual = anual.rename(columns={col_rama: col_final})
-        anual = (
-            anual.sort_values(
-                ["DPTO", "ocupados_promedio"], ascending=[True, False]
-            )
-            .reset_index(drop=True)
-        )
+        anual = anual.sort_values(
+            ["DPTO", "ocupados_promedio"], ascending=[True, False]
+        ).reset_index(drop=True)
 
         if verbose:
             total = anual["ocupados_promedio"].sum()
             pub = anual[anual["calidad"].isin(_ETIQUETAS_PUBLICABLES)]
             cob = pub["ocupados_promedio"].sum() / total if total else 0
-            print(f"   ✅ Nivel {nivel_ciiu}: {len(anual):,} celdas, "
-                  f"total nacional {total:,.0f}, "
-                  f"cobertura publicable {cob:.1%}")
+            print(
+                f"   ✅ Nivel {nivel_ciiu}: {len(anual):,} celdas, "
+                f"total nacional {total:,.0f}, "
+                f"cobertura publicable {cob:.1%}"
+            )
 
         return anual
 
@@ -287,12 +273,8 @@ class OcupadosDptoRama:
         cfg = self.config_muestreo or ConfigMuestreo()
 
         # Total expandido y n_base por departamento
-        totales_dpto = (
-            anual.groupby("DPTO")["ocupados_promedio"].transform("sum")
-        )
-        celdas_por_dpto = (
-            anual.groupby("DPTO")["ocupados_promedio"].transform("count")
-        )
+        totales_dpto = anual.groupby("DPTO")["ocupados_promedio"].transform("sum")
+        celdas_por_dpto = anual.groupby("DPTO")["ocupados_promedio"].transform("count")
         total_nacional = anual["ocupados_promedio"].sum()
         n_nacional = int(dpto_stats["n_base_dpto"].sum())
 
@@ -341,13 +323,9 @@ class OcupadosDptoRama:
                 proporcion_universo=max(0.001, min(prop, 0.999)),
                 config=cfg,
             )
-            etiqueta = _MAPEO_CLASIFICACION.get(
-                prec.clasificacion, "No publicable"
-            )
+            etiqueta = _MAPEO_CLASIFICACION.get(prec.clasificacion, "No publicable")
             calidades.append(etiqueta)
-            cvs_muestrales.append(
-                prec.cv_pct / 100 if pd.notna(prec.cv_pct) else np.nan
-            )
+            cvs_muestrales.append(prec.cv_pct / 100 if pd.notna(prec.cv_pct) else np.nan)
 
         return (
             pd.Series(calidades, index=anual.index),
@@ -379,37 +357,57 @@ class OcupadosDptoRama:
             DataFrame enriquecido con columnas descriptivas.
         """
         meta = _NIVELES_VALIDOS[nivel_ciiu]
-        col_final = meta["col_final"]
+        meta["col_final"]
 
         out = tabla.merge(
             dep[["dpto_codigo", "dpto_nombre"]],
-            left_on="DPTO", right_on="dpto_codigo", how="left",
+            left_on="DPTO",
+            right_on="dpto_codigo",
+            how="left",
         )
 
         if nivel_ciiu == "2d":
             out = out.merge(
-                ciiu[["ciiu_2d", "ciiu_2d_desc",
-                      "seccion_letra", "seccion_desc"]],
-                on="ciiu_2d", how="left",
+                ciiu[["ciiu_2d", "ciiu_2d_desc", "seccion_letra", "seccion_desc"]],
+                on="ciiu_2d",
+                how="left",
             )
-            cols = ["dpto_codigo", "dpto_nombre",
-                    "seccion_letra", "seccion_desc",
-                    "ciiu_2d", "ciiu_2d_desc",
-                    "ocupados_promedio", "n_anual",
-                    "cv_muestral", "calidad", "meses_con_dato"]
+            cols = [
+                "dpto_codigo",
+                "dpto_nombre",
+                "seccion_letra",
+                "seccion_desc",
+                "ciiu_2d",
+                "ciiu_2d_desc",
+                "ocupados_promedio",
+                "n_anual",
+                "cv_muestral",
+                "calidad",
+                "meses_con_dato",
+            ]
         else:
             out = out.merge(ciiu, on="ciiu_4d", how="left")
-            cols = ["dpto_codigo", "dpto_nombre",
-                    "seccion_letra", "seccion_desc",
-                    "ciiu_2d", "ciiu_2d_desc",
-                    "ciiu_4d", "ciiu_4d_desc",
-                    "ocupados_promedio", "n_anual",
-                    "cv_muestral", "calidad", "meses_con_dato"]
+            cols = [
+                "dpto_codigo",
+                "dpto_nombre",
+                "seccion_letra",
+                "seccion_desc",
+                "ciiu_2d",
+                "ciiu_2d_desc",
+                "ciiu_4d",
+                "ciiu_4d_desc",
+                "ocupados_promedio",
+                "n_anual",
+                "cv_muestral",
+                "calidad",
+                "meses_con_dato",
+            ]
 
-        return (out[cols]
-                .sort_values(["dpto_nombre", "ocupados_promedio"],
-                             ascending=[True, False])
-                .reset_index(drop=True))
+        return (
+            out[cols]
+            .sort_values(["dpto_nombre", "ocupados_promedio"], ascending=[True, False])
+            .reset_index(drop=True)
+        )
 
     # ─────────────────────────────────────────────────────────────
     # EXPORTACIÓN A EXCEL
@@ -417,7 +415,7 @@ class OcupadosDptoRama:
 
     def exportar_excel(
         self,
-        resultados: Dict[str, pd.DataFrame],
+        resultados: dict[str, pd.DataFrame],
         ruta: Union[str, Path],
         incluir_matriz: bool = True,
         incluir_top: bool = True,
@@ -445,15 +443,18 @@ class OcupadosDptoRama:
             ("Cálculo", "Promedio de los 12 totales mensuales expandidos"),
             ("Clasificación sectorial", "CIIU Rev. 4 A.C."),
             ("División geográfica", "DIVIPOLA DANE"),
-            ("Evaluación de calidad",
-             "CV muestral con DEFF (diseño complejo DANE/OIT). "
-             "n_base = muestra del departamento (Cochran 1977)."),
-            ("Calidad — Confiable",     f"CV ≤ {_UMBRAL_CONFIABLE:.0%}"),
-            ("Calidad — Aceptable",     f"{_UMBRAL_CONFIABLE:.0%} < CV ≤ "
-                                        f"{_UMBRAL_ACEPTABLE:.0%}"),
+            (
+                "Evaluación de calidad",
+                "CV muestral con DEFF (diseño complejo DANE/OIT). "
+                "n_base = muestra del departamento (Cochran 1977).",
+            ),
+            ("Calidad — Confiable", f"CV ≤ {_UMBRAL_CONFIABLE:.0%}"),
+            ("Calidad — Aceptable", f"{_UMBRAL_CONFIABLE:.0%} < CV ≤ " f"{_UMBRAL_ACEPTABLE:.0%}"),
             ("Calidad — No publicable", f"CV > {_UMBRAL_ACEPTABLE:.0%}"),
-            ("Limitación geográfica",
-             "Representativa por departamento y 13 AM. No a nivel municipal."),
+            (
+                "Limitación geográfica",
+                "Representativa por departamento y 13 AM. No a nivel municipal.",
+            ),
             ("Fecha de generación", datetime.now().strftime("%Y-%m-%d %H:%M")),
         ]
 
@@ -469,20 +470,19 @@ class OcupadosDptoRama:
                     xw, sheet_name="2d_largo_publicable", index=False
                 )
                 if incluir_matriz and "ciiu_2d_desc" in t2.columns:
-                    self._construir_matriz(t2).to_excel(
-                        xw, sheet_name="2d_matriz_dpto_x_rama"
-                    )
+                    self._construir_matriz(t2).to_excel(xw, sheet_name="2d_matriz_dpto_x_rama")
 
             if "4d" in resultados:
                 t4 = resultados["4d"]
                 t4.to_excel(xw, sheet_name="4d_largo_completo", index=False)
                 if incluir_top:
-                    top = (t4[t4["calidad"].isin(pub)]
-                           .sort_values(["dpto_nombre", "ocupados_promedio"],
-                                        ascending=[True, False])
-                           .groupby("dpto_nombre", group_keys=False)
-                           .head(10)
-                           .reset_index(drop=True))
+                    top = (
+                        t4[t4["calidad"].isin(pub)]
+                        .sort_values(["dpto_nombre", "ocupados_promedio"], ascending=[True, False])
+                        .groupby("dpto_nombre", group_keys=False)
+                        .head(10)
+                        .reset_index(drop=True)
+                    )
                     top.to_excel(xw, sheet_name="4d_top_por_dpto", index=False)
 
         self._ajustar_anchos(ruta)
@@ -515,13 +515,14 @@ class OcupadosDptoRama:
 
     @staticmethod
     def _construir_matriz(tabla_2d_enriquecida: pd.DataFrame) -> pd.DataFrame:
-        df = tabla_2d_enriquecida.assign(
-            rama=lambda d: d["ciiu_2d"] + " - " + d["ciiu_2d_desc"]
-        )
-        matriz = (df.pivot_table(
-            index="dpto_nombre", columns="rama",
-            values="ocupados_promedio", aggfunc="sum", fill_value=0,
-        ).round(0))
+        df = tabla_2d_enriquecida.assign(rama=lambda d: d["ciiu_2d"] + " - " + d["ciiu_2d_desc"])
+        matriz = df.pivot_table(
+            index="dpto_nombre",
+            columns="rama",
+            values="ocupados_promedio",
+            aggfunc="sum",
+            fill_value=0,
+        ).round(0)
         matriz["TOTAL"] = matriz.sum(axis=1)
         matriz.loc["TOTAL NACIONAL"] = matriz.sum(axis=0)
         return matriz
@@ -530,16 +531,13 @@ class OcupadosDptoRama:
     def _ajustar_anchos(ruta: Path) -> None:
         try:
             from openpyxl import load_workbook
+
             wb = load_workbook(ruta)
             for ws in wb.worksheets:
                 for col in ws.columns:
-                    longitudes = (
-                        len(str(c.value)) for c in col if c.value is not None
-                    )
+                    longitudes = (len(str(c.value)) for c in col if c.value is not None)
                     max_len = max(longitudes, default=10)
-                    ws.column_dimensions[col[0].column_letter].width = min(
-                        max_len + 2, 50
-                    )
+                    ws.column_dimensions[col[0].column_letter].width = min(max_len + 2, 50)
             wb.save(ruta)
         except ImportError:
             pass

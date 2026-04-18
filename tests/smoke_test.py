@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 tests/smoke_test.py — Smoke test del pipeline GEIH.
 
@@ -58,16 +57,22 @@ def ejecutar_smoke_test(
     # ── 1. Importar paquete ────────────────────────────────────
     try:
         from geih import (
-            ConfigGEIH, PreparadorGEIH, DiagnosticoCalidad,
-            IndicadoresLaborales, DistribucionIngresos,
-            AnalisisSalarios, BrechaGenero, IndicesCompuestos,
-            CalidadEmpleo, CompetitividadLaboral,
-            DuracionDesempleo, DashboardSectoresProColombia,
-            AnatomaSalario, FormaPago, CanalEmpleo,
-            AnalisisCampesino, AnalisisDiscapacidad,
+            AnalisisCampesino,
+            AnatomaSalario,
+            BrechaGenero,
+            CanalEmpleo,
+            ConfigGEIH,
+            DashboardSectoresProColombia,
+            DistribucionIngresos,
+            DuracionDesempleo,
+            FormaPago,
             GraficoCurvaLorenz,
+            IndicadoresLaborales,
+            IndicesCompuestos,
+            PreparadorGEIH,
             __version__,
         )
+
         print(f"  ✅ 1/7 Paquete importado (v{__version__})")
     except Exception as e:
         errores.append(f"Importación: {e}")
@@ -90,24 +95,27 @@ def ejecutar_smoke_test(
         golden_path = Path(__file__).parent / "golden_set.parquet"
         if golden_path.exists():
             import pandas as pd
+
             df_raw = pd.read_parquet(golden_path)
             print(f"  ✅ 3/7 Golden set cargado ({len(df_raw):,} filas)")
         elif ruta_base:
-            from geih import ConsolidadorGEIH
             parquet = Path(ruta_base) / f"GEIH_{anio}_Consolidado.parquet"
             if parquet.exists():
                 import pandas as pd
+
                 df_raw = pd.read_parquet(parquet)
                 if muestra_n > 0 and len(df_raw) > muestra_n:
                     df_raw = df_raw.sample(muestra_n, random_state=42)
                 print(f"  ✅ 3/7 Muestra cargada ({len(df_raw):,} filas)")
             else:
-                print(f"  ⚠️  3/7 No hay Parquet ni golden set — generando golden set...")
+                print("  ⚠️  3/7 No hay Parquet ni golden set — generando golden set...")
                 from tests.generar_golden_set import generar_golden_set
+
                 df_raw = generar_golden_set(ruta_salida=str(golden_path))
                 print(f"  ✅ 3/7 Golden set generado ({len(df_raw):,} filas)")
         else:
             from tests.generar_golden_set import generar_golden_set
+
             df_raw = generar_golden_set(ruta_salida=str(golden_path))
             print(f"  ✅ 3/7 Golden set generado ({len(df_raw):,} filas)")
     except Exception as e:
@@ -141,8 +149,10 @@ def ejecutar_smoke_test(
         assert 0 < r["TD_%"] < 100
         assert 0 < r["TGP_%"] < 100
         assert r["PEA_M"] < 40  # no debe estar inflado
-        print(f"  ✅ 5/7 Indicadores OK (TD={r['TD_%']:.1f}%, "
-              f"TGP={r['TGP_%']:.1f}%, TO={r['TO_%']:.1f}%)")
+        print(
+            f"  ✅ 5/7 Indicadores OK (TD={r['TD_%']:.1f}%, "
+            f"TGP={r['TGP_%']:.1f}%, TO={r['TO_%']:.1f}%)"
+        )
     except Exception as e:
         errores.append(f"Indicadores: {e}")
         print(f"  ❌ 5/7 Error indicadores: {e}")
@@ -172,19 +182,23 @@ def ejecutar_smoke_test(
     if modulos_ok == modulos_total:
         print(f"  ✅ 6/7 {modulos_ok}/{modulos_total} módulos ejecutados sin error")
     else:
-        print(f"  ⚠️  6/7 {modulos_ok}/{modulos_total} módulos OK "
-              f"({modulos_total - modulos_ok} fallaron)")
+        print(
+            f"  ⚠️  6/7 {modulos_ok}/{modulos_total} módulos OK "
+            f"({modulos_total - modulos_ok} fallaron)"
+        )
 
     # ── 7. Gráfico de prueba ──────────────────────────────────
     try:
         import matplotlib
+
         matplotlib.use("Agg")  # No mostrar ventana
         df_ocu = df[(df["OCI"] == 1) & (df["INGLABO"] > 0)]
         if len(df_ocu) > 10:
             fig = GraficoCurvaLorenz().graficar(df_ocu)
             import matplotlib.pyplot as plt
+
             plt.close(fig)
-            print(f"  ✅ 7/7 Gráfico Lorenz generado sin error")
+            print("  ✅ 7/7 Gráfico Lorenz generado sin error")
         else:
             print(f"  ⚠️  7/7 Pocos ocupados para gráfico ({len(df_ocu)})")
     except Exception as e:
@@ -200,14 +214,14 @@ def _resultado_final(errores, inicio):
     print(f"\n{'─'*65}")
     if not errores:
         print(f"  ✅ SMOKE TEST PASADO en {elapsed:.1f}s")
-        print(f"  → Es seguro ejecutar el pipeline completo.")
+        print("  → Es seguro ejecutar el pipeline completo.")
         print(f"{'─'*65}")
         return True
     else:
         print(f"  ❌ SMOKE TEST FALLIDO — {len(errores)} errores en {elapsed:.1f}s")
         for i, err in enumerate(errores, 1):
             print(f"     {i}. {err}")
-        print(f"\n  → NO proceder con el pipeline hasta corregir los errores.")
+        print("\n  → NO proceder con el pipeline hasta corregir los errores.")
         print(f"{'─'*65}")
         return False
 
@@ -215,6 +229,7 @@ def _resultado_final(errores, inicio):
 if __name__ == "__main__":
     # Ejecutar standalone
     import sys
+
     ruta = sys.argv[1] if len(sys.argv) > 1 else None
     ok = ejecutar_smoke_test(ruta_base=ruta)
     sys.exit(0 if ok else 1)

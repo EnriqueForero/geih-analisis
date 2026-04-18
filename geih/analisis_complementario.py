@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 geih.analisis_complementario — Análisis complementarios M8, M14, MX1–MX3.
 
@@ -26,27 +25,23 @@ __all__ = [
 ]
 
 
-from typing import Optional, Dict, Any, List
+from typing import Any, Optional
 
 import numpy as np
 import pandas as pd
 
 from .config import (
-    ConfigGEIH,
-    SMMLV_2025,
     DEPARTAMENTOS,
-    RAMAS_DANE,
-    TABLA_CIIU_RAMAS,
-    TAMANO_EMPRESA,
-    CARGA_PRESTACIONAL,
     NIVELES_AGRUPADOS,
+    TAMANO_EMPRESA,
+    ConfigGEIH,
 )
 from .utils import EstadisticasPonderadas as EP
-
 
 # ═════════════════════════════════════════════════════════════════════
 # FUNCIONES AUXILIARES INTERNAS
 # ═════════════════════════════════════════════════════════════════════
+
 
 def _tasa(df, mask_num, mask_den, col_peso="FEX_ADJ"):
     """Calcula % ponderado = Σ(FEX condición) / Σ(FEX universo) × 100."""
@@ -58,6 +53,7 @@ def _tasa(df, mask_num, mask_den, col_peso="FEX_ADJ"):
 # ═════════════════════════════════════════════════════════════════════
 # M8 · DURACIÓN DEL DESEMPLEO
 # ═════════════════════════════════════════════════════════════════════
+
 
 class DuracionDesempleo:
     """Análisis de duración del desempleo por semanas buscando empleo (P7250).
@@ -114,13 +110,17 @@ class DuracionDesempleo:
             return pd.DataFrame()
 
         df_dsi["DUR_CAT"] = pd.cut(
-            df_dsi["P7250"], bins=self.BINS,
-            labels=self.ETIQUETAS_CORTAS, right=False, include_lowest=True,
+            df_dsi["P7250"],
+            bins=self.BINS,
+            labels=self.ETIQUETAS_CORTAS,
+            right=False,
+            include_lowest=True,
         )
 
         dist = (
             df_dsi.groupby("DUR_CAT", observed=True)["FEX_ADJ"]
-            .sum().reset_index()
+            .sum()
+            .reset_index()
             .rename(columns={"DUR_CAT": "Rango", "FEX_ADJ": "Personas"})
         )
         dist["Personas_M"] = (dist["Personas"] / 1e6).round(3)
@@ -143,8 +143,11 @@ class DuracionDesempleo:
             return pd.DataFrame()
 
         df_dsi["DUR_CAT"] = pd.cut(
-            df_dsi["P7250"], bins=self.BINS,
-            labels=self.ETIQUETAS_CORTAS, right=False, include_lowest=True,
+            df_dsi["P7250"],
+            bins=self.BINS,
+            labels=self.ETIQUETAS_CORTAS,
+            right=False,
+            include_lowest=True,
         )
         df_dsi["SEXO"] = df_dsi["P3271"].map({1: "Hombres", 2: "Mujeres"})
 
@@ -152,17 +155,19 @@ class DuracionDesempleo:
         for sexo in ["Hombres", "Mujeres"]:
             m_sexo = df_dsi["SEXO"] == sexo
             total_sexo = df_dsi.loc[m_sexo, "FEX_ADJ"].sum()
-            med = EP.mediana(
-                df_dsi.loc[m_sexo, "P7250"], df_dsi.loc[m_sexo, "FEX_ADJ"]
-            )
+            med = EP.mediana(df_dsi.loc[m_sexo, "P7250"], df_dsi.loc[m_sexo, "FEX_ADJ"])
             for rango in self.ETIQUETAS_CORTAS:
                 m_rango = m_sexo & (df_dsi["DUR_CAT"] == rango)
                 n = df_dsi.loc[m_rango, "FEX_ADJ"].sum()
-                filas.append({
-                    "Sexo": sexo, "Rango": rango,
-                    "Personas": n, "Pct": round(n / total_sexo * 100, 1),
-                    "Mediana_semanas": round(med, 1),
-                })
+                filas.append(
+                    {
+                        "Sexo": sexo,
+                        "Rango": rango,
+                        "Personas": n,
+                        "Pct": round(n / total_sexo * 100, 1),
+                        "Mediana_semanas": round(med, 1),
+                    }
+                )
         return pd.DataFrame(filas)
 
     def por_educacion(self, df: pd.DataFrame) -> pd.DataFrame:
@@ -187,12 +192,14 @@ class DuracionDesempleo:
             # % largo plazo (> 26 semanas)
             m_lp = m & (df_dsi["P7250"] >= 26)
             pct_lp = df_dsi.loc[m_lp, "FEX_ADJ"].sum() / n * 100
-            filas.append({
-                "Nivel_educativo": nivel,
-                "Desocupados_M": round(n / 1e6, 3),
-                "Mediana_semanas": round(med, 1),
-                "Pct_largo_plazo_%": round(pct_lp, 1),
-            })
+            filas.append(
+                {
+                    "Nivel_educativo": nivel,
+                    "Desocupados_M": round(n / 1e6, 3),
+                    "Mediana_semanas": round(med, 1),
+                    "Pct_largo_plazo_%": round(pct_lp, 1),
+                }
+            )
         return pd.DataFrame(filas)
 
     def por_departamento(self, df: pd.DataFrame) -> pd.DataFrame:
@@ -207,6 +214,7 @@ class DuracionDesempleo:
 
         if "DPTO_STR" not in df_dsi.columns:
             from .utils import ConversorTipos
+
             df_dsi["DPTO_STR"] = ConversorTipos.estandarizar_dpto(df_dsi["DPTO"])
 
         filas = []
@@ -216,11 +224,14 @@ class DuracionDesempleo:
             if n < 1_000:
                 continue
             med = EP.mediana(df_dsi.loc[m, "P7250"], df_dsi.loc[m, "FEX_ADJ"])
-            filas.append({
-                "Departamento": nombre, "DPTO": dpto,
-                "Mediana_semanas": round(med, 1),
-                "Desocupados_miles": round(n / 1_000, 1),
-            })
+            filas.append(
+                {
+                    "Departamento": nombre,
+                    "DPTO": dpto,
+                    "Mediana_semanas": round(med, 1),
+                    "Desocupados_miles": round(n / 1_000, 1),
+                }
+            )
         return pd.DataFrame(filas).sort_values("Mediana_semanas", ascending=False)
 
     def _imprimir(self, dist: pd.DataFrame, mediana: float) -> None:
@@ -237,14 +248,14 @@ class DuracionDesempleo:
 # ═════════════════════════════════════════════════════════════════════
 
 # Mapeo CIIU 2D → sector estratégico (rangos de códigos CIIU relevantes)
-_SECTORES_PROCOLOMBIA: Dict[str, List[range]] = {
-    "TIC / Software":            [range(58, 64)],          # Información y comunicaciones
-    "Turismo y Hotelería":       [range(55, 57), range(79, 80)],  # Alojamiento + agencias
-    "Agroindustria":             [range(1, 4), range(10, 13)],    # Agri + alimentos
-    "Financiero y Seguros":      [range(64, 67)],          # Finanzas y seguros
-    "Química y Farmacéutica":    [range(20, 22)],          # Químicos + farma
-    "Textil y Confecciones":     [range(13, 16)],          # Textil, confección, calzado
-    "Manufactura Avanzada":      [range(26, 31)],          # Electrónica, maquinaria, vehículos
+_SECTORES_PROCOLOMBIA: dict[str, list[range]] = {
+    "TIC / Software": [range(58, 64)],  # Información y comunicaciones
+    "Turismo y Hotelería": [range(55, 57), range(79, 80)],  # Alojamiento + agencias
+    "Agroindustria": [range(1, 4), range(10, 13)],  # Agri + alimentos
+    "Financiero y Seguros": [range(64, 67)],  # Finanzas y seguros
+    "Química y Farmacéutica": [range(20, 22)],  # Químicos + farma
+    "Textil y Confecciones": [range(13, 16)],  # Textil, confección, calzado
+    "Manufactura Avanzada": [range(26, 31)],  # Electrónica, maquinaria, vehículos
 }
 
 
@@ -298,7 +309,7 @@ class DashboardSectoresProColombia:
         smmlv = self.config.smmlv
         filas = []
 
-        for sector in _SECTORES_PROCOLOMBIA.keys():
+        for sector in _SECTORES_PROCOLOMBIA:
             m = df_ocu["SECTOR_PC"] == sector
             n = df_ocu.loc[m, "FEX_ADJ"].sum()
             if n < 500:
@@ -331,15 +342,17 @@ class DashboardSectoresProColombia:
                 m_muj = m & (df_ocu["P3271"] == 2)
                 pct_muj = round(df_ocu.loc[m_muj, "FEX_ADJ"].sum() / n * 100, 1)
 
-            filas.append({
-                "Sector": sector,
-                "Empleo_miles": round(n / 1_000, 1),
-                "Mediana_SMMLV": round(med_ing / smmlv, 2) if med_ing else np.nan,
-                "Universitarios_%": pct_univ,
-                "Jóvenes_15_28_%": pct_jov,
-                "Formalidad_%": pct_pen,
-                "Mujeres_%": pct_muj,
-            })
+            filas.append(
+                {
+                    "Sector": sector,
+                    "Empleo_miles": round(n / 1_000, 1),
+                    "Mediana_SMMLV": round(med_ing / smmlv, 2) if med_ing else np.nan,
+                    "Universitarios_%": pct_univ,
+                    "Jóvenes_15_28_%": pct_jov,
+                    "Formalidad_%": pct_pen,
+                    "Mujeres_%": pct_muj,
+                }
+            )
 
         resultado = pd.DataFrame(filas).sort_values("Empleo_miles", ascending=False)
         self._imprimir(resultado)
@@ -349,19 +362,24 @@ class DashboardSectoresProColombia:
         print(f"\n{'='*80}")
         print(f"  M14 · DASHBOARD SECTORES ESTRATÉGICOS — {self.config.periodo_etiqueta}")
         print(f"{'='*80}")
-        print(f"  {'Sector':<28} {'Empleo':>8} {'Med.SML':>8} {'%Univ':>6} "
-              f"{'%Jov':>5} {'%Form':>6} {'%Muj':>5}")
+        print(
+            f"  {'Sector':<28} {'Empleo':>8} {'Med.SML':>8} {'%Univ':>6} "
+            f"{'%Jov':>5} {'%Form':>6} {'%Muj':>5}"
+        )
         print(f"  {'─'*28} {'─'*8} {'─'*8} {'─'*6} {'─'*5} {'─'*6} {'─'*5}")
         for _, r in df.iterrows():
-            print(f"  {r['Sector']:<28} {r['Empleo_miles']:>7.0f}K "
-                  f"{r['Mediana_SMMLV']:>7.2f}× {r['Universitarios_%']:>5.1f} "
-                  f"{r['Jóvenes_15_28_%']:>5.1f} {r['Formalidad_%']:>5.1f} "
-                  f"{r['Mujeres_%']:>5.1f}")
+            print(
+                f"  {r['Sector']:<28} {r['Empleo_miles']:>7.0f}K "
+                f"{r['Mediana_SMMLV']:>7.2f}× {r['Universitarios_%']:>5.1f} "
+                f"{r['Jóvenes_15_28_%']:>5.1f} {r['Formalidad_%']:>5.1f} "
+                f"{r['Mujeres_%']:>5.1f}"
+            )
 
 
 # ═════════════════════════════════════════════════════════════════════
 # MX1 · ANATOMÍA DEL SALARIO: P6500 vs INGLABO
 # ═════════════════════════════════════════════════════════════════════
+
 
 class AnatomaSalario:
     """Cruce P6500 (salario bruto declarado) vs INGLABO (ingreso consolidado DANE).
@@ -388,13 +406,15 @@ class AnatomaSalario:
     def _filtrar(self, df: pd.DataFrame) -> pd.DataFrame:
         """Filtra ocupados con ambos ingresos válidos y positivos."""
         mask = (
-            (df["OCI"] == 1) &
-            df["P6500"].notna() & (df["P6500"] > 0) &
-            df["INGLABO"].notna() & (df["INGLABO"] > 0)
+            (df["OCI"] == 1)
+            & df["P6500"].notna()
+            & (df["P6500"] > 0)
+            & df["INGLABO"].notna()
+            & (df["INGLABO"] > 0)
         )
         return df[mask].copy()
 
-    def resumen_nacional(self, df: pd.DataFrame) -> Dict[str, Any]:
+    def resumen_nacional(self, df: pd.DataFrame) -> dict[str, Any]:
         """Resumen nacional de la brecha P6500 vs INGLABO.
 
         Returns:
@@ -452,13 +472,15 @@ class AnatomaSalario:
             med_p = EP.mediana(df_f.loc[m, "P6500"], df_f.loc[m, "FEX_ADJ"])
             med_i = EP.mediana(df_f.loc[m, "INGLABO"], df_f.loc[m, "FEX_ADJ"])
             brecha = (med_i - med_p) / med_p * 100 if med_p > 0 else np.nan
-            filas.append({
-                "Rama": rama,
-                "Ocupados_miles": round(n / 1_000, 1),
-                "Mediana_P6500": round(med_p),
-                "Mediana_INGLABO": round(med_i),
-                "Brecha_%": round(brecha, 1),
-            })
+            filas.append(
+                {
+                    "Rama": rama,
+                    "Ocupados_miles": round(n / 1_000, 1),
+                    "Mediana_P6500": round(med_p),
+                    "Mediana_INGLABO": round(med_i),
+                    "Brecha_%": round(brecha, 1),
+                }
+            )
         return pd.DataFrame(filas).sort_values("Brecha_%", ascending=False)
 
     def por_tamano_empresa(self, df: pd.DataFrame) -> pd.DataFrame:
@@ -480,14 +502,16 @@ class AnatomaSalario:
             med_p = EP.mediana(df_f.loc[m, "P6500"], df_f.loc[m, "FEX_ADJ"])
             med_i = EP.mediana(df_f.loc[m, "INGLABO"], df_f.loc[m, "FEX_ADJ"])
             brecha = (med_i - med_p) / med_p * 100 if med_p > 0 else np.nan
-            filas.append({
-                "Tamaño": etiq,
-                "Cod": cod,
-                "Ocupados_miles": round(n / 1_000, 1),
-                "Mediana_P6500": round(med_p),
-                "Mediana_INGLABO": round(med_i),
-                "Brecha_%": round(brecha, 1),
-            })
+            filas.append(
+                {
+                    "Tamaño": etiq,
+                    "Cod": cod,
+                    "Ocupados_miles": round(n / 1_000, 1),
+                    "Mediana_P6500": round(med_p),
+                    "Mediana_INGLABO": round(med_i),
+                    "Brecha_%": round(brecha, 1),
+                }
+            )
         return pd.DataFrame(filas).sort_values("Cod")
 
 
@@ -500,7 +524,7 @@ class AnatomaSalario:
 #   - Algunos años usan letras: 'a', 'b', 'c', ...
 #   - Otros años usan números: 1, 2, 3, ...
 # Este mapeo cubre AMBOS formatos para máxima compatibilidad.
-_FORMA_PAGO_LETRAS: Dict[str, str] = {
+_FORMA_PAGO_LETRAS: dict[str, str] = {
     "a": "Honorarios / Prestación de servicios",
     "b": "Jornal o diario",
     "c": "A destajo (pieza, maquila)",
@@ -512,7 +536,7 @@ _FORMA_PAGO_LETRAS: Dict[str, str] = {
     "i": "Ganancia neta (negocio)",
 }
 
-_FORMA_PAGO_NUMEROS: Dict[str, str] = {
+_FORMA_PAGO_NUMEROS: dict[str, str] = {
     "1": "Honorarios / Prestación de servicios",
     "2": "Jornal o diario",
     "3": "A destajo (pieza, maquila)",
@@ -525,7 +549,7 @@ _FORMA_PAGO_NUMEROS: Dict[str, str] = {
 }
 
 # Mapeo combinado: acepta '1', '1.0', 'a', etc.
-_FORMA_PAGO: Dict[str, str] = {
+_FORMA_PAGO: dict[str, str] = {
     **_FORMA_PAGO_LETRAS,
     **_FORMA_PAGO_NUMEROS,
     # Variantes con .0 (pandas lee floats como '1.0')
@@ -576,16 +600,17 @@ class FormaPago:
         # Si el mapeo no funcionó, diagnosticar y usar valores crudos
         if n_mapeados == 0:
             valores_unicos = df_ocu["P6765_STR"].value_counts().head(10)
-            print(f"⚠️  P6765: ningún valor coincide con el mapeo conocido.")
-            print(f"   Valores encontrados en la base (top 10):")
+            print("⚠️  P6765: ningún valor coincide con el mapeo conocido.")
+            print("   Valores encontrados en la base (top 10):")
             for val, count in valores_unicos.items():
                 print(f"     '{val}' → {count:,} registros")
-            print(f"   Usando valores crudos como etiqueta.")
+            print("   Usando valores crudos como etiqueta.")
             df_ocu["FORMA_ETIQ"] = df_ocu["P6765_STR"]
 
         dist = (
             df_ocu.groupby("FORMA_ETIQ", observed=True)["FEX_ADJ"]
-            .sum().reset_index()
+            .sum()
+            .reset_index()
             .rename(columns={"FORMA_ETIQ": "Forma_pago", "FEX_ADJ": "Ocupados"})
         )
         # Eliminar filas NaN (valores que no mapearon)
@@ -624,12 +649,14 @@ class FormaPago:
             if total < 5_000:
                 continue
             n_pen = df_ocu.loc[m & (df_ocu["P6920"] == 1), "FEX_ADJ"].sum()
-            filas.append({
-                "Forma_pago": forma,
-                "Ocupados_miles": round(total / 1_000, 1),
-                "Cotiza_pension_%": round(n_pen / total * 100, 1),
-                "No_cotiza_%": round((1 - n_pen / total) * 100, 1),
-            })
+            filas.append(
+                {
+                    "Forma_pago": forma,
+                    "Ocupados_miles": round(total / 1_000, 1),
+                    "Cotiza_pension_%": round(n_pen / total * 100, 1),
+                    "No_cotiza_%": round((1 - n_pen / total) * 100, 1),
+                }
+            )
         return pd.DataFrame(filas).sort_values("Cotiza_pension_%", ascending=False)
 
     def _imprimir(self, dist: pd.DataFrame) -> None:
@@ -637,8 +664,7 @@ class FormaPago:
         print(f"  MX2 · FORMA DE PAGO — {self.config.periodo_etiqueta}")
         print(f"{'='*60}")
         for _, r in dist.iterrows():
-            print(f"  {str(r['Forma_pago']):<45} "
-                  f"{r['Ocupados_M']:>6.3f}M  ({r['Pct']:>5.1f}%)")
+            print(f"  {r['Forma_pago']!s:<45} " f"{r['Ocupados_M']:>6.3f}M  ({r['Pct']:>5.1f}%)")
 
 
 # ═════════════════════════════════════════════════════════════════════
@@ -646,7 +672,7 @@ class FormaPago:
 # ═════════════════════════════════════════════════════════════════════
 
 # Mapeo P3363 → etiqueta descriptiva
-_CANAL_EMPLEO: Dict[int, str] = {
+_CANAL_EMPLEO: dict[int, str] = {
     1: "Contactos / amigos / familiares",
     2: "Clasificados / avisos",
     3: "Agencia empleo (SENA/Cajas)",
@@ -687,14 +713,13 @@ class CanalEmpleo:
             print("⚠️  P3363 no disponible en la base.")
             return pd.DataFrame()
 
-        df_ocu["CANAL_ETIQ"] = pd.to_numeric(
-            df_ocu["P3363"], errors="coerce"
-        ).map(_CANAL_EMPLEO)
+        df_ocu["CANAL_ETIQ"] = pd.to_numeric(df_ocu["P3363"], errors="coerce").map(_CANAL_EMPLEO)
 
         dist = (
             df_ocu[df_ocu["CANAL_ETIQ"].notna()]
             .groupby("CANAL_ETIQ", observed=True)["FEX_ADJ"]
-            .sum().reset_index()
+            .sum()
+            .reset_index()
             .rename(columns={"CANAL_ETIQ": "Canal", "FEX_ADJ": "Ocupados"})
         )
         dist["Ocupados_M"] = (dist["Ocupados"] / 1e6).round(3)
@@ -717,9 +742,7 @@ class CanalEmpleo:
         if df_ocu.empty or "P3042" not in df_ocu.columns:
             return pd.DataFrame()
 
-        df_ocu["CANAL_ETIQ"] = pd.to_numeric(
-            df_ocu["P3363"], errors="coerce"
-        ).map(_CANAL_EMPLEO)
+        df_ocu["CANAL_ETIQ"] = pd.to_numeric(df_ocu["P3363"], errors="coerce").map(_CANAL_EMPLEO)
         df_ocu["NIVEL_GRUPO"] = df_ocu["P3042"].map(NIVELES_AGRUPADOS)
 
         filas = []
@@ -731,11 +754,13 @@ class CanalEmpleo:
             for canal in df_ocu["CANAL_ETIQ"].dropna().unique():
                 m_can = m_niv & (df_ocu["CANAL_ETIQ"] == canal)
                 n = df_ocu.loc[m_can, "FEX_ADJ"].sum()
-                filas.append({
-                    "Nivel_educativo": nivel,
-                    "Canal": canal,
-                    "Pct": round(n / total_niv * 100, 1),
-                })
+                filas.append(
+                    {
+                        "Nivel_educativo": nivel,
+                        "Canal": canal,
+                        "Pct": round(n / total_niv * 100, 1),
+                    }
+                )
         return pd.DataFrame(filas)
 
     def _imprimir(self, dist: pd.DataFrame) -> None:
@@ -743,5 +768,4 @@ class CanalEmpleo:
         print(f"  MX3 · CANAL DE EMPLEO — {self.config.periodo_etiqueta}")
         print(f"{'='*60}")
         for _, r in dist.iterrows():
-            print(f"  {str(r['Canal']):<42} "
-                  f"{r['Ocupados_M']:>6.3f}M  ({r['Pct']:>5.1f}%)")
+            print(f"  {r['Canal']!s:<42} " f"{r['Ocupados_M']:>6.3f}M  ({r['Pct']:>5.1f}%)")

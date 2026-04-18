@@ -1,9 +1,9 @@
-# -*- coding: utf-8 -*-
 """Tests para geih.utils — Estadísticas ponderadas."""
 
 import numpy as np
 import pandas as pd
 import pytest
+
 from geih.utils import EstadisticasPonderadas as EP
 
 

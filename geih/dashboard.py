@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 geih.dashboard — Dashboard interactivo Streamlit para exploración de resultados.
 
@@ -46,13 +45,23 @@ def ejecutar_dashboard(
         puerto: Puerto del servidor Streamlit.
     """
     import subprocess
+
     script = str(Path(__file__).resolve())
-    subprocess.Popen([
-        sys.executable, "-m", "streamlit", "run", script,
-        "--server.port", str(puerto),
-        "--server.headless", "true",
-        "--", ruta_base,
-    ])
+    subprocess.Popen(
+        [
+            sys.executable,
+            "-m",
+            "streamlit",
+            "run",
+            script,
+            "--server.port",
+            str(puerto),
+            "--server.headless",
+            "true",
+            "--",
+            ruta_base,
+        ]
+    )
     print(f"🌐 Dashboard disponible en http://localhost:{puerto}")
 
 
@@ -61,20 +70,23 @@ def ejecutar_dashboard(
 # No se ejecuta al hacer `from geih.dashboard import ...`
 # ═════════════════════════════════════════════════════════════════════
 
+
 def _main():
     """Punto de entrada del dashboard Streamlit."""
     try:
-        import streamlit as st
         import plotly.express as px
-        import plotly.graph_objects as go
+
+        # import plotly.graph_objects as go
+        import streamlit as st
     except ImportError:
         print("❌ Instale streamlit y plotly:")
         print("   pip install streamlit plotly")
         return
 
-    import pandas as pd
-    import numpy as np
     from pathlib import Path
+
+    import numpy as np
+    import pandas as pd
 
     # ── Configuración de página ────────────────────────────────
     st.set_page_config(
@@ -85,7 +97,8 @@ def _main():
     )
 
     # ── CSS institucional ──────────────────────────────────────
-    st.markdown("""
+    st.markdown(
+        """
     <style>
     .main-header {
         font-size: 2rem; font-weight: bold; color: #1A3C6E;
@@ -98,14 +111,18 @@ def _main():
     }
     .stTabs [data-baseweb="tab-list"] { gap: 8px; }
     </style>
-    """, unsafe_allow_html=True)
+    """,
+        unsafe_allow_html=True,
+    )
 
-    st.markdown('<div class="main-header">📊 GEIH Dashboard</div>',
-                unsafe_allow_html=True)
+    st.markdown('<div class="main-header">📊 GEIH Dashboard</div>', unsafe_allow_html=True)
 
     # ── Sidebar: configuración ─────────────────────────────────
-    st.sidebar.image("https://procolombia.co/sites/default/files/logo_procolombia.png",
-                     width=200, use_container_width=False)
+    st.sidebar.image(
+        "https://procolombia.co/sites/default/files/logo_procolombia.png",
+        width=200,
+        use_container_width=False,
+    )
     st.sidebar.title("⚙️ Configuración")
 
     # Ruta de datos
@@ -132,7 +149,8 @@ def _main():
             st.stop()
     else:
         archivo_sel = st.sidebar.selectbox(
-            "Archivo Parquet", parquets,
+            "Archivo Parquet",
+            parquets,
             format_func=lambda x: x.name,
         )
         df = _cargar_con_cache(str(archivo_sel))
@@ -145,10 +163,15 @@ def _main():
         st.sidebar.markdown(f"**Meses:** {len(meses)}")
 
     # ── Tabs principales ───────────────────────────────────────
-    tab1, tab2, tab3, tab4, tab5 = st.tabs([
-        "📈 Indicadores", "💰 Ingresos", "🏢 Sectores",
-        "🗺️ Departamentos", "📋 Explorar datos",
-    ])
+    tab1, tab2, tab3, tab4, tab5 = st.tabs(
+        [
+            "📈 Indicadores",
+            "💰 Ingresos",
+            "🏢 Sectores",
+            "🗺️ Departamentos",
+            "📋 Explorar datos",
+        ]
+    )
 
     # ── Preparar datos básicos ─────────────────────────────────
     col_peso = "FEX_ADJ" if "FEX_ADJ" in df.columns else "FEX_C18"
@@ -185,8 +208,9 @@ def _main():
                     dsi_s = df.loc[m & (df["DSI"] == 1), col_peso].sum()
                     td_s = dsi_s / pea_s * 100 if pea_s > 0 else 0
                     ocu_s = df.loc[m & (df["OCI"] == 1), col_peso].sum()
-                    sexo_data.append({"Sexo": sl, "TD_%": round(td_s, 1),
-                                      "Ocupados_M": round(ocu_s / 1e6, 2)})
+                    sexo_data.append(
+                        {"Sexo": sl, "TD_%": round(td_s, 1), "Ocupados_M": round(ocu_s / 1e6, 2)}
+                    )
                 st.dataframe(pd.DataFrame(sexo_data), use_container_width=True)
 
             # Gráfico estacionalidad si hay MES_NUM
@@ -199,18 +223,23 @@ def _main():
                     dsi_m = df.loc[m & (df["DSI"] == 1), "FEX_C18"].sum()
                     ocu_m = df.loc[m & (df["OCI"] == 1), "FEX_C18"].sum()
                     pet_m = df.loc[m & (df["PET"] == 1), "FEX_C18"].sum()
-                    estac_rows.append({
-                        "Mes": int(mes),
-                        "TD_%": round(dsi_m / pea_m * 100, 1) if pea_m > 0 else 0,
-                        "TGP_%": round(pea_m / pet_m * 100, 1) if pet_m > 0 else 0,
-                        "TO_%": round(ocu_m / pet_m * 100, 1) if pet_m > 0 else 0,
-                    })
+                    estac_rows.append(
+                        {
+                            "Mes": int(mes),
+                            "TD_%": round(dsi_m / pea_m * 100, 1) if pea_m > 0 else 0,
+                            "TGP_%": round(pea_m / pet_m * 100, 1) if pet_m > 0 else 0,
+                            "TO_%": round(ocu_m / pet_m * 100, 1) if pet_m > 0 else 0,
+                        }
+                    )
                 df_estac = pd.DataFrame(estac_rows)
-                fig_e = px.line(df_estac, x="Mes", y=["TD_%", "TGP_%", "TO_%"],
-                                title="Indicadores mensuales", markers=True,
-                                color_discrete_map={"TD_%": "#C0392B",
-                                                     "TGP_%": "#2E6DA4",
-                                                     "TO_%": "#1E8449"})
+                fig_e = px.line(
+                    df_estac,
+                    x="Mes",
+                    y=["TD_%", "TGP_%", "TO_%"],
+                    title="Indicadores mensuales",
+                    markers=True,
+                    color_discrete_map={"TD_%": "#C0392B", "TGP_%": "#2E6DA4", "TO_%": "#1E8449"},
+                )
                 st.plotly_chart(fig_e, use_container_width=True)
         else:
             st.info("Columnas FT, OCI, DSI, PET no disponibles para indicadores.")
@@ -229,23 +258,34 @@ def _main():
             df_sample = df_ocu.sample(sample_n, weights=col_peso, random_state=42, replace=True)
             if "P3271" in df_sample.columns:
                 df_sample["Sexo"] = df_sample["P3271"].map({1: "Hombres", 2: "Mujeres"})
-                fig_h = px.histogram(df_sample, x="SMMLV_mult", color="Sexo",
-                                      nbins=60, barmode="overlay", opacity=0.7,
-                                      range_x=[0, 10],
-                                      color_discrete_map={"Hombres": "#2E6DA4",
-                                                           "Mujeres": "#C0392B"},
-                                      title="Distribución del ingreso (× SMMLV)")
+                fig_h = px.histogram(
+                    df_sample,
+                    x="SMMLV_mult",
+                    color="Sexo",
+                    nbins=60,
+                    barmode="overlay",
+                    opacity=0.7,
+                    range_x=[0, 10],
+                    color_discrete_map={"Hombres": "#2E6DA4", "Mujeres": "#C0392B"},
+                    title="Distribución del ingreso (× SMMLV)",
+                )
             else:
-                fig_h = px.histogram(df_sample, x="SMMLV_mult", nbins=60,
-                                      range_x=[0, 10],
-                                      title="Distribución del ingreso (× SMMLV)")
-            fig_h.add_vline(x=1, line_dash="dash", line_color="green",
-                            annotation_text="1 SMMLV")
+                fig_h = px.histogram(
+                    df_sample,
+                    x="SMMLV_mult",
+                    nbins=60,
+                    range_x=[0, 10],
+                    title="Distribución del ingreso (× SMMLV)",
+                )
+            fig_h.add_vline(x=1, line_dash="dash", line_color="green", annotation_text="1 SMMLV")
             st.plotly_chart(fig_h, use_container_width=True)
 
             # Estadísticas
-            med = np.average(df_ocu["INGLABO"],
-                             weights=df_ocu[col_peso]) if col_peso in df_ocu.columns else df_ocu["INGLABO"].mean()
+            med = (
+                np.average(df_ocu["INGLABO"], weights=df_ocu[col_peso])
+                if col_peso in df_ocu.columns
+                else df_ocu["INGLABO"].mean()
+            )
             c1, c2, c3 = st.columns(3)
             c1.metric("Media", f"${med:,.0f}")
             c2.metric("Mediana (aprox.)", f"${df_ocu['INGLABO'].median():,.0f}")
@@ -259,17 +299,25 @@ def _main():
         rama_col = "RAMA" if "RAMA" in df.columns else "RAMA2D_R4"
         if tiene_ocu and rama_col in df.columns:
             df_rama = (
-                df[df["OCI"] == 1].groupby(rama_col)[col_peso]
-                .sum().sort_values(ascending=False)
+                df[df["OCI"] == 1]
+                .groupby(rama_col)[col_peso]
+                .sum()
+                .sort_values(ascending=False)
                 .reset_index()
                 .rename(columns={rama_col: "Rama", col_peso: "Ocupados"})
             )
             df_rama["Ocupados_M"] = (df_rama["Ocupados"] / 1e6).round(2)
             df_rama = df_rama.head(15)
 
-            fig_r = px.bar(df_rama, y="Rama", x="Ocupados_M",
-                          orientation="h", title="Top 15 ramas por ocupados (M)",
-                          color="Ocupados_M", color_continuous_scale="Blues")
+            fig_r = px.bar(
+                df_rama,
+                y="Rama",
+                x="Ocupados_M",
+                orientation="h",
+                title="Top 15 ramas por ocupados (M)",
+                color="Ocupados_M",
+                color_continuous_scale="Blues",
+            )
             fig_r.update_layout(yaxis=dict(autorange="reversed"), height=500)
             st.plotly_chart(fig_r, use_container_width=True)
 
@@ -280,7 +328,13 @@ def _main():
     # ═══ TAB 4: DEPARTAMENTOS ═════════════════════════════════
     with tab4:
         st.subheader("Indicadores por Departamento")
-        dpto_col = "NOMBRE_DPTO" if "NOMBRE_DPTO" in df.columns else "DPTO_STR" if "DPTO_STR" in df.columns else "DPTO"
+        dpto_col = (
+            "NOMBRE_DPTO"
+            if "NOMBRE_DPTO" in df.columns
+            else "DPTO_STR"
+            if "DPTO_STR" in df.columns
+            else "DPTO"
+        )
         if dpto_col in df.columns and all(c in df.columns for c in ["FT", "OCI", "DSI", col_peso]):
             dptos = df[dpto_col].dropna().unique()
             filas_d = []
@@ -291,18 +345,27 @@ def _main():
                 ocu_d = df.loc[m & (df["OCI"] == 1), col_peso].sum()
                 if pea_d < 1_000:
                     continue
-                filas_d.append({
-                    "Departamento": str(d),
-                    "TD_%": round(dsi_d / pea_d * 100, 1),
-                    "Ocupados_miles": round(ocu_d / 1_000, 1),
-                })
+                filas_d.append(
+                    {
+                        "Departamento": str(d),
+                        "TD_%": round(dsi_d / pea_d * 100, 1),
+                        "Ocupados_miles": round(ocu_d / 1_000, 1),
+                    }
+                )
             df_dpto = pd.DataFrame(filas_d).sort_values("TD_%", ascending=False)
 
-            fig_d = px.bar(df_dpto, x="TD_%", y="Departamento",
-                          orientation="h", title="Tasa de Desempleo por Departamento",
-                          color="TD_%", color_continuous_scale="RdYlGn_r")
-            fig_d.update_layout(yaxis=dict(autorange="reversed"),
-                               height=max(400, len(df_dpto) * 25))
+            fig_d = px.bar(
+                df_dpto,
+                x="TD_%",
+                y="Departamento",
+                orientation="h",
+                title="Tasa de Desempleo por Departamento",
+                color="TD_%",
+                color_continuous_scale="RdYlGn_r",
+            )
+            fig_d.update_layout(
+                yaxis=dict(autorange="reversed"), height=max(400, len(df_dpto) * 25)
+            )
             st.plotly_chart(fig_d, use_container_width=True)
 
             st.dataframe(df_dpto, use_container_width=True)
@@ -317,9 +380,9 @@ def _main():
         col1, col2 = st.columns(2)
         with col1:
             cols_disponibles = df.columns.tolist()
-            cols_sel = st.multiselect("Columnas a mostrar",
-                                       cols_disponibles,
-                                       default=cols_disponibles[:10])
+            cols_sel = st.multiselect(
+                "Columnas a mostrar", cols_disponibles, default=cols_disponibles[:10]
+            )
         with col2:
             n_filas = st.slider("Filas a mostrar", 10, 1000, 100)
 
@@ -330,8 +393,7 @@ def _main():
         st.markdown("#### 📥 Descargar datos")
         if st.button("Generar CSV (primeras 10,000 filas)"):
             csv = df.head(10_000).to_csv(index=False).encode("utf-8-sig")
-            st.download_button("⬇️ Descargar CSV", csv,
-                              "geih_muestra.csv", "text/csv")
+            st.download_button("⬇️ Descargar CSV", csv, "geih_muestra.csv", "text/csv")
 
     # ── Footer ─────────────────────────────────────────────────
     st.markdown("---")
@@ -346,6 +408,7 @@ def _main():
 def _cargar_con_cache(ruta: str):
     """Carga Parquet con cache manual (compatible sin Streamlit)."""
     import pandas as pd
+
     return pd.read_parquet(ruta)
 
 

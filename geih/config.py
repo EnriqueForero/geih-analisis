@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 geih.config — Configuración centralizada para el análisis GEIH.
 
@@ -87,22 +86,21 @@ __all__ = [
 
 
 import json
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Tuple, Optional, Any
-
+from typing import Any, Optional
 
 # ═════════════════════════════════════════════════════════════════════
 # CARGA DE CONFIGURACIÓN EXTERNA (geih_config.json)
 # ═════════════════════════════════════════════════════════════════════
 
-_CONFIG_EXTERNA_CACHE: Optional[Dict[str, Any]] = None
+_CONFIG_EXTERNA_CACHE: Optional[dict[str, Any]] = None
 
 
 def cargar_config_externa(
     ruta: Optional[str] = None,
     silencioso: bool = True,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Carga configuración desde un archivo JSON externo.
 
     Busca geih_config.json en este orden de prioridad:
@@ -138,7 +136,7 @@ def cargar_config_externa(
     import os
 
     # Orden de búsqueda
-    candidatos: List[Path] = []
+    candidatos: list[Path] = []
     if ruta:
         candidatos.append(Path(ruta))
     env_path = os.environ.get("GEIH_CONFIG_PATH")
@@ -150,7 +148,7 @@ def cargar_config_externa(
     for archivo in candidatos:
         if archivo.exists() and archivo.is_file():
             try:
-                with open(archivo, "r", encoding="utf-8") as f:
+                with open(archivo, encoding="utf-8") as f:
                     data = json.load(f)
                 if not silencioso:
                     print(f"📋 Configuración externa cargada: {archivo}")
@@ -167,7 +165,7 @@ def cargar_config_externa(
     return {}
 
 
-def _merge_smmlv(hardcoded: Dict[int, int]) -> Dict[int, int]:
+def _merge_smmlv(hardcoded: dict[int, int]) -> dict[int, int]:
     """Combina SMMLV hardcodeado con valores del JSON externo.
 
     El JSON externo tiene prioridad: si define un año que ya existe
@@ -189,25 +187,23 @@ def _merge_smmlv(hardcoded: Dict[int, int]) -> Dict[int, int]:
 # PARÁMETROS ECONÓMICOS — MULTI-AÑO
 # ═════════════════════════════════════════════════════════════════════
 
-_SMMLV_HARDCODED: Dict[int, int] = {
+_SMMLV_HARDCODED: dict[int, int] = {
     2022: 1_000_000,
     2023: 1_160_000,
     2024: 1_300_000,
     2025: 1_423_500,
-    2026: 1_750_905,   # Decreto 2426 de 2025
+    2026: 1_750_905,  # Decreto 2426 de 2025
 }
 
 # Merge con configuración externa (si existe)
-SMMLV_POR_ANIO: Dict[int, int] = _merge_smmlv(_SMMLV_HARDCODED)
+SMMLV_POR_ANIO: dict[int, int] = _merge_smmlv(_SMMLV_HARDCODED)
 """SMMLV por año en COP. Se actualiza automáticamente desde geih_config.json
 si existe, sin necesidad de un nuevo release a PyPI."""
 
 # Retrocompatibilidad
 SMMLV_2025: int = SMMLV_POR_ANIO.get(2025, 1_423_500)
 
-CARGA_PRESTACIONAL: float = cargar_config_externa().get(
-    "carga_prestacional", 0.54
-)
+CARGA_PRESTACIONAL: float = cargar_config_externa().get("carga_prestacional", 0.54)
 """Factor de carga prestacional sobre salario base en Colombia (~54%).
 Incluye pensión 12%, salud 8.5%, parafiscales 9%, cesantías 8.33%,
 intereses 1%, prima 8.33%, vacaciones 4.17%, riesgos variable."""
@@ -217,14 +213,24 @@ intereses 1%, prima 8.33%, vacaciones 4.17%, riesgos variable."""
 # NOMBRES DE LOS MESES (GENERACIÓN DINÁMICA DE CARPETAS)
 # ═════════════════════════════════════════════════════════════════════
 
-MESES_NOMBRES: List[str] = [
-    "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
-    "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
+MESES_NOMBRES: list[str] = [
+    "Enero",
+    "Febrero",
+    "Marzo",
+    "Abril",
+    "Mayo",
+    "Junio",
+    "Julio",
+    "Agosto",
+    "Septiembre",
+    "Octubre",
+    "Noviembre",
+    "Diciembre",
 ]
 """Nombres de meses en español, tal como los usa el DANE en sus carpetas."""
 
 
-def generar_carpetas_mensuales(anio: int, n_meses: int = 12) -> List[str]:
+def generar_carpetas_mensuales(anio: int, n_meses: int = 12) -> list[str]:
     """Genera la lista de carpetas mensuales para un año y cantidad de meses.
 
     El DANE nombra las carpetas como 'Enero 2025', 'Febrero 2025', etc.
@@ -244,7 +250,7 @@ def generar_carpetas_mensuales(anio: int, n_meses: int = 12) -> List[str]:
 def generar_etiqueta_periodo(
     anio: int,
     n_meses: int = 12,
-    meses_rango: Optional[List[int]] = None,
+    meses_rango: Optional[list[int]] = None,
 ) -> str:
     """Genera la etiqueta legible del período para títulos y reportes.
 
@@ -273,12 +279,13 @@ def generar_etiqueta_periodo(
 
 
 # Retrocompatibilidad
-MESES_CARPETAS: List[str] = generar_carpetas_mensuales(2025, 12)
+MESES_CARPETAS: list[str] = generar_carpetas_mensuales(2025, 12)
 
 
 # ═════════════════════════════════════════════════════════════════════
 # CONFIGURACIÓN DEL ANÁLISIS — MULTI-AÑO
 # ═════════════════════════════════════════════════════════════════════
+
 
 @dataclass
 class ConfigGEIH:
@@ -315,13 +322,14 @@ class ConfigGEIH:
           divisor correcto sigue siendo 12, no 6. La reducción del universo
           se refleja en que se suman menos registros, no en el divisor.
     """
+
     anio: int = 2025
     """Año de los datos a procesar."""
 
     n_meses: int = 12
     """Número de meses consolidados. Controla la división del FEX_C18."""
 
-    meses_rango: Optional[List[int]] = None
+    meses_rango: Optional[list[int]] = None
     """Rango de meses a incluir en el análisis (1-12). Si None, incluye todos.
     Permite análisis semestral: [1,2,3,4,5,6] o [7,8,9,10,11,12].
     No afecta el divisor del FEX_C18 — eso lo controla n_meses."""
@@ -387,14 +395,10 @@ class ConfigGEIH:
                 raise ValueError("meses_rango no puede ser una lista vacía")
             for m in self.meses_rango:
                 if not isinstance(m, int) or m < 1 or m > 12:
-                    raise ValueError(
-                        f"Mes {m} en meses_rango fuera del calendario [1..12]"
-                    )
+                    raise ValueError(f"Mes {m} en meses_rango fuera del calendario [1..12]")
             # Validar que no haya meses duplicados
             if len(set(self.meses_rango)) != len(self.meses_rango):
-                raise ValueError(
-                    f"meses_rango contiene meses duplicados: {self.meses_rango}"
-                )
+                raise ValueError(f"meses_rango contiene meses duplicados: {self.meses_rango}")
             # Validar que los meses del rango caben en el consolidado fuente.
             # Nota: _meses_consolidado_fuente es el n_meses ORIGINAL que
             # describe cuántos meses trae el Parquet/CSV consolidado, NO
@@ -450,7 +454,7 @@ class ConfigGEIH:
 
     # ── Propiedades calculadas ──────────────────────────────────
     @property
-    def carpetas_mensuales(self) -> List[str]:
+    def carpetas_mensuales(self) -> list[str]:
         """Lista de carpetas mensuales DANE para el consolidado fuente.
 
         FIX v5.2: usa `_meses_consolidado_fuente` (el n_meses ORIGINAL
@@ -468,15 +472,23 @@ class ConfigGEIH:
         return REF_DANE.get(self.anio)
 
     @property
-    def config_muestreo(self) -> "ConfigMuestreo":
+    def config_muestreo(self):  # type: ignore[return]
         """Configuración de precisión muestral. Carga desde JSON si existe."""
         from .muestreo import ConfigMuestreo
+
         ext = cargar_config_externa()
         muestreo_cfg = ext.get("muestreo", {})
-        return ConfigMuestreo(**{
-            k: v for k, v in muestreo_cfg.items()
-            if k in ConfigMuestreo.__dataclass_fields__
-        }) if muestreo_cfg else ConfigMuestreo()
+        return (
+            ConfigMuestreo(
+                **{
+                    k: v
+                    for k, v in muestreo_cfg.items()
+                    if k in ConfigMuestreo.__dataclass_fields__
+                }
+            )
+            if muestreo_cfg
+            else ConfigMuestreo()
+        )
 
     def resumen(self) -> None:
         """Imprime un resumen legible de la configuración activa."""
@@ -498,8 +510,9 @@ class ConfigGEIH:
         print(f"  FEX divisor      : ÷ {self.n_meses}")
         print(f"  Ref. DANE        : {ref_status}")
         print(f"  Config externa   : {ext_status}")
-        print(f"  Carpetas         : {self.carpetas_mensuales[0]} → "
-              f"{self.carpetas_mensuales[-1]}")
+        print(
+            f"  Carpetas         : {self.carpetas_mensuales[0]} → " f"{self.carpetas_mensuales[-1]}"
+        )
         print(f"{'='*60}")
 
 
@@ -507,18 +520,18 @@ class ConfigGEIH:
 # PALETA DE COLORES INSTITUCIONAL
 # ═════════════════════════════════════════════════════════════════════
 
-COLORES: Dict[str, str] = {
-    "azul":     "#2E6DA4",
-    "rojo":     "#C0392B",
-    "verde":    "#1E8449",
-    "morado":   "#7D3C98",
-    "naranja":  "#E67E22",
-    "gris":     "#7F8C8D",
-    "cyan":     "#1ABC9C",
+COLORES: dict[str, str] = {
+    "azul": "#2E6DA4",
+    "rojo": "#C0392B",
+    "verde": "#1E8449",
+    "morado": "#7D3C98",
+    "naranja": "#E67E22",
+    "gris": "#7F8C8D",
+    "cyan": "#1ABC9C",
     "amarillo": "#F39C12",
-    "negro":    "#1A252F",
-    "linea":    "#BDC3C7",
-    "fondo":    "#F7F9FC",
+    "negro": "#1A252F",
+    "linea": "#BDC3C7",
+    "fondo": "#F7F9FC",
 }
 
 
@@ -526,10 +539,10 @@ COLORES: Dict[str, str] = {
 # LLAVES DE ENLACE ENTRE MÓDULOS GEIH
 # ═════════════════════════════════════════════════════════════════════
 
-LLAVES_PERSONA: List[str] = ["DIRECTORIO", "SECUENCIA_P", "ORDEN"]
+LLAVES_PERSONA: list[str] = ["DIRECTORIO", "SECUENCIA_P", "ORDEN"]
 """Llave única a nivel de persona (individuo)."""
 
-LLAVES_HOGAR: List[str] = ["DIRECTORIO", "SECUENCIA_P"]
+LLAVES_HOGAR: list[str] = ["DIRECTORIO", "SECUENCIA_P"]
 """Llave única a nivel de hogar."""
 
 
@@ -537,16 +550,16 @@ LLAVES_HOGAR: List[str] = ["DIRECTORIO", "SECUENCIA_P"]
 # COLUMNAS QUE DEBEN LEERSE COMO STRING
 # ═════════════════════════════════════════════════════════════════════
 
-CONVERTERS_BASE: Dict[str, type] = {
-    "DIRECTORIO":  str,
+CONVERTERS_BASE: dict[str, type] = {
+    "DIRECTORIO": str,
     "SECUENCIA_P": str,
-    "ORDEN":       str,
-    "DPTO":        str,
-    "RAMA2D_R4":   str,
-    "RAMA4D_R4":   str,
+    "ORDEN": str,
+    "DPTO": str,
+    "RAMA2D_R4": str,
+    "RAMA4D_R4": str,
 }
 
-CONVERTERS_CON_AREA: Dict[str, type] = {
+CONVERTERS_CON_AREA: dict[str, type] = {
     **CONVERTERS_BASE,
     "AREA": str,
 }
@@ -556,59 +569,111 @@ CONVERTERS_CON_AREA: Dict[str, type] = {
 # NOMBRES DE ARCHIVOS CSV POR MÓDULO GEIH
 # ═════════════════════════════════════════════════════════════════════
 
-MODULOS_CSV: Dict[str, str] = {
+MODULOS_CSV: dict[str, str] = {
     "caracteristicas": "Características generales, seguridad social en salud y educación.CSV",
-    "hogar":           "Datos del hogar y la vivienda.CSV",
-    "fuerza_trabajo":  "Fuerza de trabajo.CSV",
-    "ocupados":        "Ocupados.CSV",
-    "no_ocupados":     "No ocupados.CSV",
-    "otras_formas":    "Otras formas de trabajo.CSV",
-    "migracion":       "Migración.CSV",
-    "otros_ingresos":  "Otros ingresos e impuestos.CSV",
+    "hogar": "Datos del hogar y la vivienda.CSV",
+    "fuerza_trabajo": "Fuerza de trabajo.CSV",
+    "ocupados": "Ocupados.CSV",
+    "no_ocupados": "No ocupados.CSV",
+    "otras_formas": "Otras formas de trabajo.CSV",
+    "migracion": "Migración.CSV",
+    "otros_ingresos": "Otros ingresos e impuestos.CSV",
 }
 
-VARIABLES_POR_MODULO: Dict[str, List[str]] = {
+VARIABLES_POR_MODULO: dict[str, list[str]] = {
     "caracteristicas": [
-        "P3271",      # Sexo (1=H, 2=M)
-        "P6040",      # Edad
-        "P6080",      # Autorreconocimiento étnico
-        "P3042",      # Nivel educativo (1-13)
-        "P3043S1",    # Campo de formación (CINE-F)
-        "P6090",      # Afiliado salud (1=Sí)
-        "P2057",      # ¿Se considera campesino? (1=Sí)
-        "P2059",      # ¿Alguna vez fue campesino?
-        "P1906S1", "P1906S2", "P1906S3", "P1906S4",
-        "P1906S5", "P1906S6", "P1906S7", "P1906S8",
-        "CLASE",      # Zona (1=Urbano, 2=Rural)
-        "FEX_C18",    # Factor de expansión
+        "P3271",  # Sexo (1=H, 2=M)
+        "P6040",  # Edad
+        "P6080",  # Autorreconocimiento étnico
+        "P3042",  # Nivel educativo (1-13)
+        "P3043S1",  # Campo de formación (CINE-F)
+        "P6090",  # Afiliado salud (1=Sí)
+        "P2057",  # ¿Se considera campesino? (1=Sí)
+        "P2059",  # ¿Alguna vez fue campesino?
+        "P1906S1",
+        "P1906S2",
+        "P1906S3",
+        "P1906S4",
+        "P1906S5",
+        "P1906S6",
+        "P1906S7",
+        "P1906S8",
+        "CLASE",  # Zona (1=Urbano, 2=Rural)
+        "FEX_C18",  # Factor de expansión
     ],
     "ocupados": [
-        "OCI", "INGLABO", "P6500", "P6430", "P6800", "P6850",
-        "P6920", "P3069", "P7130", "P6440", "P6450", "P6460",
-        "P1802", "P3047", "P3048", "P3049", "P3363", "P3364",
-        "P6765", "P6400", "P6410",
-        "P6510S1", "P6580S1", "P6585S1A1", "P6585S2A1",
-        "RAMA2D_R4", "RAMA4D_R4", "AREA",
+        "OCI",
+        "INGLABO",
+        "P6500",
+        "P6430",
+        "P6800",
+        "P6850",
+        "P6920",
+        "P3069",
+        "P7130",
+        "P6440",
+        "P6450",
+        "P6460",
+        "P1802",
+        "P3047",
+        "P3048",
+        "P3049",
+        "P3363",
+        "P3364",
+        "P6765",
+        "P6400",
+        "P6410",
+        "P6510S1",
+        "P6580S1",
+        "P6585S1A1",
+        "P6585S2A1",
+        "RAMA2D_R4",
+        "RAMA4D_R4",
+        "AREA",
         # Tenencia de tierra y tipo de actividad (v5.1)
-        "P3056",      # Tipo de actividad del negocio (1=mercancías, 2=agro)
-        "P3064",      # ¿Propietario de la tierra? (1=Sí, 2=No)
-        "P3064S1",    # Valor estimado arriendo terreno (COP/mes)
+        "P3056",  # Tipo de actividad del negocio (1=mercancías, 2=agro)
+        "P3064",  # ¿Propietario de la tierra? (1=Sí, 2=No)
+        "P3064S1",  # Valor estimado arriendo terreno (COP/mes)
     ],
     "no_ocupados": [
-        "DSI", "P7250", "P6300", "P6310", "FFT",
+        "DSI",
+        "P7250",
+        "P6300",
+        "P6310",
+        "FFT",
     ],
     "fuerza_trabajo": [
-        "FT", "PET", "P6240", "P6280",
+        "FT",
+        "PET",
+        "P6240",
+        "P6280",
     ],
     "otras_formas": [
-        "P3054", "P3054S1", "P3055", "P3055S1", "P3056", "P3057",
+        "P3054",
+        "P3054S1",
+        "P3055",
+        "P3055S1",
+        "P3056",
+        "P3057",
     ],
     "migracion": [
-        "P3370", "P3370S1", "P3371", "P3376", "P3378S1",
+        "P3370",
+        "P3370S1",
+        "P3371",
+        "P3376",
+        "P3378S1",
     ],
     "otros_ingresos": [
-        "P7422", "P7500S1", "P7500S1A1", "P7500S2", "P7500S2A1",
-        "P7500S3", "P7510S1", "P7510S2", "P7510S2A1", "P7510S3",
+        "P7422",
+        "P7500S1",
+        "P7500S1A1",
+        "P7500S2",
+        "P7500S2A1",
+        "P7500S3",
+        "P7510S1",
+        "P7510S2",
+        "P7510S2A1",
+        "P7510S3",
     ],
 }
 
@@ -617,7 +682,7 @@ VARIABLES_POR_MODULO: Dict[str, List[str]] = {
 # MAPEO CIIU Rev.4 → 13 RAMAS DANE
 # ═════════════════════════════════════════════════════════════════════
 
-RAMAS_DANE: Dict[str, str] = {
+RAMAS_DANE: dict[str, str] = {
     "AGRI": "Agricultura, ganadería, caza, silvicultura y pesca",
     "SUMI": "Suministro de electricidad, gas, agua y gestión de desechos^",
     "MANU": "Industrias manufactureras",
@@ -633,14 +698,28 @@ RAMAS_DANE: Dict[str, str] = {
     "ARTE": "Actividades artísticas, entretenimiento, recreación y otras actividades de servicio",
 }
 
-TABLA_CIIU_RAMAS: List[Tuple[int, int, str]] = [
-    (1,  3,  "AGRI"), (5,  9,  "SUMI"), (10, 33, "MANU"),
-    (35, 35, "SUMI"), (36, 39, "SUMI"), (41, 43, "CONS"),
-    (45, 47, "COME"), (49, 53, "TRAN"), (55, 56, "ALOJ"),
-    (58, 63, "INFO"), (64, 66, "FINA"), (68, 68, "INMO"),
-    (69, 75, "PROF"), (77, 82, "PROF"), (84, 84, "ADMP"),
-    (85, 85, "ADMP"), (86, 88, "ADMP"), (90, 93, "ARTE"),
-    (94, 96, "ARTE"), (97, 98, "ARTE"), (99, 99, "ARTE"),
+TABLA_CIIU_RAMAS: list[tuple[int, int, str]] = [
+    (1, 3, "AGRI"),
+    (5, 9, "SUMI"),
+    (10, 33, "MANU"),
+    (35, 35, "SUMI"),
+    (36, 39, "SUMI"),
+    (41, 43, "CONS"),
+    (45, 47, "COME"),
+    (49, 53, "TRAN"),
+    (55, 56, "ALOJ"),
+    (58, 63, "INFO"),
+    (64, 66, "FINA"),
+    (68, 68, "INMO"),
+    (69, 75, "PROF"),
+    (77, 82, "PROF"),
+    (84, 84, "ADMP"),
+    (85, 85, "ADMP"),
+    (86, 88, "ADMP"),
+    (90, 93, "ARTE"),
+    (94, 96, "ARTE"),
+    (97, 98, "ARTE"),
+    (99, 99, "ARTE"),
 ]
 
 
@@ -648,18 +727,18 @@ TABLA_CIIU_RAMAS: List[Tuple[int, int, str]] = [
 # AGRUPACIÓN DANE DE 8 GRUPOS
 # ═════════════════════════════════════════════════════════════════════
 
-AGRUPACION_DANE_8: Dict[str, List[Tuple[int, int]]] = {
-    "Agricultura, ganadería, pesca y silvicultura":              [(1, 3)],
-    "Explotación de minas y canteras":                           [(5, 9)],
-    "Industrias manufactureras":                                 [(10, 33)],
-    "Electricidad, agua, gas y desechos":                        [(35, 39)],
-    "Construcción":                                              [(41, 43)],
-    "Comercio, transporte, alojamiento y comida":                [(45, 56)],
-    "Actividades financieras, profesionales y administrativas":  [(58, 83)],
-    "Administración pública, educación, salud y otros":          [(84, 99)],
+AGRUPACION_DANE_8: dict[str, list[tuple[int, int]]] = {
+    "Agricultura, ganadería, pesca y silvicultura": [(1, 3)],
+    "Explotación de minas y canteras": [(5, 9)],
+    "Industrias manufactureras": [(10, 33)],
+    "Electricidad, agua, gas y desechos": [(35, 39)],
+    "Construcción": [(41, 43)],
+    "Comercio, transporte, alojamiento y comida": [(45, 56)],
+    "Actividades financieras, profesionales y administrativas": [(58, 83)],
+    "Administración pública, educación, salud y otros": [(84, 99)],
 }
 
-_AGRUP_DANE_POR_DIVISION: Dict[str, str] = {}
+_AGRUP_DANE_POR_DIVISION: dict[str, str] = {}
 for _nombre, _rangos in AGRUPACION_DANE_8.items():
     for _lo, _hi in _rangos:
         for _i in range(_lo, _hi + 1):
@@ -674,24 +753,40 @@ for _nombre, _rangos in AGRUPACION_DANE_8.items():
 # confirma cobertura en cabeceras de capitales de Amazonía y Orinoquía.
 # San Andrés se cubre en cabecera (excluyendo Providencia y rural).
 
-DEPARTAMENTOS: Dict[str, str] = {
-    "05": "Antioquia",               "08": "Atlántico",
-    "11": "Bogotá D.C.",             "13": "Bolívar",
-    "15": "Boyacá",                  "17": "Caldas",
-    "18": "Caquetá",                 "19": "Cauca",
-    "20": "Cesar",                   "23": "Córdoba",
-    "25": "Cundinamarca",            "27": "Chocó",
-    "41": "Huila",                   "44": "La Guajira",
-    "47": "Magdalena",               "50": "Meta",
-    "52": "Nariño",                  "54": "Norte de Santander",
-    "63": "Quindío",                 "66": "Risaralda",
-    "68": "Santander",               "70": "Sucre",
-    "73": "Tolima",                  "76": "Valle del Cauca",
+DEPARTAMENTOS: dict[str, str] = {
+    "05": "Antioquia",
+    "08": "Atlántico",
+    "11": "Bogotá D.C.",
+    "13": "Bolívar",
+    "15": "Boyacá",
+    "17": "Caldas",
+    "18": "Caquetá",
+    "19": "Cauca",
+    "20": "Cesar",
+    "23": "Córdoba",
+    "25": "Cundinamarca",
+    "27": "Chocó",
+    "41": "Huila",
+    "44": "La Guajira",
+    "47": "Magdalena",
+    "50": "Meta",
+    "52": "Nariño",
+    "54": "Norte de Santander",
+    "63": "Quindío",
+    "66": "Risaralda",
+    "68": "Santander",
+    "70": "Sucre",
+    "73": "Tolima",
+    "76": "Valle del Cauca",
     # ── Amazonía y Orinoquía (v5.1) ────────────────────────────
-    "81": "Arauca",                  "85": "Casanare",
-    "86": "Putumayo",                "88": "San Andrés y Providencia",
-    "91": "Amazonas",                "94": "Guainía",
-    "95": "Guaviare",                "97": "Vaupés",
+    "81": "Arauca",
+    "85": "Casanare",
+    "86": "Putumayo",
+    "88": "San Andrés y Providencia",
+    "91": "Amazonas",
+    "94": "Guainía",
+    "95": "Guaviare",
+    "97": "Vaupés",
     "99": "Vichada",
 }
 """33 entidades territoriales de Colombia (32 departamentos + Bogotá D.C.).
@@ -729,33 +824,48 @@ para estos departamentos por esta razón."""
 #     (ej: "Tunja" en vez de "Boyacá/Tunja") para ser consistentes con
 #     CIUDADES_10_INTERMEDIAS.
 
-DPTO_A_CIUDAD: Dict[str, str] = {
+DPTO_A_CIUDAD: dict[str, str] = {
     # ── 13 ciudades principales ────────────────────────────────
-    "11": "Bogotá D.C.",          "05": "Medellín A.M.",
-    "76": "Cali A.M.",            "08": "Barranquilla A.M.",
-    "68": "Bucaramanga A.M.",     "17": "Manizales A.M.",
-    "66": "Pereira A.M.",         "54": "Cúcuta A.M.",
-    "52": "Pasto",                "73": "Ibagué",         # v5.2 FIX: 73=Tolima
-    "23": "Montería",             "13": "Cartagena",
+    "11": "Bogotá D.C.",
+    "05": "Medellín A.M.",
+    "76": "Cali A.M.",
+    "08": "Barranquilla A.M.",
+    "68": "Bucaramanga A.M.",
+    "17": "Manizales A.M.",
+    "66": "Pereira A.M.",
+    "54": "Cúcuta A.M.",
+    "52": "Pasto",
+    "73": "Ibagué",  # v5.2 FIX: 73=Tolima
+    "23": "Montería",
+    "13": "Cartagena",
     "50": "Villavicencio",
     # ── 10 ciudades intermedias ────────────────────────────────
     # v5.2 FIX: Nombres canónicos (antes usaban "Dpto/Ciudad")
-    "15": "Tunja",                "18": "Florencia",
-    "19": "Popayán",              "20": "Valledupar",
-    "27": "Quibdó",               "41": "Neiva",           # v5.2 FIX: 41=Huila→Neiva
-    "44": "Riohacha",             "47": "Santa Marta",
-    "63": "Armenia",              "70": "Sincelejo",
+    "15": "Tunja",
+    "18": "Florencia",
+    "19": "Popayán",
+    "20": "Valledupar",
+    "27": "Quibdó",
+    "41": "Neiva",  # v5.2 FIX: 41=Huila→Neiva
+    "44": "Riohacha",
+    "47": "Santa Marta",
+    "63": "Armenia",
+    "70": "Sincelejo",
     # ── Otros departamentos ────────────────────────────────────
     "25": "Cundinamarca",
     # ── Capitales Amazonía y Orinoquía (v5.1) ──────────────────
-    "81": "Arauca",               "85": "Yopal",
-    "86": "Mocoa",                "88": "San Andrés",
-    "91": "Leticia",              "94": "Inírida",
-    "95": "San José del Guaviare","97": "Mitú",
+    "81": "Arauca",
+    "85": "Yopal",
+    "86": "Mocoa",
+    "88": "San Andrés",
+    "91": "Leticia",
+    "94": "Inírida",
+    "95": "San José del Guaviare",
+    "97": "Mitú",
     "99": "Puerto Carreño",
 }
 
-AREA_A_CIUDAD: Dict[str, str] = {
+AREA_A_CIUDAD: dict[str, str] = {
     # ═════════════════════════════════════════════════════════════
     # Mapeo DIVIPOLA 5 dígitos → Ciudad/AM para la GEIH.
     #
@@ -774,40 +884,40 @@ AREA_A_CIUDAD: Dict[str, str] = {
     # ── Bogotá D.C. ───────────────────────────────────────────
     "11001": "Bogotá D.C.",
     # ── Medellín A.M. (Valle de Aburrá) — DDI: 10 municipios ──
-    "05001": "Medellín A.M.",     # Medellín
-    "05079": "Medellín A.M.",     # Barbosa
-    "05088": "Medellín A.M.",     # Bello
-    "05129": "Medellín A.M.",     # Caldas
-    "05212": "Medellín A.M.",     # Copacabana
-    "05266": "Medellín A.M.",     # Envigado
-    "05308": "Medellín A.M.",     # Girardota
-    "05360": "Medellín A.M.",     # Itagüí
-    "05380": "Medellín A.M.",     # La Estrella
-    "05631": "Medellín A.M.",     # Sabaneta
+    "05001": "Medellín A.M.",  # Medellín
+    "05079": "Medellín A.M.",  # Barbosa
+    "05088": "Medellín A.M.",  # Bello
+    "05129": "Medellín A.M.",  # Caldas
+    "05212": "Medellín A.M.",  # Copacabana
+    "05266": "Medellín A.M.",  # Envigado
+    "05308": "Medellín A.M.",  # Girardota
+    "05360": "Medellín A.M.",  # Itagüí
+    "05380": "Medellín A.M.",  # La Estrella
+    "05631": "Medellín A.M.",  # Sabaneta
     # ── Cali A.M. — DDI: Cali + Yumbo ─────────────────────────
-    "76001": "Cali A.M.",         # Santiago de Cali
-    "76892": "Cali A.M.",         # Yumbo
+    "76001": "Cali A.M.",  # Santiago de Cali
+    "76892": "Cali A.M.",  # Yumbo
     # ── Barranquilla A.M. — DDI: Barranquilla + Soledad ────────
-    "08001": "Barranquilla A.M.", # Barranquilla
-    "08758": "Barranquilla A.M.", # Soledad
+    "08001": "Barranquilla A.M.",  # Barranquilla
+    "08758": "Barranquilla A.M.",  # Soledad
     # ── Bucaramanga A.M. — DDI: 4 municipios ───────────────────
     "68001": "Bucaramanga A.M.",  # Bucaramanga
     "68276": "Bucaramanga A.M.",  # Floridablanca
     "68307": "Bucaramanga A.M.",  # Girón
     "68547": "Bucaramanga A.M.",  # Piedecuesta
     # ── Manizales A.M. — DDI: Manizales + Villamaría ──────────
-    "17001": "Manizales A.M.",    # Manizales
-    "17873": "Manizales A.M.",    # Villamaría
+    "17001": "Manizales A.M.",  # Manizales
+    "17873": "Manizales A.M.",  # Villamaría
     # ── Pereira A.M. — DDI: 3 municipios ───────────────────────
-    "66001": "Pereira A.M.",      # Pereira
-    "66170": "Pereira A.M.",      # Dosquebradas
-    "66400": "Pereira A.M.",      # La Virginia
+    "66001": "Pereira A.M.",  # Pereira
+    "66170": "Pereira A.M.",  # Dosquebradas
+    "66400": "Pereira A.M.",  # La Virginia
     # ── Cúcuta A.M. — DDI: 5 municipios ────────────────────────
-    "54001": "Cúcuta A.M.",       # San José de Cúcuta
-    "54261": "Cúcuta A.M.",       # El Zulia
-    "54405": "Cúcuta A.M.",       # Los Patios
-    "54553": "Cúcuta A.M.",       # Puerto Santander
-    "54874": "Cúcuta A.M.",       # Villa del Rosario
+    "54001": "Cúcuta A.M.",  # San José de Cúcuta
+    "54261": "Cúcuta A.M.",  # El Zulia
+    "54405": "Cúcuta A.M.",  # Los Patios
+    "54553": "Cúcuta A.M.",  # Puerto Santander
+    "54874": "Cúcuta A.M.",  # Villa del Rosario
     # ── 6 ciudades sin A.M. ────────────────────────────────────
     "52001": "Pasto",
     "73001": "Ibagué",
@@ -816,27 +926,53 @@ AREA_A_CIUDAD: Dict[str, str] = {
     "50001": "Villavicencio",
     "41001": "Neiva",
     # ── 10 ciudades intermedias ─────────────────────────────────
-    "15001": "Tunja",             "18001": "Florencia",
-    "19001": "Popayán",           "20001": "Valledupar",
-    "27001": "Quibdó",            "44001": "Riohacha",
-    "47001": "Santa Marta",       "63001": "Armenia",
+    "15001": "Tunja",
+    "18001": "Florencia",
+    "19001": "Popayán",
+    "20001": "Valledupar",
+    "27001": "Quibdó",
+    "44001": "Riohacha",
+    "47001": "Santa Marta",
+    "63001": "Armenia",
     "70001": "Sincelejo",
     # ── Capitales Amazonía/Orinoquía ───────────────────────────
-    "81001": "Arauca",            "85001": "Yopal",
-    "86001": "Mocoa",             "88001": "San Andrés",
-    "91001": "Leticia",           "94001": "Inírida",
-    "95001": "San José del Guaviare", "97001": "Mitú",
+    "81001": "Arauca",
+    "85001": "Yopal",
+    "86001": "Mocoa",
+    "88001": "San Andrés",
+    "91001": "Leticia",
+    "94001": "Inírida",
+    "95001": "San José del Guaviare",
+    "97001": "Mitú",
     "99001": "Puerto Carreño",
 }
 
 CIUDADES_13_PRINCIPALES: set = {
-    "Bogotá D.C.", "Medellín A.M.", "Cali A.M.", "Barranquilla A.M.",
-    "Bucaramanga A.M.", "Manizales A.M.", "Pereira A.M.", "Cúcuta A.M.",
-    "Pasto", "Ibagué", "Montería", "Cartagena", "Villavicencio",
+    "Bogotá D.C.",
+    "Medellín A.M.",
+    "Cali A.M.",
+    "Barranquilla A.M.",
+    "Bucaramanga A.M.",
+    "Manizales A.M.",
+    "Pereira A.M.",
+    "Cúcuta A.M.",
+    "Pasto",
+    "Ibagué",
+    "Montería",
+    "Cartagena",
+    "Villavicencio",
 }
 CIUDADES_10_INTERMEDIAS: set = {
-    "Tunja", "Florencia", "Popayán", "Valledupar", "Quibdó",
-    "Neiva", "Riohacha", "Santa Marta", "Armenia", "Sincelejo",
+    "Tunja",
+    "Florencia",
+    "Popayán",
+    "Valledupar",
+    "Quibdó",
+    "Neiva",
+    "Riohacha",
+    "Santa Marta",
+    "Armenia",
+    "Sincelejo",
 }
 
 
@@ -903,17 +1039,31 @@ DPTOS_10_CIUDADES: set = {
 }
 """Códigos de departamento (2 dígitos) de las 10 ciudades intermedias."""
 
-AREA_GEIH_A_CIUDAD: Dict[str, str] = {
+AREA_GEIH_A_CIUDAD: dict[str, str] = {
     # ── 13 ciudades principales ────────────────────────────────
-    "11": "Bogotá D.C.",     "05": "Medellín A.M.",    "76": "Cali A.M.",
-    "08": "Barranquilla A.M.","68": "Bucaramanga A.M.", "17": "Manizales A.M.",
-    "66": "Pereira A.M.",    "54": "Cúcuta A.M.",      "52": "Pasto",
-    "73": "Ibagué",          "23": "Montería",          "13": "Cartagena",
+    "11": "Bogotá D.C.",
+    "05": "Medellín A.M.",
+    "76": "Cali A.M.",
+    "08": "Barranquilla A.M.",
+    "68": "Bucaramanga A.M.",
+    "17": "Manizales A.M.",
+    "66": "Pereira A.M.",
+    "54": "Cúcuta A.M.",
+    "52": "Pasto",
+    "73": "Ibagué",
+    "23": "Montería",
+    "13": "Cartagena",
     "50": "Villavicencio",
     # ── 10 ciudades intermedias ────────────────────────────────
-    "15": "Tunja",           "18": "Florencia",         "19": "Popayán",
-    "20": "Valledupar",      "27": "Quibdó",            "41": "Neiva",
-    "44": "Riohacha",        "47": "Santa Marta",       "63": "Armenia",
+    "15": "Tunja",
+    "18": "Florencia",
+    "19": "Popayán",
+    "20": "Valledupar",
+    "27": "Quibdó",
+    "41": "Neiva",
+    "44": "Riohacha",
+    "47": "Santa Marta",
+    "63": "Armenia",
     "70": "Sincelejo",
 }
 """Mapeo AREA (2 dígitos) → nombre de ciudad para la GEIH.
@@ -948,7 +1098,7 @@ Uso:
 #       Jornalero o Peón = 849k → coincide con P6430=7 en los datos
 #       Otro = 12k             → coincide con P6430=8+9 en los datos
 
-POSICION_OCUPACIONAL: Dict[int, str] = {
+POSICION_OCUPACIONAL: dict[int, str] = {
     1: "Obrero, empleado particular",
     2: "Obrero, empleado del gobierno",
     3: "Empleado doméstico",
@@ -969,29 +1119,52 @@ El DANE publica P6430=8 y P6430=9 combinados como "Otro" en sus boletines."""
 # NIVELES EDUCATIVOS
 # ═════════════════════════════════════════════════════════════════════
 
-NIVELES_EDUCATIVOS: Dict[int, str] = {
-    1: "Ninguno",             2: "Preescolar",
-    3: "Básica primaria",     4: "Básica secundaria",
-    5: "Media académica",     6: "Media técnica",
-    7: "Normalista",          8: "Técnica profesional",
-    9: "Tecnológica",        10: "Universitaria",
-    11: "Especialización",   12: "Maestría",
+NIVELES_EDUCATIVOS: dict[int, str] = {
+    1: "Ninguno",
+    2: "Preescolar",
+    3: "Básica primaria",
+    4: "Básica secundaria",
+    5: "Media académica",
+    6: "Media técnica",
+    7: "Normalista",
+    8: "Técnica profesional",
+    9: "Tecnológica",
+    10: "Universitaria",
+    11: "Especialización",
+    12: "Maestría",
     13: "Doctorado",
 }
 
-NIVELES_AGRUPADOS: Dict[int, str] = {
-    1: "1. Sin educación",     2: "1. Sin educación",
-    3: "2. Primaria",          4: "3. Secundaria",
-    5: "4. Media",             6: "4. Media",
-    7: "4. Media",             8: "5. Técnica/Tecno.",
-    9: "5. Técnica/Tecno.",   10: "6. Universitaria",
-    11: "7. Posgrado",        12: "7. Posgrado",
+NIVELES_AGRUPADOS: dict[int, str] = {
+    1: "1. Sin educación",
+    2: "1. Sin educación",
+    3: "2. Primaria",
+    4: "3. Secundaria",
+    5: "4. Media",
+    6: "4. Media",
+    7: "4. Media",
+    8: "5. Técnica/Tecno.",
+    9: "5. Técnica/Tecno.",
+    10: "6. Universitaria",
+    11: "7. Posgrado",
+    12: "7. Posgrado",
     13: "7. Posgrado",
 }
 
-P3042_A_ANOS: Dict[int, int] = {
-    1: 0, 2: 0, 3: 5, 4: 9, 5: 11, 6: 11, 7: 11,
-    8: 14, 9: 15, 10: 16, 11: 17, 12: 18, 13: 21,
+P3042_A_ANOS: dict[int, int] = {
+    1: 0,
+    2: 0,
+    3: 5,
+    4: 9,
+    5: 11,
+    6: 11,
+    7: 11,
+    8: 14,
+    9: 15,
+    10: 16,
+    11: 17,
+    12: 18,
+    13: 21,
 }
 
 
@@ -999,12 +1172,18 @@ P3042_A_ANOS: Dict[int, int] = {
 # RANGOS DE INGRESO
 # ═════════════════════════════════════════════════════════════════════
 
-RANGOS_SMMLV_LIMITES: List[float] = [0, 0.5, 1, 1.5, 2, 3, 4, 6, 10, float("inf")]
+RANGOS_SMMLV_LIMITES: list[float] = [0, 0.5, 1, 1.5, 2, 3, 4, 6, 10, float("inf")]
 
-RANGOS_SMMLV_ETIQUETAS: List[str] = [
-    "< 0.5 SMMLV",    "0.5 – 1 SMMLV",  "1 – 1.5 SMMLV",
-    "1.5 – 2 SMMLV",  "2 – 3 SMMLV",    "3 – 4 SMMLV",
-    "4 – 6 SMMLV",    "6 – 10 SMMLV",   "> 10 SMMLV",
+RANGOS_SMMLV_ETIQUETAS: list[str] = [
+    "< 0.5 SMMLV",
+    "0.5 – 1 SMMLV",
+    "1 – 1.5 SMMLV",
+    "1.5 – 2 SMMLV",
+    "2 – 3 SMMLV",
+    "3 – 4 SMMLV",
+    "4 – 6 SMMLV",
+    "6 – 10 SMMLV",
+    "> 10 SMMLV",
 ]
 
 
@@ -1012,10 +1191,16 @@ RANGOS_SMMLV_ETIQUETAS: List[str] = [
 # TAMAÑO DE EMPRESA
 # ═════════════════════════════════════════════════════════════════════
 
-TAMANO_EMPRESA: Dict[int, str] = {
-    1: "Solo (1)",       2: "2–3 pers.",     3: "4–5 pers.",
-    4: "6–10 pers.",     5: "11–19 pers.",   6: "20–30 pers.",
-    7: "31–50 pers.",    8: "51–100 pers.",  9: "101–200 pers.",
+TAMANO_EMPRESA: dict[int, str] = {
+    1: "Solo (1)",
+    2: "2–3 pers.",
+    3: "4–5 pers.",
+    4: "6–10 pers.",
+    5: "11–19 pers.",
+    6: "20–30 pers.",
+    7: "31–50 pers.",
+    8: "51–100 pers.",
+    9: "101–200 pers.",
     10: "201+ pers.",
 }
 
@@ -1024,9 +1209,9 @@ TAMANO_EMPRESA: Dict[int, str] = {
 # MAPEO CIIU FALLBACK
 # ═════════════════════════════════════════════════════════════════════
 
-CIIU_DESCRIPCION_FALLBACK: List[Tuple[range, str]] = [
-    (range(1, 4),   "Agricultura, ganadería, caza, silvicultura y pesca"),
-    (range(5, 10),  "Explotación de minas y canteras"),
+CIIU_DESCRIPCION_FALLBACK: list[tuple[range, str]] = [
+    (range(1, 4), "Agricultura, ganadería, caza, silvicultura y pesca"),
+    (range(5, 10), "Explotación de minas y canteras"),
     (range(10, 34), "Industrias manufactureras"),
     (range(35, 36), "Suministro de electricidad, gas, vapor y aire acondicionado"),
     (range(36, 40), "Distribución de agua; gestión de desechos"),
@@ -1050,7 +1235,7 @@ CIIU_DESCRIPCION_FALLBACK: List[Tuple[range, str]] = [
 # SUBCATEGORÍAS CIIU SECTOR PRIMARIO (v5.1 — Análisis de tierras)
 # ═════════════════════════════════════════════════════════════════════
 
-CIIU_SECTOR_PRIMARIO: Dict[str, str] = {
+CIIU_SECTOR_PRIMARIO: dict[str, str] = {
     "01": "Agricultura, ganadería, caza y servicios conexos",
     "02": "Silvicultura y extracción de madera",
     "03": "Pesca y acuicultura",
@@ -1058,7 +1243,7 @@ CIIU_SECTOR_PRIMARIO: Dict[str, str] = {
 """Divisiones CIIU Rev.4 del sector primario (CIIU 01-03).
 Usado por AnalisisTierraAgropecuario para desagregar por tipo de actividad."""
 
-CIIU_AGRICULTURA_DETALLE: Dict[str, str] = {
+CIIU_AGRICULTURA_DETALLE: dict[str, str] = {
     "0111": "Cultivo de cereales y leguminosas",
     "0112": "Cultivo de arroz",
     "0113": "Cultivo de hortalizas, raíces y tubérculos",
@@ -1095,9 +1280,11 @@ Permite análisis granular de 'especificidad de tierras'."""
 # REFERENCIA DANE — MULTI-AÑO
 # ═════════════════════════════════════════════════════════════════════
 
+
 @dataclass(frozen=True)
 class ReferenciaDane:
     """Valores de referencia del boletín DANE para validación cruzada."""
+
     pea_anual_m: float = 0.0
     ocupados_anual_m: float = 0.0
     desocupados_anual_m: float = 0.0
@@ -1112,15 +1299,23 @@ class ReferenciaDane:
     to_dic_pct: float = 0.0
 
 
-def _construir_ref_dane() -> Dict[int, ReferenciaDane]:
+def _construir_ref_dane() -> dict[int, ReferenciaDane]:
     """Construye el diccionario de referencias, fusionando hardcoded + JSON."""
     # Hardcoded (siempre presente como fallback)
-    refs: Dict[int, ReferenciaDane] = {
+    refs: dict[int, ReferenciaDane] = {
         2025: ReferenciaDane(
-            pea_anual_m=26.3,  ocupados_anual_m=23.8, desocupados_anual_m=2.1,
-            td_anual_pct=8.9,  tgp_anual_pct=64.3,   to_anual_pct=58.6,
-            pea_dic_m=26.3,    ocupados_dic_m=24.2,   desocupados_dic_m=2.1,
-            td_dic_pct=8.0,    tgp_dic_pct=64.3,      to_dic_pct=59.2,
+            pea_anual_m=26.3,
+            ocupados_anual_m=23.8,
+            desocupados_anual_m=2.1,
+            td_anual_pct=8.9,
+            tgp_anual_pct=64.3,
+            to_anual_pct=58.6,
+            pea_dic_m=26.3,
+            ocupados_dic_m=24.2,
+            desocupados_dic_m=2.1,
+            td_dic_pct=8.0,
+            tgp_dic_pct=64.3,
+            to_dic_pct=59.2,
         ),
     }
 
@@ -1130,17 +1325,25 @@ def _construir_ref_dane() -> Dict[int, ReferenciaDane]:
     for anio_str, valores in ext_refs.items():
         try:
             anio = int(anio_str)
-            refs[anio] = ReferenciaDane(**{
-                k: float(v) for k, v in valores.items()
-                if k in ReferenciaDane.__dataclass_fields__
-            })
+            refs[anio] = ReferenciaDane(
+                **{
+                    k: float(v)
+                    for k, v in valores.items()
+                    if k in ReferenciaDane.__dataclass_fields__
+                }
+            )
         except (ValueError, TypeError):
             continue
 
     return refs
 
 
-REF_DANE: Dict[int, ReferenciaDane] = _construir_ref_dane()
+REF_DANE: dict[int, ReferenciaDane] = _construir_ref_dane()
 
 # Retrocompatibilidad
 REF_DANE_2025 = REF_DANE.get(2025, ReferenciaDane())
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# 📄 geih/consolidador.py
+#    Categoría: codigo

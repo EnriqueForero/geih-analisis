@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 geih.diagnostico — Diagnóstico de calidad de datos de la base GEIH.
 
@@ -14,7 +13,7 @@ __all__ = [
 ]
 
 
-from typing import Optional, List
+from typing import Optional
 
 import numpy as np
 import pandas as pd
@@ -55,34 +54,40 @@ class DiagnosticoCalidad:
         zeros = (df == 0).sum()
         zeros_p = (zeros / total * 100).round(1)
 
-        tabla = pd.DataFrame({
-            "Valores_nulos": mis_val,
-            "Pct_nulos_%": mis_pct,
-            "Ceros": zeros,
-            "Pct_ceros_%": zeros_p,
-            "Dtype": df.dtypes.astype(str),
-            "Valores_unicos": df.nunique(),
-        })
+        tabla = pd.DataFrame(
+            {
+                "Valores_nulos": mis_val,
+                "Pct_nulos_%": mis_pct,
+                "Ceros": zeros,
+                "Pct_ceros_%": zeros_p,
+                "Dtype": df.dtypes.astype(str),
+                "Valores_unicos": df.nunique(),
+            }
+        )
 
-        tabla = tabla[
-            (tabla["Pct_nulos_%"] > umbral_pct) | (tabla["Pct_ceros_%"] > 0)
-        ].sort_values("Pct_nulos_%", ascending=False)
+        tabla = tabla[(tabla["Pct_nulos_%"] > umbral_pct) | (tabla["Pct_ceros_%"] > 0)].sort_values(
+            "Pct_nulos_%", ascending=False
+        )
 
         print(f"\n{'='*75}")
         print(f"  DIAGNÓSTICO DE CALIDAD — {titulo}")
         print(f"  Total filas: {total:,}  |  Total columnas: {df.shape[1]}")
         print(f"  Columnas con nulos o ceros: {len(tabla)}")
         print(f"{'='*75}")
-        print(f"  {'Columna':<25} {'%Nulos':>8} {'N_nulos':>10} "
-              f"{'%Ceros':>8} {'Únicos':>8} {'Dtype':<12}")
+        print(
+            f"  {'Columna':<25} {'%Nulos':>8} {'N_nulos':>10} "
+            f"{'%Ceros':>8} {'Únicos':>8} {'Dtype':<12}"
+        )
         print(f"  {'─'*25} {'─'*8} {'─'*10} {'─'*8} {'─'*8} {'─'*12}")
 
         for col, row in tabla.head(40).iterrows():
-            print(f"  {str(col):<25} {row['Pct_nulos_%']:>7.1f}% "
-                  f"{int(row['Valores_nulos']):>10,} "
-                  f"{row['Pct_ceros_%']:>7.1f}% "
-                  f"{int(row['Valores_unicos']):>8,} "
-                  f"{str(row['Dtype']):<12}")
+            print(
+                f"  {col!s:<25} {row['Pct_nulos_%']:>7.1f}% "
+                f"{int(row['Valores_nulos']):>10,} "
+                f"{row['Pct_ceros_%']:>7.1f}% "
+                f"{int(row['Valores_unicos']):>8,} "
+                f"{row['Dtype']!s:<12}"
+            )
 
         return tabla
 
@@ -93,26 +98,49 @@ class DiagnosticoCalidad:
         Alerta si DPTO, RAMA2D_R4, etc. son numéricas (deben ser str).
         Alerta si FEX_C18, INGLABO, etc. son string (deben ser numéricas).
         """
-        DEBE_SER_STR = ["DIRECTORIO", "SECUENCIA_P", "ORDEN", "DPTO",
-                        "RAMA2D_R4", "RAMA4D_R4", "AREA"]
-        DEBE_SER_NUM = ["FEX_C18", "OCI", "P3271", "P6040", "INGLABO",
-                        "FT", "DSI", "PET", "P6920", "P6800"]
+        DEBE_SER_STR = [
+            "DIRECTORIO",
+            "SECUENCIA_P",
+            "ORDEN",
+            "DPTO",
+            "RAMA2D_R4",
+            "RAMA4D_R4",
+            "AREA",
+        ]
+        DEBE_SER_NUM = [
+            "FEX_C18",
+            "OCI",
+            "P3271",
+            "P6040",
+            "INGLABO",
+            "FT",
+            "DSI",
+            "PET",
+            "P6920",
+            "P6800",
+        ]
 
         problemas = []
         for col in DEBE_SER_STR:
             if col in df.columns and pd.api.types.is_numeric_dtype(df[col]):
-                problemas.append({
-                    "Columna": col, "Tipo_actual": str(df[col].dtype),
-                    "Tipo_esperado": "string/object",
-                    "Riesgo": "Pérdida de ceros líderes (ej: DPTO '05'→5)",
-                })
+                problemas.append(
+                    {
+                        "Columna": col,
+                        "Tipo_actual": str(df[col].dtype),
+                        "Tipo_esperado": "string/object",
+                        "Riesgo": "Pérdida de ceros líderes (ej: DPTO '05'→5)",
+                    }
+                )
         for col in DEBE_SER_NUM:
             if col in df.columns and not pd.api.types.is_numeric_dtype(df[col]):
-                problemas.append({
-                    "Columna": col, "Tipo_actual": str(df[col].dtype),
-                    "Tipo_esperado": "numeric",
-                    "Riesgo": "Cálculos fallan o producen NaN silencioso",
-                })
+                problemas.append(
+                    {
+                        "Columna": col,
+                        "Tipo_actual": str(df[col].dtype),
+                        "Tipo_esperado": "numeric",
+                        "Riesgo": "Cálculos fallan o producen NaN silencioso",
+                    }
+                )
 
         df_prob = pd.DataFrame(problemas)
         if df_prob.empty:
@@ -120,13 +148,15 @@ class DiagnosticoCalidad:
         else:
             print(f"\n⚠️  {len(df_prob)} columnas con tipo incorrecto:")
             for _, row in df_prob.iterrows():
-                print(f"   ❌ {row['Columna']}: es {row['Tipo_actual']}, "
-                      f"debería ser {row['Tipo_esperado']}")
+                print(
+                    f"   ❌ {row['Columna']}: es {row['Tipo_actual']}, "
+                    f"debería ser {row['Tipo_esperado']}"
+                )
                 print(f"      Riesgo: {row['Riesgo']}")
         return df_prob
 
     @staticmethod
-    def columnas_duplicadas(df: pd.DataFrame) -> List[str]:
+    def columnas_duplicadas(df: pd.DataFrame) -> list[str]:
         """Detecta columnas con nombres similares (potenciales duplicados de merge).
 
         Busca patrones como col_x / col_y que indican merges sin control.
@@ -159,7 +189,7 @@ class DiagnosticoCalidad:
         pea = df.loc[df["FT"] == 1, fex].sum()
         ocu = df.loc[df["OCI"] == 1, fex].sum()
         dsi = df.loc[df["DSI"] == 1, fex].sum()
-        pet = df.loc[df["PET"] == 1, fex].sum()
+        df.loc[df["PET"] == 1, fex].sum()
 
         # PEA = OCI + DSI (tolerancia 0.1%)
         pea_calc = ocu + dsi
@@ -176,7 +206,7 @@ class DiagnosticoCalidad:
     def resumen_rapido(df: pd.DataFrame) -> None:
         """Imprime un resumen rápido de la base para orientación."""
         print(f"\n{'='*55}")
-        print(f"  RESUMEN RÁPIDO DE LA BASE")
+        print("  RESUMEN RÁPIDO DE LA BASE")
         print(f"{'='*55}")
         print(f"  Dimensiones : {df.shape[0]:,} filas × {df.shape[1]} columnas")
         mb = df.memory_usage(deep=True).sum() / 1e6
@@ -226,8 +256,15 @@ class DiagnosticoCalidad:
 
         x = np.arange(len(top))
         ax.bar(x, top["Pct_nulos_%"], 0.55, color="#C0392B", alpha=0.82, label="% Nulos")
-        ax.bar(x, top["Pct_ceros_%"], 0.55, bottom=top["Pct_nulos_%"],
-               color="#E67E22", alpha=0.70, label="% Ceros")
+        ax.bar(
+            x,
+            top["Pct_ceros_%"],
+            0.55,
+            bottom=top["Pct_nulos_%"],
+            color="#E67E22",
+            alpha=0.70,
+            label="% Ceros",
+        )
 
         ax.set_xticks(x)
         ax.set_xticklabels(top.index, rotation=40, ha="right", fontsize=9)
@@ -254,6 +291,7 @@ class Top20Sectores:
 
     def __init__(self, config=None):
         from .config import ConfigGEIH
+
         self.config = config or ConfigGEIH()
 
     def calcular(
@@ -268,7 +306,6 @@ class Top20Sectores:
             ruta_ciiu: Ruta al Excel de correlativa CIIU para descripciones.
         """
         from .preparador import MergeCorrelativas, PreparadorGEIH
-        from .utils import ConversorTipos
 
         df_ocu = df[df["OCI"] == 1].copy()
 
@@ -284,8 +321,10 @@ class Top20Sectores:
         top = (
             df_ocu[df_ocu[col_desc].notna()]
             .groupby(col_desc)["FEX_ADJ"]
-            .sum().sort_values(ascending=False)
-            .head(20).reset_index()
+            .sum()
+            .sort_values(ascending=False)
+            .head(20)
+            .reset_index()
             .rename(columns={col_desc: "Sector_CIIU", "FEX_ADJ": "Ocupados"})
         )
         top["Ocupados_M"] = (top["Ocupados"] / 1e6).round(2)
@@ -301,19 +340,24 @@ class Top20Sectores:
         fig.patch.set_facecolor("#F7F9FC")
         ax.set_facecolor("white")
 
-        colores = ["#2E6DA4" if i >= len(df_plot) - 5 else "#7FB3D3"
-                   for i in range(len(df_plot))]
-        ax.barh(range(len(df_plot)), df_plot["Ocupados_M"], 0.65,
-                color=colores, alpha=0.88)
+        colores = ["#2E6DA4" if i >= len(df_plot) - 5 else "#7FB3D3" for i in range(len(df_plot))]
+        ax.barh(range(len(df_plot)), df_plot["Ocupados_M"], 0.65, color=colores, alpha=0.88)
         for i, (_, row) in enumerate(df_plot.iterrows()):
-            ax.text(row["Ocupados_M"] + 0.03, i,
-                    f"{row['Ocupados_M']:.2f}M  ({row['Pct_%']:.1f}%)",
-                    va="center", fontsize=8.5)
+            ax.text(
+                row["Ocupados_M"] + 0.03,
+                i,
+                f"{row['Ocupados_M']:.2f}M  ({row['Pct_%']:.1f}%)",
+                va="center",
+                fontsize=8.5,
+            )
         ax.set_yticks(range(len(df_plot)))
         ax.set_yticklabels([str(r)[:60] for r in df_plot["Sector_CIIU"]], fontsize=8.5)
         ax.set_xlabel("Ocupados (millones)", fontsize=11)
-        ax.set_title("Top 20 actividades económicas por ocupados\n"
-                     "GEIH 2025 — CIIU Rev.4", fontsize=12, fontweight="bold")
+        ax.set_title(
+            "Top 20 actividades económicas por ocupados\n" "GEIH 2025 — CIIU Rev.4",
+            fontsize=12,
+            fontweight="bold",
+        )
         ax.grid(axis="x", alpha=0.3)
         ax.spines[["top", "right"]].set_visible(False)
         fig.tight_layout(pad=2.5)
@@ -322,10 +366,11 @@ class Top20Sectores:
     def imprimir(self, top: pd.DataFrame) -> None:
         """Imprime la tabla Top 20."""
         print(f"\n{'='*75}")
-        print(f"  TOP 20 ACTIVIDADES ECONÓMICAS — GEIH 2025")
+        print("  TOP 20 ACTIVIDADES ECONÓMICAS — GEIH 2025")
         print(f"{'='*75}")
         print(f"  {'Sector CIIU':<58} {'M':>6} {'%':>6}")
         print(f"  {'─'*58} {'─'*6} {'─'*6}")
         for _, row in top.iterrows():
-            print(f"  {str(row['Sector_CIIU']):<58} "
-                  f"{row['Ocupados_M']:>6.2f} {row['Pct_%']:>5.1f}%")
+            print(
+                f"  {row['Sector_CIIU']!s:<58} " f"{row['Ocupados_M']:>6.2f} {row['Pct_%']:>5.1f}%"
+            )

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 geih.estacional — Desestacionalización de series mensuales GEIH.
 
@@ -49,9 +48,7 @@ def validar_serie_mensual(serie: pd.Series, min_periodos: int = 24) -> None:
         ValueError: si la serie no cumple los requisitos.
     """
     if not isinstance(serie, pd.Series):
-        raise ValueError(
-            f"Se esperaba pd.Series, recibido {type(serie).__name__}"
-        )
+        raise ValueError(f"Se esperaba pd.Series, recibido {type(serie).__name__}")
 
     if len(serie) < min_periodos:
         raise ValueError(
@@ -131,6 +128,7 @@ def desestacionalizar(
 
     if metodo == "stl":
         from statsmodels.tsa.seasonal import STL
+
         resultado = STL(
             serie_mensual,
             period=periodo,
@@ -152,9 +150,7 @@ def desestacionalizar(
         return resultado.seasadj
 
     else:
-        raise ValueError(
-            f"metodo debe ser 'stl' o 'x13', recibido '{metodo}'"
-        )
+        raise ValueError(f"metodo debe ser 'stl' o 'x13', recibido '{metodo}'")
 
 
 def desestacionalizar_td_mensual(
@@ -236,7 +232,9 @@ def desestacionalizar_td_mensual(
             f"incluir_historico con ≥12 meses anteriores para habilitarlo."
         )
 
-    return pd.DataFrame({
-        "td_cruda": serie_actual,
-        "td_desest": td_desest,
-    })
+    return pd.DataFrame(
+        {
+            "td_cruda": serie_actual,
+            "td_desest": td_desest,
+        }
+    )

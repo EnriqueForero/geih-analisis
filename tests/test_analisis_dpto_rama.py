@@ -1,14 +1,15 @@
 """Tests para geih.analisis_dpto_rama.OcupadosDptoRama."""
+
 import numpy as np
 import pandas as pd
 import pytest
 
 from geih.analisis_dpto_rama import OcupadosDptoRama
 
-
 # ═════════════════════════════════════════════════════════════════════
 # FIXTURES
 # ═════════════════════════════════════════════════════════════════════
+
 
 @pytest.fixture
 def df_sintetico():
@@ -24,13 +25,15 @@ def df_sintetico():
             for r2, r4 in zip(ramas_2d, ramas_4d):
                 n_personas = rng.integers(20, 60)
                 for _ in range(n_personas):
-                    filas.append({
-                        "DPTO": dpto,
-                        "RAMA2D_R4": r2,
-                        "RAMA4D_R4": r4,
-                        "FEX_C18": float(rng.integers(800, 2500)),
-                        "MES_NUM": mes,
-                    })
+                    filas.append(
+                        {
+                            "DPTO": dpto,
+                            "RAMA2D_R4": r2,
+                            "RAMA4D_R4": r4,
+                            "FEX_C18": float(rng.integers(800, 2500)),
+                            "MES_NUM": mes,
+                        }
+                    )
     return pd.DataFrame(filas)
 
 
@@ -42,6 +45,7 @@ def analisis():
 # ═════════════════════════════════════════════════════════════════════
 # TESTS DE VALIDACIÓN DE ENTRADA
 # ═════════════════════════════════════════════════════════════════════
+
 
 def test_nivel_invalido_lanza_error(analisis, df_sintetico):
     with pytest.raises(ValueError, match="nivel_ciiu"):
@@ -58,11 +62,20 @@ def test_columna_faltante_lanza_error(analisis):
 # TESTS DE CÁLCULO
 # ═════════════════════════════════════════════════════════════════════
 
+
 def test_salida_tiene_columnas_esperadas(analisis, df_sintetico):
     out = analisis.calcular(df_sintetico, nivel_ciiu="2d", verbose=False)
-    esperadas = {"DPTO", "ciiu_2d", "ocupados_promedio", "desv_mensual",
-                 "meses_con_dato", "n_anual", "ee_aprox", "cv_aprox",
-                 "calidad"}
+    esperadas = {
+        "DPTO",
+        "ciiu_2d",
+        "ocupados_promedio",
+        "desv_mensual",
+        "meses_con_dato",
+        "n_anual",
+        "ee_aprox",
+        "cv_aprox",
+        "calidad",
+    }
     assert esperadas.issubset(out.columns)
 
 
@@ -70,8 +83,7 @@ def test_total_nacional_coincide_con_promedio_directo(analisis, df_sintetico):
     """El total de la tabla debe igualar el promedio directo de 12 meses."""
     out = analisis.calcular(df_sintetico, nivel_ciiu="2d", verbose=False)
     total_tabla = out["ocupados_promedio"].sum()
-    total_directo = (df_sintetico
-                     .groupby("MES_NUM")["FEX_C18"].sum().mean())
+    total_directo = df_sintetico.groupby("MES_NUM")["FEX_C18"].sum().mean()
     assert abs(total_tabla - total_directo) < 1.0
 
 
@@ -79,8 +91,7 @@ def test_2d_y_4d_dan_mismo_total(analisis, df_sintetico):
     """Cambiar el nivel no debe alterar el total nacional."""
     t2 = analisis.calcular(df_sintetico, nivel_ciiu="2d", verbose=False)
     t4 = analisis.calcular(df_sintetico, nivel_ciiu="4d", verbose=False)
-    assert abs(t2["ocupados_promedio"].sum()
-               - t4["ocupados_promedio"].sum()) < 1.0
+    assert abs(t2["ocupados_promedio"].sum() - t4["ocupados_promedio"].sum()) < 1.0
 
 
 def test_suma_por_dpto_coincide_entre_niveles(analisis, df_sintetico):
@@ -110,10 +121,10 @@ def test_descarta_fex_no_positivo(analisis, df_sintetico):
 # TESTS DE CALIDAD ESTADÍSTICA
 # ═════════════════════════════════════════════════════════════════════
 
+
 def test_etiquetas_calidad_son_validas(analisis, df_sintetico):
     out = analisis.calcular(df_sintetico, nivel_ciiu="2d", verbose=False)
-    validas = {"Confiable", "Aceptable con reserva",
-               "No publicable", "Sin dato"}
+    validas = {"Confiable", "Aceptable con reserva", "No publicable", "Sin dato"}
     assert set(out["calidad"].unique()).issubset(validas)
 
 
@@ -127,14 +138,21 @@ def test_cv_no_negativo(analisis, df_sintetico):
 # TESTS DE REPONDERACIÓN POR MESES FALTANTES
 # ═════════════════════════════════════════════════════════════════════
 
+
 def test_celda_con_meses_faltantes_se_reponderán(analisis):
     """Una celda con solo 6 meses debe quedar dividida entre 12, no entre 6."""
     filas = []
     for mes in [1, 2, 3, 4, 5, 6]:  # solo medio año
         for _ in range(30):
-            filas.append({"DPTO": "05", "RAMA2D_R4": "01",
-                          "RAMA4D_R4": "0111", "FEX_C18": 1000.0,
-                          "MES_NUM": mes})
+            filas.append(
+                {
+                    "DPTO": "05",
+                    "RAMA2D_R4": "01",
+                    "RAMA4D_R4": "0111",
+                    "FEX_C18": 1000.0,
+                    "MES_NUM": mes,
+                }
+            )
     df = pd.DataFrame(filas)
     out = analisis.calcular(df, nivel_ciiu="2d", verbose=False)
     # Cada mes tiene 30 personas × 1000 = 30.000 expandidos
@@ -147,16 +165,14 @@ def test_celda_con_meses_faltantes_se_reponderán(analisis):
 # TESTS DE EXPORTACIÓN
 # ═════════════════════════════════════════════════════════════════════
 
+
 def test_exportar_excel_crea_archivo(analisis, df_sintetico, tmp_path):
     t2 = analisis.calcular(df_sintetico, nivel_ciiu="2d", verbose=False)
     # Simular enriquecimiento mínimo para que la matriz funcione
     t2_enr = t2.assign(
         dpto_codigo=t2["DPTO"],
-        dpto_nombre=t2["DPTO"].map({"05": "Antioquia", "11": "Bogotá",
-                                    "76": "Valle del Cauca"}),
-        ciiu_2d_desc=t2["ciiu_2d"].map({"01": "Agricultura",
-                                        "47": "Comercio",
-                                        "85": "Educación"}),
+        dpto_nombre=t2["DPTO"].map({"05": "Antioquia", "11": "Bogotá", "76": "Valle del Cauca"}),
+        ciiu_2d_desc=t2["ciiu_2d"].map({"01": "Agricultura", "47": "Comercio", "85": "Educación"}),
         seccion_letra="X",
         seccion_desc="Prueba",
     )

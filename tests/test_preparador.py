@@ -1,9 +1,8 @@
-# -*- coding: utf-8 -*-
 """Tests para geih.preparador — Preparación de datos."""
 
-import numpy as np
 import pandas as pd
 import pytest
+
 from geih.config import ConfigGEIH
 from geih.utils import ConversorTipos
 
@@ -83,6 +82,7 @@ class TestPreparadorConGoldenSet:
     def test_fex_adj_presente(self, golden_set, config_2025):
         """Después de preparar, FEX_ADJ debe existir."""
         from geih.preparador import PreparadorGEIH
+
         prep = PreparadorGEIH(config=config_2025)
         df = prep.preparar_base(golden_set)
         assert "FEX_ADJ" in df.columns
@@ -90,6 +90,7 @@ class TestPreparadorConGoldenSet:
     def test_fex_adj_valor_correcto(self, golden_set, config_2025):
         """FEX_ADJ = FEX_C18 / 12 para 12 meses."""
         from geih.preparador import PreparadorGEIH
+
         prep = PreparadorGEIH(config=config_2025)
         df = prep.preparar_base(golden_set)
         expected = golden_set["FEX_C18"].iloc[0] / 12
@@ -99,6 +100,7 @@ class TestPreparadorConGoldenSet:
     def test_columnas_minimas(self, golden_set, config_2025):
         """Base preparada debe tener las columnas mínimas."""
         from geih.preparador import PreparadorGEIH
+
         prep = PreparadorGEIH(config=config_2025)
         df = prep.preparar_base(golden_set)
         for col in ["FEX_ADJ", "OCI", "FT", "DSI", "PET", "P3271", "P6040"]:

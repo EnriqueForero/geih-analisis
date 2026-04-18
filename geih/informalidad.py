@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 geih.informalidad — Implementación oficial DANE de la informalidad laboral.
 
@@ -71,11 +70,10 @@ Autor: Néstor Enrique Forero Herrera (ProColombia)
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Optional, Set
+from typing import Optional
 
 import numpy as np
 import pandas as pd
-
 
 __all__ = [
     "clasificar_informalidad_dane",
@@ -88,23 +86,33 @@ __all__ = [
 # Variables que la sintaxis SAS oficial del DANE consume
 # ═════════════════════════════════════════════════════════════════════
 
-VARIABLES_REQUERIDAS: Set[str] = {
+VARIABLES_REQUERIDAS: set[str] = {
     # Posición ocupacional
     "P6430",
     # Forma de trabajo (independientes)
     "P6765",
     # Sector — asalariados
-    "P3045S1", "P3046",
+    "P3045S1",
+    "P3046",
     # Sector — independientes sin negocio
-    "P3065", "P3066",
+    "P3065",
+    "P3066",
     # Sector — independientes con negocio
-    "P3067", "P3067S1", "P3067S2", "P6775", "P3068",
+    "P3067",
+    "P3067S1",
+    "P3067S2",
+    "P6775",
+    "P3068",
     # Tamaño y oficio
-    "P3069", "OFICIO_C8",
+    "P3069",
+    "OFICIO_C8",
     # Salud
-    "P6100", "P6110",
+    "P6100",
+    "P6110",
     # Pensión
-    "P6920", "P6930", "P6940",
+    "P6920",
+    "P6930",
+    "P6940",
     # Contrato (para SALUD vía P6450 cuando régimen es 9)
     "P6450",
     # Rama (para excluir 84 y 99)
@@ -113,9 +121,19 @@ VARIABLES_REQUERIDAS: Set[str] = {
 """Variables que la sintaxis SAS oficial del DANE requiere para
 clasificar correctamente."""
 
-VARIABLES_CRITICAS: Set[str] = {
-    "P6430", "P6765", "P3045S1", "P3046", "P3065", "P3067",
-    "P6775", "P3069", "P6100", "P6110", "P6920", "P6940",
+VARIABLES_CRITICAS: set[str] = {
+    "P6430",
+    "P6765",
+    "P3045S1",
+    "P3046",
+    "P3065",
+    "P3067",
+    "P6775",
+    "P3069",
+    "P6100",
+    "P6110",
+    "P6920",
+    "P6940",
     "RAMA2D_R4",
 }
 """Subconjunto sin el cual el cálculo será visiblemente diferente
@@ -125,6 +143,7 @@ del Excel oficial."""
 # ═════════════════════════════════════════════════════════════════════
 # Función pública
 # ═════════════════════════════════════════════════════════════════════
+
 
 def clasificar_informalidad_dane(
     df: pd.DataFrame,
@@ -170,8 +189,10 @@ def clasificar_informalidad_dane(
     anios_umbral = anio_referencia - 1  # ANIOS = PER - 1 en SAS
 
     if verbose:
-        print(f"ℹ️  Informalidad DANE: año referencia={anio_referencia}, "
-              f"umbral renovación P3067S2 >= {anios_umbral}")
+        print(
+            f"ℹ️  Informalidad DANE: año referencia={anio_referencia}, "
+            f"umbral renovación P3067S2 >= {anios_umbral}"
+        )
 
     # ──────────────────────────────────────────────────────────────
     # 2. Reportar variables faltantes
@@ -179,14 +200,12 @@ def clasificar_informalidad_dane(
     cols_presentes = set(df.columns)
     faltantes_criticas = VARIABLES_CRITICAS - cols_presentes
     if faltantes_criticas and verbose:
-        print(f"⚠️  Variables CRÍTICAS faltantes: "
-              f"{sorted(faltantes_criticas)}")
-        print(f"    El cálculo será aproximado.")
+        print(f"⚠️  Variables CRÍTICAS faltantes: " f"{sorted(faltantes_criticas)}")
+        print("    El cálculo será aproximado.")
 
     faltantes_total = VARIABLES_REQUERIDAS - cols_presentes
     if faltantes_total and verbose:
-        print(f"ℹ️  Variables faltantes (se tratan como NA): "
-              f"{sorted(faltantes_total)}")
+        print(f"ℹ️  Variables faltantes (se tratan como NA): " f"{sorted(faltantes_total)}")
 
     # ──────────────────────────────────────────────────────────────
     # 3. Helper: cargar columna como Series numérica, NA si no existe
@@ -199,24 +218,24 @@ def clasificar_informalidad_dane(
     # ──────────────────────────────────────────────────────────────
     # 4. Cargar todas las variables
     # ──────────────────────────────────────────────────────────────
-    P6430   = _num("P6430")
-    P6765   = _num("P6765")
+    P6430 = _num("P6430")
+    P6765 = _num("P6765")
     P3045S1 = _num("P3045S1")
-    P3046   = _num("P3046")
-    P3065   = _num("P3065")
-    P3066   = _num("P3066")
-    P3067   = _num("P3067")
+    P3046 = _num("P3046")
+    P3065 = _num("P3065")
+    P3066 = _num("P3066")
+    P3067 = _num("P3067")
     P3067S1 = _num("P3067S1")
     P3067S2 = _num("P3067S2")
-    P6775   = _num("P6775")
-    P3068   = _num("P3068")
-    P3069   = _num("P3069")
-    P6100   = _num("P6100")
-    P6110   = _num("P6110")
-    P6450   = _num("P6450")
-    P6920   = _num("P6920")
-    P6930   = _num("P6930")
-    P6940   = _num("P6940")
+    P6775 = _num("P6775")
+    P3068 = _num("P3068")
+    P3069 = _num("P3069")
+    P6100 = _num("P6100")
+    P6110 = _num("P6110")
+    P6450 = _num("P6450")
+    P6920 = _num("P6920")
+    P6930 = _num("P6930")
+    P6940 = _num("P6940")
 
     # ──────────────────────────────────────────────────────────────
     # 5. Rama 2 dígitos como NUMÉRICO (en SAS: numérico)
@@ -262,7 +281,7 @@ def clasificar_informalidad_dane(
     # Pero es importante NO sobreescribir esto después → marcar como
     # "ya procesada" simulando con un sentinel. Para ello, usamos la
     # variable auxiliar `bloqueada` que recordará "fila ya tratada".
-    bloqueada = (P6430 == 3)
+    bloqueada = P6430 == 3
 
     # IF P6430=6 THEN FORMAL=0 ELSE          (TFSR → informal por def)
     _set((P6430 == 6) & ~bloqueada, 0)
@@ -289,8 +308,8 @@ def clasificar_informalidad_dane(
 
     # ── INDEPENDIENTES SIN NEGOCIO (P6765 ≠ 7) ────────────────────
     es_indep_45 = P6430.isin([4, 5])
-    es_patron   = (P6430 == 5)
-    es_cta_propia = (P6430 == 4)
+    es_patron = P6430 == 5
+    es_cta_propia = P6430 == 4
     sin_negocio = es_indep_45 & (P6765 != 7)
     con_negocio = es_indep_45 & (P6765 == 7)
 
@@ -301,49 +320,51 @@ def clasificar_informalidad_dane(
     # IF ... P3065 IN (2,9) & P3066=2 THEN FORMAL=0
     _set(sin_negocio & P3065.isin([2, 9]) & (P3066 == 2), 0)
     # IF P6430=5 & ... P3066=9 & P3069 >= 4 THEN FORMAL=1
-    _set(sin_negocio & es_patron & P3065.isin([2, 9])
-         & (P3066 == 9) & (P3069 >= 4), 1)
+    _set(sin_negocio & es_patron & P3065.isin([2, 9]) & (P3066 == 9) & (P3069 >= 4), 1)
     # IF P6430=5 & ... P3066=9 & P3069 <= 3 THEN FORMAL=0
-    _set(sin_negocio & es_patron & P3065.isin([2, 9])
-         & (P3066 == 9) & (P3069 <= 3), 0)
+    _set(sin_negocio & es_patron & P3065.isin([2, 9]) & (P3066 == 9) & (P3069 <= 3), 0)
     # IF P6430=4 & ... P3066=9 & OFICIO 00-20 THEN FORMAL=1
-    _set(sin_negocio & es_cta_propia & P3065.isin([2, 9])
-         & (P3066 == 9) & (OFICIO2D <= 20), 1)
+    _set(sin_negocio & es_cta_propia & P3065.isin([2, 9]) & (P3066 == 9) & (OFICIO2D <= 20), 1)
     # IF P6430=4 & ... P3066=9 & OFICIO >=21 THEN FORMAL=0
-    _set(sin_negocio & es_cta_propia & P3065.isin([2, 9])
-         & (P3066 == 9) & (OFICIO2D >= 21), 0)
+    _set(sin_negocio & es_cta_propia & P3065.isin([2, 9]) & (P3066 == 9) & (OFICIO2D >= 21), 0)
 
     # ── INDEPENDIENTES CON NEGOCIO Y CON REGISTRO MERCANTIL ───────
     # IF ... P3067=1 & P3067S1=1 & P3067S2 >= ANIOS THEN FORMAL=1
-    _set(con_negocio & (P3067 == 1) & (P3067S1 == 1)
-         & (P3067S2 >= anios_umbral), 1)
+    _set(con_negocio & (P3067 == 1) & (P3067S1 == 1) & (anios_umbral <= P3067S2), 1)
     # IF ... P3067=1 & P3067S1=1 & P3067S2 < ANIOS THEN FORMAL=0
-    _set(con_negocio & (P3067 == 1) & (P3067S1 == 1)
-         & (P3067S2 < anios_umbral), 0)
+    _set(con_negocio & (P3067 == 1) & (P3067S1 == 1) & (anios_umbral > P3067S2), 0)
     # IF ... P3067=1 & P3067S1=2 & P6775=1 THEN FORMAL=1
-    _set(con_negocio & (P3067 == 1) & (P3067S1 == 2)
-         & (P6775 == 1), 1)
+    _set(con_negocio & (P3067 == 1) & (P3067S1 == 2) & (P6775 == 1), 1)
     # IF ... P3067=1 & P3067S1=2 & P6775=3 & OFICIO 00-20 THEN FORMAL=1
-    _set(con_negocio & (P3067 == 1) & (P3067S1 == 2)
-         & (P6775 == 3) & (OFICIO2D <= 20), 1)
+    _set(con_negocio & (P3067 == 1) & (P3067S1 == 2) & (P6775 == 3) & (OFICIO2D <= 20), 1)
     # IF ... P6775=3 & OFICIO >=21 THEN FORMAL=0
-    _set(con_negocio & (P3067 == 1) & (P3067S1 == 2)
-         & (P6775 == 3) & (OFICIO2D >= 21), 0)
+    _set(con_negocio & (P3067 == 1) & (P3067S1 == 2) & (P6775 == 3) & (OFICIO2D >= 21), 0)
     # IF ... P6775=2 THEN FORMAL=0
-    _set(con_negocio & (P3067 == 1) & (P3067S1 == 2)
-         & (P6775 == 2), 0)
+    _set(con_negocio & (P3067 == 1) & (P3067S1 == 2) & (P6775 == 2), 0)
     # IF P6430=4 & ... P6775=9 & OFICIO 00-20 THEN FORMAL=1
-    _set(con_negocio & es_cta_propia & (P3067 == 1) & (P3067S1 == 2)
-         & (P6775 == 9) & (OFICIO2D <= 20), 1)
+    _set(
+        con_negocio
+        & es_cta_propia
+        & (P3067 == 1)
+        & (P3067S1 == 2)
+        & (P6775 == 9)
+        & (OFICIO2D <= 20),
+        1,
+    )
     # IF P6430=4 & ... P6775=9 & OFICIO >=21 THEN FORMAL=0
-    _set(con_negocio & es_cta_propia & (P3067 == 1) & (P3067S1 == 2)
-         & (P6775 == 9) & (OFICIO2D >= 21), 0)
+    _set(
+        con_negocio
+        & es_cta_propia
+        & (P3067 == 1)
+        & (P3067S1 == 2)
+        & (P6775 == 9)
+        & (OFICIO2D >= 21),
+        0,
+    )
     # IF P6430=5 & ... P6775=9 & P3069 >=4 THEN FORMAL=1
-    _set(con_negocio & es_patron & (P3067 == 1) & (P3067S1 == 2)
-         & (P6775 == 9) & (P3069 >= 4), 1)
+    _set(con_negocio & es_patron & (P3067 == 1) & (P3067S1 == 2) & (P6775 == 9) & (P3069 >= 4), 1)
     # IF P6430=5 & ... P6775=9 & P3069 <=3 THEN FORMAL=0
-    _set(con_negocio & es_patron & (P3067 == 1) & (P3067S1 == 2)
-         & (P6775 == 9) & (P3069 <= 3), 0)
+    _set(con_negocio & es_patron & (P3067 == 1) & (P3067S1 == 2) & (P6775 == 9) & (P3069 <= 3), 0)
 
     # ── INDEPENDIENTES CON NEGOCIO Y SIN REGISTRO MERCANTIL ───────
     # IF ... P3067=2 & P6775=1 & P3068=1 THEN FORMAL=1
@@ -359,17 +380,13 @@ def clasificar_informalidad_dane(
     # IF ... P3067=2 & P6775=2 THEN FORMAL=0
     _set(con_negocio & (P3067 == 2) & (P6775 == 2), 0)
     # IF P6430=5 & ... P3067=2 & P6775=9 & P3069 >=4 THEN FORMAL=1
-    _set(con_negocio & es_patron & (P3067 == 2)
-         & (P6775 == 9) & (P3069 >= 4), 1)
+    _set(con_negocio & es_patron & (P3067 == 2) & (P6775 == 9) & (P3069 >= 4), 1)
     # IF P6430=5 & ... P3067=2 & P6775=9 & P3069 <=3 THEN FORMAL=0
-    _set(con_negocio & es_patron & (P3067 == 2)
-         & (P6775 == 9) & (P3069 <= 3), 0)
+    _set(con_negocio & es_patron & (P3067 == 2) & (P6775 == 9) & (P3069 <= 3), 0)
     # IF P6430=4 & ... P3067=2 & P6775=9 & OFICIO 00-20 THEN FORMAL=1
-    _set(con_negocio & es_cta_propia & (P3067 == 2)
-         & (P6775 == 9) & (OFICIO2D <= 20), 1)
+    _set(con_negocio & es_cta_propia & (P3067 == 2) & (P6775 == 9) & (OFICIO2D <= 20), 1)
     # IF P6430=4 & ... P3067=2 & P6775=9 & OFICIO >=21 THEN FORMAL=0
-    _set(con_negocio & es_cta_propia & (P3067 == 2)
-         & (P6775 == 9) & (OFICIO2D >= 21), 0)
+    _set(con_negocio & es_cta_propia & (P3067 == 2) & (P6775 == 9) & (OFICIO2D >= 21), 0)
 
     # ──────────────────────────────────────────────────────────────
     # 8. SALUD (asalariados 1, 3, 7)
@@ -398,8 +415,7 @@ def clasificar_informalidad_dane(
     # IF (... P6920=3) THEN PENSION=1   (pensionado activo)
     PENSION.loc[(es_asal_137 & (P6920 == 3)).fillna(False)] = 1
     # IF (... P6920=1 & P6930 IN (1,2,3) & P6940 IN (1,3)) THEN PENSION=1
-    cond_p = (es_asal_137 & (P6920 == 1)
-              & P6930.isin([1, 2, 3]) & P6940.isin([1, 3]))
+    cond_p = es_asal_137 & (P6920 == 1) & P6930.isin([1, 2, 3]) & P6940.isin([1, 3])
     PENSION.loc[cond_p.fillna(False)] = 1
 
     # ──────────────────────────────────────────────────────────────
@@ -415,8 +431,7 @@ def clasificar_informalidad_dane(
     mask_indep = P6430.isin([4, 5]).fillna(False)
     EI.loc[mask_indep] = FORMAL.loc[mask_indep]
     # IF P6430 IN (1,3,7) & SALUD=1 & PENSION=1 THEN EI=1
-    cond_asal_formal = (P6430.isin([1, 3, 7]) & (SALUD == 1)
-                        & (PENSION == 1))
+    cond_asal_formal = P6430.isin([1, 3, 7]) & (SALUD == 1) & (PENSION == 1)
     EI.loc[cond_asal_formal.fillna(False)] = 1
     # IF P6430 IN (1,3,7) THEN EI=0  (resto de asalariados)
     cond_asal_resto = P6430.isin([1, 3, 7]) & EI.isna()
@@ -426,7 +441,7 @@ def clasificar_informalidad_dane(
     # (rama administración pública / orgs extraterritoriales son
     #  formales por definición incluso en asalariados que pudieran
     #  haber quedado en 0 por SALUD/PENSION incompletas)
-    cond_rama = (RAMA2D.isin([84, 99]) & ~P6430.isin([6, 8]))
+    cond_rama = RAMA2D.isin([84, 99]) & ~P6430.isin([6, 8])
     EI.loc[cond_rama.fillna(False)] = 1
 
     # ──────────────────────────────────────────────────────────────
@@ -442,13 +457,20 @@ def clasificar_informalidad_dane(
     if verbose:
         n_total = len(df)
         n_clas = INFORMAL.notna().sum()
-        n_inf  = (INFORMAL == 1).sum()
+        n_inf = (INFORMAL == 1).sum()
         n_form = (INFORMAL == 0).sum()
-        n_na   = INFORMAL.isna().sum()
+        n_na = INFORMAL.isna().sum()
         cob = 100 * n_clas / n_total if n_total > 0 else 0
-        print(f"   Cobertura: {cob:.2f}% "
-              f"({n_clas:,}/{n_total:,} clasificados | "
-              f"{n_inf:,} informales | {n_form:,} formales | "
-              f"{n_na:,} NA)")
+        print(
+            f"   Cobertura: {cob:.2f}% "
+            f"({n_clas:,}/{n_total:,} clasificados | "
+            f"{n_inf:,} informales | {n_form:,} formales | "
+            f"{n_na:,} NA)"
+        )
 
     return INFORMAL
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# 📄 geih/logger.py
+#    Categoría: codigo

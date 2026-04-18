@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 geih.analisis_departamental — Análisis departamental consolidado con precisión muestral.
 
@@ -32,29 +31,23 @@ __all__ = [
 ]
 
 
-from typing import Optional, Dict, Any, List
+from typing import Any, Optional
 
 import numpy as np
 import pandas as pd
 
 from .config import (
-    ConfigGEIH,
     DEPARTAMENTOS,
-    DPTO_A_CIUDAD,
-    NIVELES_AGRUPADOS,
-    CARGA_PRESTACIONAL,
+    ConfigGEIH,
 )
-from .utils import EstadisticasPonderadas as EP, ConversorTipos
 from .muestreo import (
-    ConfigMuestreo,
-    PrecisionEstimacion,
-    evaluar_proporcion,
-    evaluar_media,
-    advertencia_muestral,
-    clasificar_precision,
-    PRECISION_ALTA,
     NO_CONFIABLE,
+    advertencia_muestral,
+    evaluar_media,
+    evaluar_proporcion,
 )
+from .utils import ConversorTipos
+from .utils import EstadisticasPonderadas as EP
 
 
 class AnalisisDepartamental:
@@ -107,7 +100,7 @@ class AnalisisDepartamental:
         if "DPTO_STR" not in df.columns:
             df["DPTO_STR"] = ConversorTipos.estandarizar_dpto(df["DPTO"])
 
-        filas: List[Dict[str, Any]] = []
+        filas: list[dict[str, Any]] = []
 
         for dpto, nombre in DEPARTAMENTOS.items():
             mask_dpto = df["DPTO_STR"] == dpto
@@ -121,13 +114,9 @@ class AnalisisDepartamental:
             fex_total = df_dpto["FEX_ADJ"].sum()
 
             # Advertencia muestral
-            adv = advertencia_muestral(
-                n_registros, fex_total, nombre, self._config_muestreo
-            )
+            adv = advertencia_muestral(n_registros, fex_total, nombre, self._config_muestreo)
 
-            fila = self._calcular_indicadores_dpto(
-                df_dpto, nombre, dpto, n_registros, fex_total
-            )
+            fila = self._calcular_indicadores_dpto(df_dpto, nombre, dpto, n_registros, fex_total)
 
             if incluir_precision:
                 fila["n_registros"] = n_registros
@@ -143,9 +132,7 @@ class AnalisisDepartamental:
         resultado = pd.DataFrame(filas)
 
         if solo_confiables:
-            resultado = resultado[
-                resultado["CV_TD_%"] <= self._config_muestreo.cv_poco_preciso_pct
-            ]
+            resultado = resultado[resultado["CV_TD_%"] <= self._config_muestreo.cv_poco_preciso_pct]
 
         resultado = resultado.sort_values("TD_%", ascending=False)
 
@@ -159,7 +146,7 @@ class AnalisisDepartamental:
         codigo: str,
         n_registros: int,
         fex_total: float,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Calcula todos los indicadores para un departamento.
 
         Método extensible: agregar indicadores aquí sin modificar
@@ -180,9 +167,7 @@ class AnalisisDepartamental:
         # ── Precisión de TD ────────────────────────────────────
         n_pea_reg = int((df_dpto["FT"] == 1).sum()) if "FT" in df_dpto.columns else 0
         p_td = des / pea if pea > 0 else 0
-        prec_td = evaluar_proporcion(
-            p_td, n_pea_reg, pea, nombre, self._config_muestreo
-        )
+        prec_td = evaluar_proporcion(p_td, n_pea_reg, pea, nombre, self._config_muestreo)
 
         # ── Salario mediano ────────────────────────────────────
         mediana_sal = np.nan
@@ -197,9 +182,12 @@ class AnalisisDepartamental:
                 var_sal = df_dpto.loc[mask_ing, "INGLABO"].var()
                 n_ing = int(mask_ing.sum())
                 prec_sal = evaluar_media(
-                    mediana_sal, var_sal, n_ing,
+                    mediana_sal,
+                    var_sal,
+                    n_ing,
                     df_dpto.loc[mask_ing, fex].sum(),
-                    nombre, self._config_muestreo,
+                    nombre,
+                    self._config_muestreo,
                 )
                 cv_mediana = prec_sal.cv_pct
 
@@ -266,8 +254,10 @@ class AnalisisDepartamental:
         print(f"  Con precisión confiable  : {n_confiable}")
         print(f"  Sin precisión confiable  : {n_total - n_confiable}")
         print(f"{'─'*80}")
-        print(f"  {'Departamento':<25s} {'TD_%':>6s} {'CV%':>5s} {'IC 95%':>14s} "
-              f"{'Med.COP':>12s} {'Prec.':>12s}")
+        print(
+            f"  {'Departamento':<25s} {'TD_%':>6s} {'CV%':>5s} {'IC 95%':>14s} "
+            f"{'Med.COP':>12s} {'Prec.':>12s}"
+        )
         print(f"{'─'*80}")
 
         for _, r in resultado.head(33).iterrows():
@@ -283,8 +273,10 @@ class AnalisisDepartamental:
             ic_str = f"[{ic_i:.1f}, {ic_s:.1f}]" if not np.isnan(ic_i) else "—"
             med_str = f"${med:,.0f}" if not np.isnan(med) else "—"
 
-            print(f"  {r['Departamento']:<25s} {td_str:>6s} {cv_str:>5s} "
-                  f"{ic_str:>14s} {med_str:>12s} {prec}")
+            print(
+                f"  {r['Departamento']:<25s} {td_str:>6s} {cv_str:>5s} "
+                f"{ic_str:>14s} {med_str:>12s} {prec}"
+            )
 
         print(f"{'='*80}")
 
@@ -298,15 +290,23 @@ class AnalisisDepartamental:
             resultado.to_excel(writer, sheet_name="Indicadores", index=False)
 
             # Hoja de metadatos
-            meta = pd.DataFrame([
-                {"Campo": "Período", "Valor": self.config.periodo_etiqueta},
-                {"Campo": "SMMLV", "Valor": f"${self.config.smmlv:,}"},
-                {"Campo": "n_meses", "Valor": str(self.config.n_meses)},
-                {"Campo": "DEFF usado", "Valor": str(self._config_muestreo.deff)},
-                {"Campo": "Nivel confianza", "Valor": f"{self._config_muestreo.nivel_confianza:.0%}"},
-                {"Campo": "CV preciso ≤", "Valor": f"{self._config_muestreo.cv_preciso_pct}%"},
-                {"Campo": "CV aceptable ≤", "Valor": f"{self._config_muestreo.cv_aceptable_pct}%"},
-            ])
+            meta = pd.DataFrame(
+                [
+                    {"Campo": "Período", "Valor": self.config.periodo_etiqueta},
+                    {"Campo": "SMMLV", "Valor": f"${self.config.smmlv:,}"},
+                    {"Campo": "n_meses", "Valor": str(self.config.n_meses)},
+                    {"Campo": "DEFF usado", "Valor": str(self._config_muestreo.deff)},
+                    {
+                        "Campo": "Nivel confianza",
+                        "Valor": f"{self._config_muestreo.nivel_confianza:.0%}",
+                    },
+                    {"Campo": "CV preciso ≤", "Valor": f"{self._config_muestreo.cv_preciso_pct}%"},
+                    {
+                        "Campo": "CV aceptable ≤",
+                        "Valor": f"{self._config_muestreo.cv_aceptable_pct}%",
+                    },
+                ]
+            )
             meta.to_excel(writer, sheet_name="Metadatos", index=False)
 
         print(f"✅ Excel departamental exportado: {nombre}")

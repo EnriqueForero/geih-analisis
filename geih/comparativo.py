@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 geih.comparativo — Análisis comparativo multi-año de la GEIH.
 
@@ -21,14 +20,13 @@ __all__ = [
 ]
 
 import gc
-from typing import Optional, Dict, List, Any
+from typing import Any, Optional
 
-import numpy as np
 import pandas as pd
 
-from .config import ConfigGEIH, DEPARTAMENTOS, RAMAS_DANE
-from .preparador import PreparadorGEIH
+from .config import ConfigGEIH
 from .indicadores import IndicadoresLaborales
+from .preparador import PreparadorGEIH
 from .utils import EstadisticasPonderadas as EP
 
 
@@ -55,7 +53,7 @@ class ComparadorMultiAnio:
 
     def __init__(self):
         """Inicializa el comparador sin datos."""
-        self._anios: Dict[int, Dict[str, Any]] = {}
+        self._anios: dict[int, dict[str, Any]] = {}
         # {anio: {'df': DataFrame, 'config': ConfigGEIH, 'geih_raw': DataFrame}}
 
     def agregar_anio(
@@ -96,15 +94,14 @@ class ComparadorMultiAnio:
             "n_registros": len(df),
         }
 
-        print(f"   ✅ {anio} registrado ({len(df):,} filas, "
-              f"SMMLV=${config.smmlv:,})")
+        print(f"   ✅ {anio} registrado ({len(df):,} filas, " f"SMMLV=${config.smmlv:,})")
 
         # Liberar raw
         del geih_raw
         gc.collect()
 
     @property
-    def anios_disponibles(self) -> List[int]:
+    def anios_disponibles(self) -> list[int]:
         """Lista de años cargados, ordenados."""
         return sorted(self._anios.keys())
 
@@ -123,8 +120,10 @@ class ComparadorMultiAnio:
 
         dfs = [data["df"] for data in self._anios.values()]
         combinado = pd.concat(dfs, ignore_index=True)
-        print(f"✅ Base combinada: {combinado.shape[0]:,} filas × "
-              f"{combinado.shape[1]} cols — Años: {self.anios_disponibles}")
+        print(
+            f"✅ Base combinada: {combinado.shape[0]:,} filas × "
+            f"{combinado.shape[1]} cols — Años: {self.anios_disponibles}"
+        )
         return combinado
 
     # ═════════════════════════════════════════════════════════════
@@ -182,16 +181,12 @@ class ComparadorMultiAnio:
             filas.append(td_dpto[["Departamento", "TD_%", "ANIO"]])
 
         df = pd.concat(filas, ignore_index=True)
-        pivot = df.pivot_table(
-            index="Departamento", columns="ANIO", values="TD_%"
-        )
+        pivot = df.pivot_table(index="Departamento", columns="ANIO", values="TD_%")
 
         # Calcular variación entre el primer y último año
         anios = sorted(pivot.columns)
         if len(anios) >= 2:
-            pivot[f"Δ_{anios[0]}→{anios[-1]}"] = (
-                pivot[anios[-1]] - pivot[anios[0]]
-            ).round(1)
+            pivot[f"Δ_{anios[0]}→{anios[-1]}"] = (pivot[anios[-1]] - pivot[anios[0]]).round(1)
 
         # Ordenar por TD del último año
         pivot = pivot.sort_values(anios[-1], ascending=False)
@@ -216,15 +211,15 @@ class ComparadorMultiAnio:
             df = data["df"]
             smmlv = data["config"].smmlv
             mask_ocu = (df["OCI"] == 1) & (df["INGLABO"] > 0)
-            med_cop = EP.mediana(
-                df.loc[mask_ocu, "INGLABO"], df.loc[mask_ocu, "FEX_ADJ"]
+            med_cop = EP.mediana(df.loc[mask_ocu, "INGLABO"], df.loc[mask_ocu, "FEX_ADJ"])
+            filas.append(
+                {
+                    "ANIO": anio,
+                    "Mediana_COP": round(med_cop),
+                    "Mediana_SMMLV": round(med_cop / smmlv, 2),
+                    "SMMLV_anio": smmlv,
+                }
             )
-            filas.append({
-                "ANIO": anio,
-                "Mediana_COP": round(med_cop),
-                "Mediana_SMMLV": round(med_cop / smmlv, 2),
-                "SMMLV_anio": smmlv,
-            })
 
         df = pd.DataFrame(filas).sort_values("ANIO")
 
@@ -246,7 +241,9 @@ class ComparadorMultiAnio:
             df_ocu = df[(df["OCI"] == 1) & df["RAMA"].notna()]
             rama_emp = (
                 df_ocu.groupby("RAMA")["FEX_ADJ"]
-                .sum().div(1_000).round(1)
+                .sum()
+                .div(1_000)
+                .round(1)
                 .reset_index()
                 .rename(columns={"FEX_ADJ": "Ocupados_miles"})
             )
@@ -254,9 +251,7 @@ class ComparadorMultiAnio:
             filas.append(rama_emp)
 
         df = pd.concat(filas, ignore_index=True)
-        pivot = df.pivot_table(
-            index="RAMA", columns="ANIO", values="Ocupados_miles"
-        )
+        pivot = df.pivot_table(index="RAMA", columns="ANIO", values="Ocupados_miles")
 
         anios = sorted(pivot.columns)
         if len(anios) >= 2:
@@ -282,23 +277,26 @@ class ComparadorMultiAnio:
             for sexo_val, sexo_lab in [(1, "H"), (2, "M")]:
                 m = mask & (df["P3271"] == sexo_val)
                 med = EP.mediana(df.loc[m, "INGLABO"], df.loc[m, "FEX_ADJ"])
-                filas.append({
-                    "ANIO": anio, "Sexo": sexo_lab,
-                    "Mediana_COP": round(med),
-                    "Mediana_SMMLV": round(med / smmlv, 2),
-                })
+                filas.append(
+                    {
+                        "ANIO": anio,
+                        "Sexo": sexo_lab,
+                        "Mediana_COP": round(med),
+                        "Mediana_SMMLV": round(med / smmlv, 2),
+                    }
+                )
 
         df = pd.DataFrame(filas)
         pivot = df.pivot_table(
-            index="ANIO", columns="Sexo",
+            index="ANIO",
+            columns="Sexo",
             values=["Mediana_COP", "Mediana_SMMLV"],
         )
         pivot.columns = ["_".join(c) for c in pivot.columns]
 
         if "Mediana_COP_H" in pivot.columns and "Mediana_COP_M" in pivot.columns:
             pivot["Brecha_%"] = (
-                (pivot["Mediana_COP_M"] - pivot["Mediana_COP_H"])
-                / pivot["Mediana_COP_H"] * 100
+                (pivot["Mediana_COP_M"] - pivot["Mediana_COP_H"]) / pivot["Mediana_COP_H"] * 100
             ).round(1)
 
         return pivot
@@ -310,9 +308,11 @@ class ComparadorMultiAnio:
         print(f"{'='*60}")
         for anio in self.anios_disponibles:
             data = self._anios[anio]
-            print(f"  {anio}: {data['n_registros']:,} filas | "
-                  f"SMMLV=${data['config'].smmlv:,} | "
-                  f"{data['config'].n_meses} meses")
+            print(
+                f"  {anio}: {data['n_registros']:,} filas | "
+                f"SMMLV=${data['config'].smmlv:,} | "
+                f"{data['config'].n_meses} meses"
+            )
         print(f"{'='*60}")
 
     # ═════════════════════════════════════════════════════════════
@@ -321,12 +321,14 @@ class ComparadorMultiAnio:
 
     def _imprimir_indicadores(self, df: pd.DataFrame) -> None:
         print(f"\n{'='*75}")
-        print(f"  COMPARACIÓN INTER-ANUAL DE INDICADORES LABORALES")
+        print("  COMPARACIÓN INTER-ANUAL DE INDICADORES LABORALES")
         print(f"{'='*75}")
         for _, r in df.iterrows():
             anio = int(r["ANIO"])
             delta_td = f"  Δ={r.get('Δ_TD_%', 'N/A')}" if "Δ_TD_%" in r else ""
-            print(f"  {anio}: TD={r['TD_%']:.1f}%{delta_td}  |  "
-                  f"TGP={r['TGP_%']:.1f}%  |  TO={r['TO_%']:.1f}%  |  "
-                  f"OCI={r['Ocupados_M']:.2f}M  |  "
-                  f"SMMLV=${int(r['SMMLV']):,}")
+            print(
+                f"  {anio}: TD={r['TD_%']:.1f}%{delta_td}  |  "
+                f"TGP={r['TGP_%']:.1f}%  |  TO={r['TO_%']:.1f}%  |  "
+                f"OCI={r['Ocupados_M']:.2f}M  |  "
+                f"SMMLV=${int(r['SMMLV']):,}"
+            )

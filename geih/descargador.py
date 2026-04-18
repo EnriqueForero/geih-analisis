@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 geih.descargador — Descarga automática de microdatos GEIH desde el DANE.
 
@@ -20,15 +19,12 @@ Autor: Néstor Enrique Forero Herrera
 
 __all__ = ["DescargadorDANE"]
 
-import io
-import os
-import zipfile
 import shutil
+import zipfile
 from pathlib import Path
-from typing import Optional, List, Dict
+from typing import Optional
 
-from .config import ConfigGEIH, MESES_NOMBRES, MODULOS_CSV
-
+from .config import MESES_NOMBRES, ConfigGEIH
 
 # ═════════════════════════════════════════════════════════════════════
 # CATÁLOGO DE URLs DEL DANE POR AÑO
@@ -37,7 +33,7 @@ from .config import ConfigGEIH, MESES_NOMBRES, MODULOS_CSV
 # IDs del catálogo de microdatos DANE para cada año.
 # Página: https://microdatos.dane.gov.co/index.php/catalog/{ID}/get-microdata
 # Actualizar cuando el DANE publique nuevos años.
-CATALOGO_DANE: Dict[int, Dict] = {
+CATALOGO_DANE: dict[int, dict] = {
     2022: {"catalog_id": 771, "nota": "Marco 2018 — primer año"},
     2023: {"catalog_id": 782, "nota": "Marco 2018"},
     2024: {"catalog_id": 819, "nota": "Marco 2018"},
@@ -91,7 +87,7 @@ class DescargadorDANE:
         self.ruta_destino = Path(ruta_destino)
         self.ruta_destino.mkdir(parents=True, exist_ok=True)
 
-    def descargar_todos(self) -> Dict[str, str]:
+    def descargar_todos(self) -> dict[str, str]:
         """Intenta descargar todos los meses desde el portal del DANE.
 
         Returns:
@@ -104,8 +100,8 @@ class DescargadorDANE:
         if anio not in CATALOGO_DANE:
             print(f"❌ Año {anio} no está en el catálogo del DANE.")
             print(f"   Años disponibles: {sorted(CATALOGO_DANE.keys())}")
-            print(f"   → Descargue manualmente desde:")
-            print(f"     https://microdatos.dane.gov.co/index.php/catalog/central")
+            print("   → Descargue manualmente desde:")
+            print("     https://microdatos.dane.gov.co/index.php/catalog/central")
             return {}
 
         catalog_id = CATALOGO_DANE[anio]["catalog_id"]
@@ -142,9 +138,9 @@ class DescargadorDANE:
         print(f"\n{'='*60}")
         print(f"  RESUMEN: {ok_count}/{len(carpetas)} meses descargados")
         if ok_count < len(carpetas):
-            print(f"\n  Para los meses faltantes, descargue manualmente desde:")
+            print("\n  Para los meses faltantes, descargue manualmente desde:")
             print(f"  {_URL_MICRODATOS.format(catalog_id=catalog_id)}")
-            print(f"  y use: descargador.organizar_zips('ruta/a/los/zips')")
+            print("  y use: descargador.organizar_zips('ruta/a/los/zips')")
         print(f"{'='*60}")
 
         return resultados
@@ -188,8 +184,8 @@ class DescargadorDANE:
             print(f"   ⚠️  Error de red: {e}")
             return False
 
-        print(f"   ⚠️  Descarga automática no soportada por el portal actual del DANE.")
-        print(f"   → Use organizar_zips() con archivos descargados manualmente.")
+        print("   ⚠️  Descarga automática no soportada por el portal actual del DANE.")
+        print("   → Use organizar_zips() con archivos descargados manualmente.")
         return False
 
     def organizar_zips(
@@ -282,6 +278,7 @@ class DescargadorDANE:
                 return mes
         # Intentar por número: mes_01.zip, 01_enero.zip, etc.
         import re
+
         match = re.search(r"(\d{1,2})", nombre_archivo)
         if match:
             num = int(match.group(1))
@@ -289,7 +286,7 @@ class DescargadorDANE:
                 return MESES_NOMBRES[num - 1]
         return None
 
-    def verificar(self) -> Dict[str, List[str]]:
+    def verificar(self) -> dict[str, list[str]]:
         """Verifica que la estructura de carpetas esté completa.
 
         Wrapper sobre ConsolidadorGEIH.verificar_estructura().
@@ -298,6 +295,7 @@ class DescargadorDANE:
             Dict con 'ok' y 'faltantes'.
         """
         from .consolidador import ConsolidadorGEIH
+
         c = ConsolidadorGEIH(
             ruta_base=str(self.ruta_destino),
             config=self.config,
@@ -312,27 +310,27 @@ class DescargadorDANE:
         print(f"\n{'='*65}")
         print(f"  📋 INSTRUCCIONES DE DESCARGA MANUAL — GEIH {anio}")
         print(f"{'='*65}")
-        print(f"")
-        print(f"  1. Abra el portal de microdatos del DANE:")
+        print("")
+        print("  1. Abra el portal de microdatos del DANE:")
         print(f"     https://microdatos.dane.gov.co/index.php/catalog/{catalog_id}/get-microdata")
-        print(f"")
-        print(f"  2. Acepte los términos de uso (si se le solicita).")
-        print(f"")
-        print(f"  3. Descargue los ZIPs mensuales (Enero.csv ... Diciembre.csv)")
-        print(f"     Nota: El DANE los nombra .csv pero son ZIPs.")
-        print(f"")
-        print(f"  4. Coloque TODOS los ZIPs en una sola carpeta, por ejemplo:")
+        print("")
+        print("  2. Acepte los términos de uso (si se le solicita).")
+        print("")
+        print("  3. Descargue los ZIPs mensuales (Enero.csv ... Diciembre.csv)")
+        print("     Nota: El DANE los nombra .csv pero son ZIPs.")
+        print("")
+        print("  4. Coloque TODOS los ZIPs en una sola carpeta, por ejemplo:")
         print(f"     {self.ruta_destino}/zips_dane_{anio}/")
-        print(f"")
-        print(f"  5. Ejecute en el notebook:")
-        print(f"     from geih import DescargadorDANE, ConfigGEIH")
-        print(f"     desc = DescargadorDANE(")
+        print("")
+        print("  5. Ejecute en el notebook:")
+        print("     from geih import DescargadorDANE, ConfigGEIH")
+        print("     desc = DescargadorDANE(")
         print(f"         config=ConfigGEIH(anio={anio}, n_meses={self.config.n_meses}),")
         print(f"         ruta_destino='{self.ruta_destino}',")
-        print(f"     )")
+        print("     )")
         print(f"     desc.organizar_zips('{self.ruta_destino}/zips_dane_{anio}')")
-        print(f"     desc.verificar()")
-        print(f"")
-        print(f"  6. Continúe con el pipeline normal:")
+        print("     desc.verificar()")
+        print("")
+        print("  6. Continúe con el pipeline normal:")
         print(f"     consolidador = ConsolidadorGEIH(ruta_base='{self.ruta_destino}', ...)")
         print(f"{'='*65}")

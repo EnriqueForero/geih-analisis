@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "geih-analisis"
-version = "0.1.6"
+version = "0.1.7"
 description = "Análisis de microdatos GEIH del DANE — Colombia. 70+ indicadores: TD, TGP, TO, Gini, Mincer, ICE, ICI, brecha de género, 33 departamentos, informalidad, análisis de tierras y precisión muestral."
 readme = "README.md"
 license = {text = "MIT"}
@@ -57,7 +57,78 @@ exclude = ["tests*", "notebooks*", "docs*"]
 "geih" = ["py.typed"]
 "geih_2025" = ["py.typed"]
 
+
+# ═══════════════════════════════════════════════════════════
+# Pytest
+# ═══════════════════════════════════════════════════════════
 [tool.pytest.ini_options]
 testpaths    = ["tests"]
 python_files = ["test_*.py"]
-addopts      = "-v --tb=short"
+addopts      = "-v --tb=short --strict-markers --cov=geih --cov-report=term-missing --cov-report=xml --cov-fail-under=25"
+markers = [
+    "paridad: test de paridad binaria contra valores congelados",
+    "canario: test canario contra boletin DANE (requiere GEIH_TEST_DATA)",
+    "smoke: test rapido end-to-end sobre golden_set.parquet",
+]
+
+
+# ═══════════════════════════════════════════════════════════
+# Coverage.py
+# ═══════════════════════════════════════════════════════════
+[tool.coverage.run]
+branch = true
+source = ["geih"]
+omit = [
+    "*/tests/*",
+    "*/dashboard.py",
+    "*/visualizacion*.py",
+    "*/visualizacion_interactiva.py",
+    "*/__main__.py",
+]
+
+[tool.coverage.report]
+show_missing = true
+precision    = 1
+skip_covered = false
+exclude_lines = [
+    "pragma: no cover",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "def __repr__",
+    "def __str__",
+]
+
+
+# ═══════════════════════════════════════════════════════════
+# Ruff (linter + formatter)
+# ═══════════════════════════════════════════════════════════
+[tool.ruff]
+line-length    = 100
+target-version = "py39"
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "N", "UP", "B", "SIM", "RUF"]
+ignore = [
+    "E501",
+    "B008",
+    "N806",
+    "SIM108",
+    "UP007",
+    "RUF001",
+    "RUF002",
+    "RUF003",
+    "N817",
+    "RUF012",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"*/__init__.py" = ["F401"]
+"__init__.py" = ["F401"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["geih"]
+
+[tool.ruff.format]
+quote-style  = "double"
+indent-style = "space"

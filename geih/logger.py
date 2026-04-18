@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 geih.logger — Sistema centralizado de logging con trazabilidad.
 
@@ -36,7 +35,6 @@ import logging
 import sys
 from pathlib import Path
 from typing import Optional
-
 
 # Nombre raíz del logger del paquete
 _LOGGER_NAME = "geih"
@@ -122,10 +120,12 @@ def configurar_logging(
     # ── Handler de consola ─────────────────────────────────────
     console_handler = logging.StreamHandler(sys.stdout)
     console_handler.setLevel(getattr(logging, nivel.upper(), logging.INFO))
-    console_handler.setFormatter(logging.Formatter(
-        formato_consola or _FORMATO_CONSOLA,
-        datefmt=_FORMATO_FECHA,
-    ))
+    console_handler.setFormatter(
+        logging.Formatter(
+            formato_consola or _FORMATO_CONSOLA,
+            datefmt=_FORMATO_FECHA,
+        )
+    )
     logger.addHandler(console_handler)
 
     # ── Handler de archivo (opcional) ──────────────────────────
@@ -133,13 +133,17 @@ def configurar_logging(
         ruta = Path(archivo)
         ruta.parent.mkdir(parents=True, exist_ok=True)
         file_handler = logging.FileHandler(
-            ruta, mode="a", encoding="utf-8",
+            ruta,
+            mode="a",
+            encoding="utf-8",
         )
         file_handler.setLevel(getattr(logging, nivel_archivo.upper(), logging.DEBUG))
-        file_handler.setFormatter(logging.Formatter(
-            formato_archivo or _FORMATO_ARCHIVO,
-            datefmt=_FORMATO_FECHA,
-        ))
+        file_handler.setFormatter(
+            logging.Formatter(
+                formato_archivo or _FORMATO_ARCHIVO,
+                datefmt=_FORMATO_FECHA,
+            )
+        )
         logger.addHandler(file_handler)
         logger.info(f"📝 Log → {ruta.resolve()}")
 
@@ -200,3 +204,8 @@ def resetear_logging() -> None:
     logger = logging.getLogger(_LOGGER_NAME)
     logger.handlers.clear()
     _configurado = False
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# 📄 geih/muestreo.py
+#    Categoría: codigo
