@@ -19,10 +19,10 @@ Autor: Néstor Enrique Forero Herrera
 """
 
 __all__ = [
-    "PreparadorGEIH",
-    "MergeCorrelativas",
-    "COLUMNAS_DEFAULT",
     "COLUMNAS_BOLETIN",
+    "COLUMNAS_DEFAULT",
+    "MergeCorrelativas",
+    "PreparadorGEIH",
 ]
 
 
@@ -292,7 +292,7 @@ class PreparadorGEIH:
             # legítimamente si no se consolidó con todos los módulos)
             extra_faltantes = cols_faltantes & set(columnas_extra or [])
             if extra_faltantes:
-                print(f"⚠️  Columnas extra no encontradas en la base: " f"{sorted(extra_faltantes)}")
+                print(f"⚠️  Columnas extra no encontradas en la base: {sorted(extra_faltantes)}")
 
         # ── Resolver filtro de meses ───────────────────────────
         # Prioridad: meses_filtro explícito > config.meses_rango > None
@@ -309,7 +309,7 @@ class PreparadorGEIH:
                 mask = df_raw["MES_NUM"].isin(filtro_final)
             else:
                 raise TypeError(
-                    f"meses_filtro debe ser int o list[int], " f"recibido: {type(filtro_final)}"
+                    f"meses_filtro debe ser int o list[int], recibido: {type(filtro_final)}"
                 )
             df = df_raw.loc[mask, cols_ok].copy()
         else:
@@ -654,7 +654,9 @@ class MergeCorrelativas:
         sin_match = rama_df - rama_ciiu
         print(f"   Códigos en base   : {len(rama_df)}")
         print(f"   Códigos en CIIU   : {len(rama_ciiu)}")
-        print(f"   Con match         : {len(match)} ({len(match)/max(len(rama_df),1)*100:.0f}%)")
+        print(
+            f"   Con match         : {len(match)} ({len(match) / max(len(rama_df), 1) * 100:.0f}%)"
+        )
         if sin_match:
             print(f"   Sin match (top 10): {sorted(sin_match)[:10]}")
 
@@ -663,8 +665,8 @@ class MergeCorrelativas:
 
         n_con = df["DESCRIPCION_CIIU"].notna().sum()
         n_sin = df["DESCRIPCION_CIIU"].isna().sum()
-        print(f"   Con descripción   : {n_con:,} ({n_con/len(df)*100:.1f}%)")
-        print(f"   Sin descripción   : {n_sin:,} ({n_sin/len(df)*100:.1f}%)")
+        print(f"   Con descripción   : {n_con:,} ({n_con / len(df) * 100:.1f}%)")
+        print(f"   Sin descripción   : {n_sin:,} ({n_sin / len(df) * 100:.1f}%)")
 
         if n_sin > 0 and "RAMA2D_R4" in df.columns:
             df = self._aplicar_fallback_ciiu(df)
@@ -713,7 +715,7 @@ class MergeCorrelativas:
         )
 
         n_ok = df["NOMBRE_DPTO"].notna().sum()
-        print(f"   Departamentos mapeados: {n_ok:,} ({n_ok/len(df)*100:.1f}%)")
+        print(f"   Departamentos mapeados: {n_ok:,} ({n_ok / len(df) * 100:.1f}%)")
 
         return df
 

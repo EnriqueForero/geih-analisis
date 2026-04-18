@@ -34,7 +34,7 @@ import unicodedata
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -42,26 +42,26 @@ from openpyxl import load_workbook
 from openpyxl.worksheet.worksheet import Worksheet
 
 __all__ = [
-    # Dataclasses
-    "RutasProyecto",
-    "PeriodoMovil",
-    "ParametrosValidacion",
-    "CeldaComparada",
-    "BloqueReplicado",
-    "ResultadoHoja",
-    "ResultadoReplicacion",
-    "LayoutHoja",
-    "BloqueLayout",
-    # Clases funcionales
-    "ResolvedTrimestre",
-    "ExcelLayoutParser",
-    "LoaderGEIH",
-    "ValidadorParidad",
-    # Helpers
-    "normalizar_texto",
-    "hash_archivo",
     "MESES_NOMBRE_A_NUM",
     "MESES_NUM_A_NOMBRE",
+    "BloqueLayout",
+    "BloqueReplicado",
+    "CeldaComparada",
+    "ExcelLayoutParser",
+    "LayoutHoja",
+    "LoaderGEIH",
+    "ParametrosValidacion",
+    "PeriodoMovil",
+    # Clases funcionales
+    "ResolvedTrimestre",
+    "ResultadoHoja",
+    "ResultadoReplicacion",
+    # Dataclasses
+    "RutasProyecto",
+    "ValidadorParidad",
+    "hash_archivo",
+    # Helpers
+    "normalizar_texto",
 ]
 
 
@@ -170,9 +170,9 @@ class RutasProyecto:
     ruta_excel: Path
     ruta_data: Path
     ruta_salida: Path
-    ruta_parquet: Optional[Path] = None
-    ruta_divipola: Optional[Path] = None
-    ruta_ciiu_ac: Optional[Path] = None
+    ruta_parquet: Path | None = None
+    ruta_divipola: Path | None = None
+    ruta_ciiu_ac: Path | None = None
 
     def __post_init__(self):
         # Convertir strings a Path
@@ -312,9 +312,9 @@ class CeldaComparada:
     condicion: str  # 'Total' | 'Formal' | 'Informal' | 'Miles' | '%' | etc.
     categoria: str
     trimestre: str
-    valor_excel: Optional[float]
-    valor_calculado: Optional[float]
-    diferencia: Optional[float]
+    valor_excel: float | None
+    valor_calculado: float | None
+    diferencia: float | None
     estado: str  # OK_CIERRE | OK_DIAGNOSTICO | FAIL | NA
     es_proporcion: bool = False
 
@@ -352,7 +352,7 @@ class LayoutHoja:
     bloques: list[BloqueLayout] = field(default_factory=list)
     col_ultimo_trimestre: int = -1
     etiqueta_ultimo_trimestre: str = ""
-    ano_ultimo_trimestre: Optional[int] = None
+    ano_ultimo_trimestre: int | None = None
 
 
 @dataclass
@@ -379,7 +379,7 @@ class ResultadoHoja:
     n_fail: int = 0
     n_na: int = 0
     celdas: list[CeldaComparada] = field(default_factory=list)
-    causa_raiz: Optional[str] = None
+    causa_raiz: str | None = None
 
     @property
     def tasa_cierre(self) -> float:
@@ -404,8 +404,8 @@ class ResultadoReplicacion:
     timestamp: datetime
     trimestre: PeriodoMovil
     hojas: list[ResultadoHoja] = field(default_factory=list)
-    hash_codigo: Optional[str] = None
-    parametros: Optional[ParametrosValidacion] = None
+    hash_codigo: str | None = None
+    parametros: ParametrosValidacion | None = None
 
     def celdas_df(self) -> pd.DataFrame:
         """Devuelve todas las CeldaComparada como DataFrame."""
@@ -510,7 +510,7 @@ class ResolvedTrimestre:
     def parsear_etiqueta(
         cls,
         etiqueta: str,
-        ano_ancla: Optional[int] = None,
+        ano_ancla: int | None = None,
     ) -> PeriodoMovil:
         """Convierte una cadena de período del Excel en `PeriodoMovil`.
 
@@ -624,7 +624,7 @@ class ResolvedTrimestre:
         hoja: str = "Total nacional",
         fila_meses: int = 13,
         fila_anos: int = 12,
-        override: Optional[str] = None,
+        override: str | None = None,
     ) -> ResolvedTrimestre:
         """Lee la última columna visible de una hoja del Excel.
 
@@ -646,8 +646,7 @@ class ResolvedTrimestre:
         try:
             if hoja not in wb.sheetnames:
                 raise KeyError(
-                    f"Hoja '{hoja}' no existe en {ruta_excel.name}. "
-                    f"Disponibles: {wb.sheetnames}"
+                    f"Hoja '{hoja}' no existe en {ruta_excel.name}. Disponibles: {wb.sheetnames}"
                 )
             ws = wb[hoja]
             # Autodetección si fila_meses está vacía
@@ -678,7 +677,7 @@ class ResolvedTrimestre:
             etiqueta = str(ws.cell(fila_meses_real, ultima_col).value).strip()
 
             # Buscar año ancla recorriendo hacia atrás en fila_anos
-            ano_ancla: Optional[int] = None
+            ano_ancla: int | None = None
             for c in range(ultima_col, cls.COL_PRIMERA_DATO - 1, -1):
                 v = ws.cell(fila_anos_real, c).value
                 if v is not None:
@@ -816,7 +815,7 @@ class ExcelLayoutParser:
     def encontrar_ultima_columna(
         self,
         hoja: str,
-    ) -> tuple[int, str, Optional[int]]:
+    ) -> tuple[int, str, int | None]:
         """Devuelve (columna, etiqueta_trimestre, ano_ancla) de la última
         columna con dato en la fila de meses.
 
@@ -843,7 +842,7 @@ class ExcelLayoutParser:
         etiqueta = str(ws.cell(fila_meses_real, col).value).strip()
 
         # Retroceder para encontrar último año
-        ano: Optional[int] = None
+        ano: int | None = None
         for c in range(col, 1, -1):
             v = ws.cell(fila_anos_real, c).value
             if v is not None:
@@ -1008,7 +1007,7 @@ class ExcelLayoutParser:
         bloques_expandidos: list[BloqueLayout] = []
         for b in layout_base.bloques:
             # Escanear las categorías del bloque y dividir por condición
-            sub_bloque: Optional[BloqueLayout] = None
+            sub_bloque: BloqueLayout | None = None
             for fila_i, etq in b.categorias:
                 etq_norm = normalizar_texto(etq)
                 # ¿Es un marcador de condición?
@@ -1100,7 +1099,7 @@ class LoaderGEIH:
     def __init__(
         self,
         ruta_data: Path,
-        ruta_parquet: Optional[Path] = None,
+        ruta_parquet: Path | None = None,
         consolidador=None,  # instancia de ConsolidadorGEIH (inyectada)
         preparador=None,  # instancia de PreparadorGEIH (inyectada)
     ):
@@ -1140,8 +1139,7 @@ class LoaderGEIH:
                 meses_faltantes = set(periodo.meses) - meses_presentes
                 if meses_faltantes:
                     print(
-                        f"⚠️  Parquet no cubre: {sorted(meses_faltantes)}. "
-                        f"Consolidando desde ZIP."
+                        f"⚠️  Parquet no cubre: {sorted(meses_faltantes)}. Consolidando desde ZIP."
                     )
                     df = self._consolidar_desde_zip(periodo, solo_ocupados)
             return df
@@ -1284,7 +1282,7 @@ class ValidadorParidad:
     agregadas para el `ResultadoHoja`.
     """
 
-    def __init__(self, parametros: Optional[ParametrosValidacion] = None):
+    def __init__(self, parametros: ParametrosValidacion | None = None):
         self.params = parametros or ParametrosValidacion()
 
     def comparar_bloque(
@@ -1387,7 +1385,7 @@ class ValidadorParidad:
         hoja: str,
         trimestre: str,
         celdas: list[CeldaComparada],
-        causa_raiz: Optional[str] = None,
+        causa_raiz: str | None = None,
     ) -> ResultadoHoja:
         """Agrega métricas a partir de la lista de celdas."""
         n_cierre = sum(1 for c in celdas if c.estado == "OK_CIERRE")

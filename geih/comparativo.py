@@ -94,7 +94,7 @@ class ComparadorMultiAnio:
             "n_registros": len(df),
         }
 
-        print(f"   ✅ {anio} registrado ({len(df):,} filas, " f"SMMLV=${config.smmlv:,})")
+        print(f"   ✅ {anio} registrado ({len(df):,} filas, SMMLV=${config.smmlv:,})")
 
         # Liberar raw
         del geih_raw
@@ -303,9 +303,9 @@ class ComparadorMultiAnio:
 
     def resumen(self) -> None:
         """Imprime resumen de los años cargados."""
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print(f"  COMPARADOR MULTI-AÑO — {len(self._anios)} años cargados")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
         for anio in self.anios_disponibles:
             data = self._anios[anio]
             print(
@@ -313,16 +313,16 @@ class ComparadorMultiAnio:
                 f"SMMLV=${data['config'].smmlv:,} | "
                 f"{data['config'].n_meses} meses"
             )
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
 
     # ═════════════════════════════════════════════════════════════
     # IMPRESIÓN
     # ═════════════════════════════════════════════════════════════
 
     def _imprimir_indicadores(self, df: pd.DataFrame) -> None:
-        print(f"\n{'='*75}")
+        print(f"\n{'=' * 75}")
         print("  COMPARACIÓN INTER-ANUAL DE INDICADORES LABORALES")
-        print(f"{'='*75}")
+        print(f"{'=' * 75}")
         for _, r in df.iterrows():
             anio = int(r["ANIO"])
             delta_td = f"  Δ={r.get('Δ_TD_%', 'N/A')}" if "Δ_TD_%" in r else ""

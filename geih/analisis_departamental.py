@@ -247,18 +247,18 @@ class AnalisisDepartamental:
         n_total = len(resultado)
         n_confiable = (resultado["Precision_TD"] != NO_CONFIABLE).sum()
 
-        print(f"\n{'='*80}")
+        print(f"\n{'=' * 80}")
         print(f"  REPORTE DEPARTAMENTAL — {self.config.periodo_etiqueta}")
-        print(f"{'='*80}")
+        print(f"{'=' * 80}")
         print(f"  Departamentos analizados : {n_total}")
         print(f"  Con precisión confiable  : {n_confiable}")
         print(f"  Sin precisión confiable  : {n_total - n_confiable}")
-        print(f"{'─'*80}")
+        print(f"{'─' * 80}")
         print(
             f"  {'Departamento':<25s} {'TD_%':>6s} {'CV%':>5s} {'IC 95%':>14s} "
             f"{'Med.COP':>12s} {'Prec.':>12s}"
         )
-        print(f"{'─'*80}")
+        print(f"{'─' * 80}")
 
         for _, r in resultado.head(33).iterrows():
             td = r.get("TD_%", np.nan)
@@ -278,7 +278,7 @@ class AnalisisDepartamental:
                 f"{ic_str:>14s} {med_str:>12s} {prec}"
             )
 
-        print(f"{'='*80}")
+        print(f"{'=' * 80}")
 
     def exportar_excel(
         self,

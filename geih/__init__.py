@@ -55,7 +55,7 @@ except _PackageNotFoundError:
     # Ejecutando desde checkout sin `pip install`.
     # Se marca explícitamente como "dev" para evitar confusión
     # con una versión publicada.
-    __version__ = "0.1.7"
+    __version__ = "0.1.8"
 
 
 # ══════════════════════════════════════════════════════════════

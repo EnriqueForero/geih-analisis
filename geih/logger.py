@@ -26,9 +26,9 @@ Autor: Néstor Enrique Forero Herrera
 """
 
 __all__ = [
-    "get_logger",
-    "configurar_logging",
     "LoggerGEIH",
+    "configurar_logging",
+    "get_logger",
 ]
 
 import logging

@@ -17,11 +17,11 @@ Autor: Néstor Enrique Forero Herrera
 """
 
 __all__ = [
-    "DuracionDesempleo",
-    "DashboardSectoresProColombia",
     "AnatomaSalario",
-    "FormaPago",
     "CanalEmpleo",
+    "DashboardSectoresProColombia",
+    "DuracionDesempleo",
+    "FormaPago",
 ]
 
 
@@ -235,9 +235,9 @@ class DuracionDesempleo:
         return pd.DataFrame(filas).sort_values("Mediana_semanas", ascending=False)
 
     def _imprimir(self, dist: pd.DataFrame, mediana: float) -> None:
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print(f"  M8 · DURACIÓN DEL DESEMPLEO — {self.config.periodo_etiqueta}")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
         print(f"  Mediana nacional: {mediana:.1f} semanas")
         for _, row in dist.iterrows():
             print(f"  {row['Rango']:<16} → {row['Personas_M']:.3f}M  ({row['Pct']:.1f}%)")
@@ -359,14 +359,14 @@ class DashboardSectoresProColombia:
         return resultado
 
     def _imprimir(self, df: pd.DataFrame) -> None:
-        print(f"\n{'='*80}")
+        print(f"\n{'=' * 80}")
         print(f"  M14 · DASHBOARD SECTORES ESTRATÉGICOS — {self.config.periodo_etiqueta}")
-        print(f"{'='*80}")
+        print(f"{'=' * 80}")
         print(
             f"  {'Sector':<28} {'Empleo':>8} {'Med.SML':>8} {'%Univ':>6} "
             f"{'%Jov':>5} {'%Form':>6} {'%Muj':>5}"
         )
-        print(f"  {'─'*28} {'─'*8} {'─'*8} {'─'*6} {'─'*5} {'─'*6} {'─'*5}")
+        print(f"  {'─' * 28} {'─' * 8} {'─' * 8} {'─' * 6} {'─' * 5} {'─' * 6} {'─' * 5}")
         for _, r in df.iterrows():
             print(
                 f"  {r['Sector']:<28} {r['Empleo_miles']:>7.0f}K "
@@ -442,9 +442,9 @@ class AnatomaSalario:
             "Pct_con_retencion_fuente": pct_retencion,
         }
 
-        print(f"\n{'='*55}")
+        print(f"\n{'=' * 55}")
         print(f"  MX1 · ANATOMÍA SALARIAL — {self.config.periodo_etiqueta}")
-        print(f"{'='*55}")
+        print(f"{'=' * 55}")
         print(f"  Mediana P6500 (bruto declarado): ${med_p6500:,.0f}")
         print(f"  Mediana INGLABO (consolidado) :  ${med_inglabo:,.0f}")
         print(f"  Brecha (ingreso invisible)    :  {brecha_pct:+.1f}%")
@@ -660,11 +660,11 @@ class FormaPago:
         return pd.DataFrame(filas).sort_values("Cotiza_pension_%", ascending=False)
 
     def _imprimir(self, dist: pd.DataFrame) -> None:
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print(f"  MX2 · FORMA DE PAGO — {self.config.periodo_etiqueta}")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
         for _, r in dist.iterrows():
-            print(f"  {r['Forma_pago']!s:<45} " f"{r['Ocupados_M']:>6.3f}M  ({r['Pct']:>5.1f}%)")
+            print(f"  {r['Forma_pago']!s:<45} {r['Ocupados_M']:>6.3f}M  ({r['Pct']:>5.1f}%)")
 
 
 # ═════════════════════════════════════════════════════════════════════
@@ -764,8 +764,8 @@ class CanalEmpleo:
         return pd.DataFrame(filas)
 
     def _imprimir(self, dist: pd.DataFrame) -> None:
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print(f"  MX3 · CANAL DE EMPLEO — {self.config.periodo_etiqueta}")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
         for _, r in dist.iterrows():
-            print(f"  {r['Canal']!s:<42} " f"{r['Ocupados_M']:>6.3f}M  ({r['Pct']:>5.1f}%)")
+            print(f"  {r['Canal']!s:<42} {r['Ocupados_M']:>6.3f}M  ({r['Pct']:>5.1f}%)")

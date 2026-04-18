@@ -46,7 +46,6 @@ from __future__ import annotations
 
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
 import numpy as np
 import pandas as pd
@@ -68,10 +67,10 @@ from .replicacion_dane_common import (
 from .replicacion_dane_informalidad import MAPEO_DOMINIO_EXCEL
 
 __all__ = [
-    "ReplicadorSeguridadSocial",
-    "replicar_seguridad_social_excel",
     "HOJAS_SEGURIDAD_SOCIAL",
     "LINEAS_SS",
+    "ReplicadorSeguridadSocial",
+    "replicar_seguridad_social_excel",
 ]
 
 
@@ -157,7 +156,7 @@ class ReplicadorSeguridadSocial:
     def __init__(
         self,
         ruta_excel: Path,
-        parametros: Optional[ParametrosValidacion] = None,
+        parametros: ParametrosValidacion | None = None,
     ):
         self.ruta_excel = Path(ruta_excel)
         self.params = parametros or ParametrosValidacion()
@@ -167,7 +166,7 @@ class ReplicadorSeguridadSocial:
         self,
         df: pd.DataFrame,
         periodo: PeriodoMovil,
-        hojas: Optional[list[str]] = None,
+        hojas: list[str] | None = None,
     ) -> ResultadoReplicacion:
         """Replica todas las hojas de SS."""
         self._verificar_columnas_ss(df)
@@ -230,7 +229,7 @@ class ReplicadorSeguridadSocial:
         """Resuelve máscara para dominios de SS, incluyendo los que llevan sexo."""
         key = normalizar_texto(dominio_excel)
         # ¿Trae ' - hombres' o ' - mujeres'?
-        sexo_filtro: Optional[str] = None
+        sexo_filtro: str | None = None
         if key.endswith(" - hombres"):
             sexo_filtro = "Hombres"
             key = key[: -len(" - hombres")].strip()
@@ -606,8 +605,8 @@ def replicar_seguridad_social_excel(
     ruta_excel: Path,
     df_preparado: pd.DataFrame,
     periodo: PeriodoMovil,
-    parametros: Optional[ParametrosValidacion] = None,
-    hojas: Optional[list[str]] = None,
+    parametros: ParametrosValidacion | None = None,
+    hojas: list[str] | None = None,
 ) -> ResultadoReplicacion:
     """API funcional para replicar las 4 hojas de SS."""
     rep = ReplicadorSeguridadSocial(ruta_excel, parametros)

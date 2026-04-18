@@ -166,9 +166,9 @@ class TestCanarioPET:
 
     def test_pet_anual(self, df_anu):
         r = _tasas_crudas(df_anu)
-        assert (
-            40_500 < r["pet_k"] < 41_300
-        ), f"PET Ene-Dic 2025 = {r['pet_k']:.0f} mil fuera de [40500, 41300]."
+        assert 40_500 < r["pet_k"] < 41_300, (
+            f"PET Ene-Dic 2025 = {r['pet_k']:.0f} mil fuera de [40500, 41300]."
+        )
 
 
 # ─────────────────────────────────────────────────────────────────────
@@ -181,27 +181,27 @@ class TestCanarioTasasNacionales:
 
     def test_td_diciembre(self, df_dic):
         r = _tasas_crudas(df_dic)
-        assert (
-            abs(r["td"] - 8.0) <= TOL_TASA_PP
-        ), f"TD Dic 2025 = {r['td']:.4f}%, esperado 8.0% ±{TOL_TASA_PP}"
+        assert abs(r["td"] - 8.0) <= TOL_TASA_PP, (
+            f"TD Dic 2025 = {r['td']:.4f}%, esperado 8.0% ±{TOL_TASA_PP}"
+        )
 
     def test_tgp_diciembre(self, df_dic):
         r = _tasas_crudas(df_dic)
-        assert (
-            abs(r["tgp"] - 64.3) <= TOL_TASA_PP
-        ), f"TGP Dic 2025 = {r['tgp']:.4f}%, esperado 64.3% ±{TOL_TASA_PP}"
+        assert abs(r["tgp"] - 64.3) <= TOL_TASA_PP, (
+            f"TGP Dic 2025 = {r['tgp']:.4f}%, esperado 64.3% ±{TOL_TASA_PP}"
+        )
 
     def test_to_diciembre(self, df_dic):
         r = _tasas_crudas(df_dic)
-        assert (
-            abs(r["to"] - 59.2) <= TOL_TASA_PP
-        ), f"TO Dic 2025 = {r['to']:.4f}%, esperado 59.2% ±{TOL_TASA_PP}"
+        assert abs(r["to"] - 59.2) <= TOL_TASA_PP, (
+            f"TO Dic 2025 = {r['to']:.4f}%, esperado 59.2% ±{TOL_TASA_PP}"
+        )
 
     def test_td_anual(self, df_anu):
         r = _tasas_crudas(df_anu)
-        assert (
-            abs(r["td"] - 8.9) <= TOL_TASA_PP
-        ), f"TD anual 2025 = {r['td']:.4f}%, esperado 8.9% ±{TOL_TASA_PP}"
+        assert abs(r["td"] - 8.9) <= TOL_TASA_PP, (
+            f"TD anual 2025 = {r['td']:.4f}%, esperado 8.9% ±{TOL_TASA_PP}"
+        )
 
 
 # ─────────────────────────────────────────────────────────────────────
@@ -234,9 +234,9 @@ class TestCanarioSexo:
         tdh = _tasas_crudas(df_dic[df_dic["SEXO"] == "Hombres"])["td"]
         tdm = _tasas_crudas(df_dic[df_dic["SEXO"] == "Mujeres"])["td"]
         brecha = tdm - tdh
-        assert (
-            abs(brecha - 3.7) <= TOL_TASA_PP
-        ), f"Brecha TD M-H = {brecha:.4f} p.p., esperado 3.7 ±{TOL_TASA_PP}"
+        assert abs(brecha - 3.7) <= TOL_TASA_PP, (
+            f"Brecha TD M-H = {brecha:.4f} p.p., esperado 3.7 ±{TOL_TASA_PP}"
+        )
 
 
 # ─────────────────────────────────────────────────────────────────────
@@ -248,9 +248,9 @@ class TestCanarioDominio:
     """DOMINIO clasificado correctamente contra Boletín DANE pág. 7."""
 
     def test_dominio_existe(self, df_dic):
-        assert (
-            "DOMINIO" in df_dic.columns
-        ), "Falta columna DOMINIO. agregar_variables_derivadas no la creó."
+        assert "DOMINIO" in df_dic.columns, (
+            "Falta columna DOMINIO. agregar_variables_derivadas no la creó."
+        )
 
     def test_dominio_sin_residuales(self, df_dic):
         """No deben quedar registros sin clasificar (categoría 'otros')."""
@@ -383,9 +383,9 @@ class TestCanarioInformalidad:
 
     def test_informalidad_nacional(self, df_dic):
         prop = self._prop_inf(df_dic)
-        assert (
-            abs(prop - 55.5) <= TOL_INFORMALIDAD
-        ), f"Informalidad nacional Dic = {prop:.2f}%, esperado 55.5% ±0.5"
+        assert abs(prop - 55.5) <= TOL_INFORMALIDAD, (
+            f"Informalidad nacional Dic = {prop:.2f}%, esperado 55.5% ±0.5"
+        )
 
     def test_informalidad_rural(self, df_dic):
         prop = self._prop_inf(df_dic[df_dic["DOMINIO"] == "rural"])
@@ -417,5 +417,5 @@ class TestCanarioIndicadoresRaw:
             abs(r["TO_raw"] - r["TO_%"]),
         ]
         assert max(diferencias) < 0.5, (
-            "Los valores raw difieren demasiado del display — uno de los " "dos está mal calculado."
+            "Los valores raw difieren demasiado del display — uno de los dos está mal calculado."
         )

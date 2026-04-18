@@ -42,46 +42,46 @@ Autor: Néstor Enrique Forero Herrera
 """
 
 __all__ = [
-    "SMMLV_POR_ANIO",
-    "SMMLV_2025",
+    "AGRUPACION_DANE_8",
+    "AREA_A_CIUDAD",
+    "AREA_GEIH_A_CIUDAD",
     "CARGA_PRESTACIONAL",
-    "MESES_NOMBRES",
-    "generar_carpetas_mensuales",
-    "generar_etiqueta_periodo",
-    "MESES_CARPETAS",
-    "ConfigGEIH",
+    "CIIU_DESCRIPCION_FALLBACK",
+    "CIUDADES_10_INTERMEDIAS",
+    "CIUDADES_13_PRINCIPALES",
     "COLORES",
-    "LLAVES_PERSONA",
-    "LLAVES_HOGAR",
     "CONVERTERS_BASE",
     "CONVERTERS_CON_AREA",
-    "MODULOS_CSV",
-    "VARIABLES_POR_MODULO",
-    "RAMAS_DANE",
-    "TABLA_CIIU_RAMAS",
-    "AGRUPACION_DANE_8",
-    "_AGRUP_DANE_POR_DIVISION",
     "DEPARTAMENTOS",
-    "DPTO_A_CIUDAD",
-    "AREA_A_CIUDAD",
-    "CIUDADES_13_PRINCIPALES",
-    "CIUDADES_10_INTERMEDIAS",
-    "NIVELES_EDUCATIVOS",
-    "NIVELES_AGRUPADOS",
-    "P3042_A_ANOS",
-    "RANGOS_SMMLV_LIMITES",
-    "RANGOS_SMMLV_ETIQUETAS",
-    "TAMANO_EMPRESA",
-    "CIIU_DESCRIPCION_FALLBACK",
-    "ReferenciaDane",
-    "REF_DANE",
-    "REF_DANE_2025",
-    "cargar_config_externa",
+    "DPTOS_10_CIUDADES",
     # v5.2 — Dominios geográficos y posición ocupacional
     "DPTOS_13_CIUDADES",
-    "DPTOS_10_CIUDADES",
-    "AREA_GEIH_A_CIUDAD",
+    "DPTO_A_CIUDAD",
+    "LLAVES_HOGAR",
+    "LLAVES_PERSONA",
+    "MESES_CARPETAS",
+    "MESES_NOMBRES",
+    "MODULOS_CSV",
+    "NIVELES_AGRUPADOS",
+    "NIVELES_EDUCATIVOS",
+    "P3042_A_ANOS",
     "POSICION_OCUPACIONAL",
+    "RAMAS_DANE",
+    "RANGOS_SMMLV_ETIQUETAS",
+    "RANGOS_SMMLV_LIMITES",
+    "REF_DANE",
+    "REF_DANE_2025",
+    "SMMLV_2025",
+    "SMMLV_POR_ANIO",
+    "TABLA_CIIU_RAMAS",
+    "TAMANO_EMPRESA",
+    "VARIABLES_POR_MODULO",
+    "_AGRUP_DANE_POR_DIVISION",
+    "ConfigGEIH",
+    "ReferenciaDane",
+    "cargar_config_externa",
+    "generar_carpetas_mensuales",
+    "generar_etiqueta_periodo",
 ]
 
 
@@ -388,8 +388,7 @@ class ConfigGEIH:
         if self.meses_rango is not None:
             if not isinstance(self.meses_rango, list):
                 raise TypeError(
-                    f"meses_rango debe ser una lista de enteros, "
-                    f"recibido: {type(self.meses_rango)}"
+                    f"meses_rango debe ser una lista de enteros, recibido: {type(self.meses_rango)}"
                 )
             if len(self.meses_rango) == 0:
                 raise ValueError("meses_rango no puede ser una lista vacía")
@@ -425,8 +424,7 @@ class ConfigGEIH:
             raise ValueError(f"n_meses={self.n_meses} fuera de rango [1, 12]")
         if self.anio < 2018 or self.anio > 2050:
             raise ValueError(
-                f"anio={self.anio} fuera de rango [2018, 2050]. "
-                f"La GEIH Marco 2018 inicia en 2022."
+                f"anio={self.anio} fuera de rango [2018, 2050]. La GEIH Marco 2018 inicia en 2022."
             )
 
         # ── Auto-seleccionar SMMLV según el año ────────────────────
@@ -497,9 +495,9 @@ class ConfigGEIH:
         ext = cargar_config_externa()
         ext_status = "✅ Cargado" if ext else "—  No encontrado (usando defaults)"
 
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print(f"  CONFIGURACIÓN GEIH — {self.periodo_etiqueta}")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
         print(f"  Año              : {self.anio}")
         n_fuente = getattr(self, "_meses_consolidado_fuente", self.n_meses)
         print(f"  Meses fuente     : {n_fuente} (consolidado)")
@@ -510,10 +508,8 @@ class ConfigGEIH:
         print(f"  FEX divisor      : ÷ {self.n_meses}")
         print(f"  Ref. DANE        : {ref_status}")
         print(f"  Config externa   : {ext_status}")
-        print(
-            f"  Carpetas         : {self.carpetas_mensuales[0]} → " f"{self.carpetas_mensuales[-1]}"
-        )
-        print(f"{'='*60}")
+        print(f"  Carpetas         : {self.carpetas_mensuales[0]} → {self.carpetas_mensuales[-1]}")
+        print(f"{'=' * 60}")
 
 
 # ═════════════════════════════════════════════════════════════════════

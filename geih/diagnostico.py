@@ -69,16 +69,16 @@ class DiagnosticoCalidad:
             "Pct_nulos_%", ascending=False
         )
 
-        print(f"\n{'='*75}")
+        print(f"\n{'=' * 75}")
         print(f"  DIAGNÓSTICO DE CALIDAD — {titulo}")
         print(f"  Total filas: {total:,}  |  Total columnas: {df.shape[1]}")
         print(f"  Columnas con nulos o ceros: {len(tabla)}")
-        print(f"{'='*75}")
+        print(f"{'=' * 75}")
         print(
             f"  {'Columna':<25} {'%Nulos':>8} {'N_nulos':>10} "
             f"{'%Ceros':>8} {'Únicos':>8} {'Dtype':<12}"
         )
-        print(f"  {'─'*25} {'─'*8} {'─'*10} {'─'*8} {'─'*8} {'─'*12}")
+        print(f"  {'─' * 25} {'─' * 8} {'─' * 10} {'─' * 8} {'─' * 8} {'─' * 12}")
 
         for col, row in tabla.head(40).iterrows():
             print(
@@ -198,16 +198,16 @@ class DiagnosticoCalidad:
             print(f"⚠️  PEA ≠ OCI + DSI  (Δ={diff_pea:.2f}%)")
             ok = False
         else:
-            print(f"✅ PEA = OCI + DSI  ({pea/1e6:.2f}M = {ocu/1e6:.2f}M + {dsi/1e6:.2f}M)")
+            print(f"✅ PEA = OCI + DSI  ({pea / 1e6:.2f}M = {ocu / 1e6:.2f}M + {dsi / 1e6:.2f}M)")
 
         return ok
 
     @staticmethod
     def resumen_rapido(df: pd.DataFrame) -> None:
         """Imprime un resumen rápido de la base para orientación."""
-        print(f"\n{'='*55}")
+        print(f"\n{'=' * 55}")
         print("  RESUMEN RÁPIDO DE LA BASE")
-        print(f"{'='*55}")
+        print(f"{'=' * 55}")
         print(f"  Dimensiones : {df.shape[0]:,} filas × {df.shape[1]} columnas")
         mb = df.memory_usage(deep=True).sum() / 1e6
         print(f"  Memoria     : {mb:,.0f} MB")
@@ -218,7 +218,7 @@ class DiagnosticoCalidad:
 
         if "OCI" in df.columns:
             n_ocu = (df["OCI"] == 1).sum()
-            print(f"  Ocupados    : {n_ocu:,} registros ({n_ocu/len(df)*100:.1f}%)")
+            print(f"  Ocupados    : {n_ocu:,} registros ({n_ocu / len(df) * 100:.1f}%)")
 
         if "INGLABO" in df.columns:
             n_ing = df["INGLABO"].notna().sum()
@@ -226,7 +226,7 @@ class DiagnosticoCalidad:
             print(f"  Con INGLABO : {n_ing:,} registros")
             print(f"  INGLABO = 0 : {n_cero:,} (pago en especie)")
 
-        print(f"{'='*55}")
+        print(f"{'=' * 55}")
 
     @staticmethod
     def graficar_nulos(
@@ -354,7 +354,7 @@ class Top20Sectores:
         ax.set_yticklabels([str(r)[:60] for r in df_plot["Sector_CIIU"]], fontsize=8.5)
         ax.set_xlabel("Ocupados (millones)", fontsize=11)
         ax.set_title(
-            "Top 20 actividades económicas por ocupados\n" "GEIH 2025 — CIIU Rev.4",
+            "Top 20 actividades económicas por ocupados\nGEIH 2025 — CIIU Rev.4",
             fontsize=12,
             fontweight="bold",
         )
@@ -365,12 +365,10 @@ class Top20Sectores:
 
     def imprimir(self, top: pd.DataFrame) -> None:
         """Imprime la tabla Top 20."""
-        print(f"\n{'='*75}")
+        print(f"\n{'=' * 75}")
         print("  TOP 20 ACTIVIDADES ECONÓMICAS — GEIH 2025")
-        print(f"{'='*75}")
+        print(f"{'=' * 75}")
         print(f"  {'Sector CIIU':<58} {'M':>6} {'%':>6}")
-        print(f"  {'─'*58} {'─'*6} {'─'*6}")
+        print(f"  {'─' * 58} {'─' * 6} {'─' * 6}")
         for _, row in top.iterrows():
-            print(
-                f"  {row['Sector_CIIU']!s:<58} " f"{row['Ocupados_M']:>6.2f} {row['Pct_%']:>5.1f}%"
-            )
+            print(f"  {row['Sector_CIIU']!s:<58} {row['Ocupados_M']:>6.2f} {row['Pct_%']:>5.1f}%")

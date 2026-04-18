@@ -292,7 +292,7 @@ class TestCanarioBoletinDANE:
     def df_dic(self):
         ruta = os.environ.get(
             "GEIH_PARQUET",
-            "/content/drive/MyDrive/ProColombia/GEIH/" "GEIH_consolidado_2025.parquet",
+            "/content/drive/MyDrive/ProColombia/GEIH/GEIH_consolidado_2025.parquet",
         )
         if not Path(ruta).exists():
             pytest.skip(f"No se encontró el parquet: {ruta}")
@@ -313,7 +313,7 @@ class TestCanarioBoletinDANE:
         return 100 * i / t if t > 0 else float("nan")
 
     def test_total_nacional(self, df_dic):
-        ocu_dane, inf_dane, tasa_dane = REF_DANE_DIC_2025["Total nacional"]
+        _ocu_dane, _inf_dane, tasa_dane = REF_DANE_DIC_2025["Total nacional"]
         tasa_lib = self._tasa(df_dic)
         delta = tasa_lib - tasa_dane
         assert abs(delta) <= TOLERANCIA_PP, (
@@ -322,7 +322,7 @@ class TestCanarioBoletinDANE:
         )
 
     def test_13_ciudades_AM(self, df_dic):
-        ocu_dane, inf_dane, tasa_dane = REF_DANE_DIC_2025["13 ciudades y A.M."]
+        _ocu_dane, _inf_dane, tasa_dane = REF_DANE_DIC_2025["13 ciudades y A.M."]
         tasa_lib = self._tasa(df_dic, dominio="13_AM")
         delta = tasa_lib - tasa_dane
         assert abs(delta) <= TOLERANCIA_PP, (
@@ -331,7 +331,7 @@ class TestCanarioBoletinDANE:
         )
 
     def test_centros_poblados_rural(self, df_dic):
-        ocu_dane, inf_dane, tasa_dane = REF_DANE_DIC_2025["Centros poblados y rural disperso"]
+        _ocu_dane, _inf_dane, tasa_dane = REF_DANE_DIC_2025["Centros poblados y rural disperso"]
         tasa_lib = self._tasa(df_dic, dominio="rural")
         delta = tasa_lib - tasa_dane
         assert abs(delta) <= TOLERANCIA_PP + 0.1, (  # ligeramente más laxo
@@ -342,7 +342,7 @@ class TestCanarioBoletinDANE:
     def test_absolutos_nacional_cuadran(self, df_dic):
         """Validación adicional: número absoluto de informales debe
         coincidir con el Excel oficial (en miles)."""
-        ocu_dane, inf_dane, _ = REF_DANE_DIC_2025["Total nacional"]
+        _ocu_dane, inf_dane, _ = REF_DANE_DIC_2025["Total nacional"]
         oci = df_dic[df_dic["OCI"] == 1]
         inf_lib = oci.loc[oci["INFORMAL"] == 1, "FEX_ADJ"].sum() / 1e3
         delta_pct = abs(inf_lib - inf_dane) / inf_dane * 100

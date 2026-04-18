@@ -196,7 +196,7 @@ def _main():
             c1.metric("Tasa de Desempleo", f"{td:.1f}%")
             c2.metric("TGP", f"{tgp:.1f}%")
             c3.metric("Tasa de Ocupación", f"{to:.1f}%")
-            c4.metric("Ocupados", f"{ocu/1e6:.2f}M")
+            c4.metric("Ocupados", f"{ocu / 1e6:.2f}M")
 
             # Indicadores por sexo
             if "P3271" in df.columns:
@@ -289,7 +289,7 @@ def _main():
             c1, c2, c3 = st.columns(3)
             c1.metric("Media", f"${med:,.0f}")
             c2.metric("Mediana (aprox.)", f"${df_ocu['INGLABO'].median():,.0f}")
-            c3.metric("En SMMLV", f"{med/smmlv_input:.2f}×")
+            c3.metric("En SMMLV", f"{med / smmlv_input:.2f}×")
         else:
             st.info("Columnas OCI e INGLABO no disponibles.")
 

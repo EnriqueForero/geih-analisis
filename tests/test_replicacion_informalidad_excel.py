@@ -209,35 +209,35 @@ class TestMapeos:
 class TestParametrosValidacion:
     def test_cierre_absoluto_dentro_01_pct(self):
         p = ParametrosValidacion()
-        estado, diff = p.clasificar(1000.0, 1000.5, es_proporcion=False)
+        estado, _diff = p.clasificar(1000.0, 1000.5, es_proporcion=False)
         # 0.05% relativo → OK_CIERRE
         assert estado == "OK_CIERRE"
 
     def test_diagnostico_entre_01_y_1_pct(self):
         p = ParametrosValidacion()
-        estado, diff = p.clasificar(1000.0, 1005.0, es_proporcion=False)
+        estado, _diff = p.clasificar(1000.0, 1005.0, es_proporcion=False)
         # 0.5% → OK_DIAGNOSTICO (< 1%)
         assert estado == "OK_DIAGNOSTICO"
 
     def test_fail_mas_1_pct(self):
         p = ParametrosValidacion()
-        estado, diff = p.clasificar(1000.0, 1050.0, es_proporcion=False)
+        estado, _diff = p.clasificar(1000.0, 1050.0, es_proporcion=False)
         # 5% → FAIL
         assert estado == "FAIL"
 
     def test_proporcion_dentro_01_pp_es_cierre(self):
         p = ParametrosValidacion()
-        estado, diff = p.clasificar(59.65, 59.70, es_proporcion=True)
+        estado, _diff = p.clasificar(59.65, 59.70, es_proporcion=True)
         assert estado == "OK_CIERRE"
 
     def test_proporcion_entre_01_y_04_pp_es_diagnostico(self):
         p = ParametrosValidacion()
-        estado, diff = p.clasificar(59.65, 59.90, es_proporcion=True)
+        estado, _diff = p.clasificar(59.65, 59.90, es_proporcion=True)
         assert estado == "OK_DIAGNOSTICO"
 
     def test_na_si_valores_faltan(self):
         p = ParametrosValidacion()
-        estado, diff = p.clasificar(None, 100.0, es_proporcion=False)
+        estado, _diff = p.clasificar(None, 100.0, es_proporcion=False)
         assert estado == "NA"
 
 

@@ -18,14 +18,14 @@ Autor: Néstor Enrique Forero Herrera
 """
 
 __all__ = [
-    "PlotlyLorenz",
-    "PlotlyICIBubble",
-    "PlotlyEstacionalidad",
-    "PlotlyDistribucionIngresos",
-    "PlotlyBrechaGenero",
     "PlotlyBoxPlotSalarios",
-    "PlotlySalarioRama",
+    "PlotlyBrechaGenero",
     "PlotlyComparativoAnual",
+    "PlotlyDistribucionIngresos",
+    "PlotlyEstacionalidad",
+    "PlotlyICIBubble",
+    "PlotlyLorenz",
+    "PlotlySalarioRama",
 ]
 
 
@@ -513,7 +513,7 @@ class PlotlySalarioRama:
                 x=df["Mediana"] / smmlv,
                 orientation="h",
                 marker_color=_C["azul"],
-                hovertemplate=("<b>%{y}</b><br>" "Mediana: %{x:.2f}× SMMLV<br>" "<extra></extra>"),
+                hovertemplate=("<b>%{y}</b><br>Mediana: %{x:.2f}× SMMLV<br><extra></extra>"),
             )
         )
 

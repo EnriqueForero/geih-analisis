@@ -12,14 +12,14 @@ Autor: Néstor Enrique Forero Herrera
 
 __all__ = [
     "EstiloBase",
-    "GraficoDistribucionIngresos",
     "GraficoBoxPlotSalarios",
     "GraficoBrechaGenero",
-    "GraficoRamaSexo",
-    "GraficoCurvaLorenz",
-    "GraficoICIBubble",
-    "GraficoEstacionalidad",
     "GraficoContribucionHeatmap",
+    "GraficoCurvaLorenz",
+    "GraficoDistribucionIngresos",
+    "GraficoEstacionalidad",
+    "GraficoICIBubble",
+    "GraficoRamaSexo",
 ]
 
 
@@ -209,7 +209,7 @@ class GraficoBoxPlotSalarios(EstiloBase):
             ax.text(
                 p90 + smmlv * 0.05,
                 i,
-                f'{row["Mediana_SMMLV"]:.1f}× | CV:{row["CV_%"]:.0f}%',
+                f"{row['Mediana_SMMLV']:.1f}× | CV:{row['CV_%']:.0f}%",
                 va="center",
                 fontsize=7.8,
                 color=self.C["negro"],
@@ -232,7 +232,9 @@ class GraficoBoxPlotSalarios(EstiloBase):
         ax.set_yticklabels(ramas_orden, fontsize=9.5)
         ax.set_xlim(left=0, right=limite * 1.18)
         ax.xaxis.set_major_formatter(
-            mticker.FuncFormatter(lambda v, _: f"${v/1e6:.1f}M" if v >= 1e6 else f"${v/1e3:.0f}k")
+            mticker.FuncFormatter(
+                lambda v, _: f"${v / 1e6:.1f}M" if v >= 1e6 else f"${v / 1e3:.0f}k"
+            )
         )
 
         # Leyenda
@@ -347,7 +349,7 @@ class GraficoRamaSexo(EstiloBase):
         ax.barh(y, m, 0.65, left=h, color=self.C["rojo"], alpha=0.85, label="Mujeres")
 
         for i, (hv, mv) in enumerate(zip(h, m)):
-            ax.text(hv + mv + 20, i, f"{hv+mv:,.0f}K", va="center", fontsize=8)
+            ax.text(hv + mv + 20, i, f"{hv + mv:,.0f}K", va="center", fontsize=8)
 
         ax.set_yticks(y)
         ax.set_yticklabels(pivot["RAMA"], fontsize=9)
@@ -540,7 +542,7 @@ class GraficoICIBubble(EstiloBase):
         ax.set_xlabel("Costo laboral efectivo (COP)", fontsize=11)
         ax.set_ylabel("% universitarios (proxy talento)", fontsize=11)
         ax.set_title(titulo, fontsize=12, fontweight="bold")
-        ax.xaxis.set_major_formatter(mticker.FuncFormatter(lambda v, _: f"${v/1e6:.1f}M"))
+        ax.xaxis.set_major_formatter(mticker.FuncFormatter(lambda v, _: f"${v / 1e6:.1f}M"))
         ax.grid(alpha=0.2)
         ax.spines[["top", "right"]].set_visible(False)
         fig.tight_layout(pad=2.5)

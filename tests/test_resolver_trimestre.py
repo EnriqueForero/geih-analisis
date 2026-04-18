@@ -93,7 +93,7 @@ class TestParseoMensual:
             assert p.meses == [(2026, i)], f"{ab} debe ser mes {i}, got {p.meses}"
 
     def test_mes_invalido_falla(self):
-        with pytest.raises(ValueError, match="no reconocido|no reconocido"):
+        with pytest.raises(ValueError, match=r"no reconocido"):
             ResolvedTrimestre.parsear_etiqueta("Xxx", ano_ancla=2026)
 
 

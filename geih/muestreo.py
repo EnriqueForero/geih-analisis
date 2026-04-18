@@ -26,17 +26,17 @@ Autor: Néstor Enrique Forero Herrera
 """
 
 __all__ = [
+    "NO_CONFIABLE",
+    "PRECISION_ACEPTABLE",
+    "PRECISION_ALTA",
+    "PRECISION_BAJA",
     "ConfigMuestreo",
     "PrecisionEstimacion",
-    "evaluar_proporcion",
-    "evaluar_media",
-    "evaluar_total",
-    "clasificar_precision",
     "advertencia_muestral",
-    "PRECISION_ALTA",
-    "PRECISION_ACEPTABLE",
-    "PRECISION_BAJA",
-    "NO_CONFIABLE",
+    "clasificar_precision",
+    "evaluar_media",
+    "evaluar_proporcion",
+    "evaluar_total",
 ]
 
 
@@ -164,7 +164,7 @@ class PrecisionEstimacion:
             f"CV={self.cv_pct:>5.1f}%  "
             f"IC=[{self.ic_inferior:.1f}, {self.ic_superior:.1f}]  "
             f"n={self.n_registros:>6,}  "
-            f"N̂={self.n_expandido/1e6:.3f}M  "
+            f"N̂={self.n_expandido / 1e6:.3f}M  "
             f"{self.clasificacion}"
         )
 

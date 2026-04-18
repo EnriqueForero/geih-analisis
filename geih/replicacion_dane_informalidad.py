@@ -40,7 +40,6 @@ Autor: Néstor Enrique Forero Herrera · ProColombia · 2026-04-16
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional
 
 import numpy as np
 import pandas as pd
@@ -61,13 +60,13 @@ from .replicacion_dane_common import (
 )
 
 __all__ = [
-    "ReplicadorInformalidad",
-    "replicar_informalidad_excel",
     "HOJAS_INFORMALIDAD",
     "MAPEO_DOMINIO_EXCEL",
+    "MAPEO_LUGAR_TRABAJO",
     "MAPEO_NIVEL_EDU",
     "MAPEO_TAMANO_EMPRESA",
-    "MAPEO_LUGAR_TRABAJO",
+    "ReplicadorInformalidad",
+    "replicar_informalidad_excel",
 ]
 
 
@@ -173,7 +172,7 @@ class ReplicadorInformalidad:
     def __init__(
         self,
         ruta_excel: Path,
-        parametros: Optional[ParametrosValidacion] = None,
+        parametros: ParametrosValidacion | None = None,
     ):
         self.ruta_excel = Path(ruta_excel)
         self.params = parametros or ParametrosValidacion()
@@ -187,7 +186,7 @@ class ReplicadorInformalidad:
         self,
         df: pd.DataFrame,
         periodo: PeriodoMovil,
-        hojas: Optional[list[str]] = None,
+        hojas: list[str] | None = None,
     ) -> ResultadoReplicacion:
         """Replica las hojas y compara contra el Excel.
 
@@ -593,7 +592,7 @@ class ReplicadorInformalidad:
         # Escanear filas 13+ para construir tripletes (dominio, fila_total,
         # fila_formal, fila_informal)
         dominios_tripletes: list[tuple[str, int, int, int]] = []
-        dominio_actual: Optional[str] = None
+        dominio_actual: str | None = None
         fila_total = fila_formal = fila_informal = 0
         for r in range(13, ws.max_row + 1):
             a = ws.cell(r, 1).value
@@ -754,7 +753,7 @@ class ReplicadorInformalidad:
         # (R+1 Concepto, R+2 meses, R+3 Población ocupada)
         # Mapear qué fila tiene qué etiqueta
         mapa_filas: dict[str, int] = {}
-        sexo_actual: Optional[str] = None
+        sexo_actual: str | None = None
         for r in range(fila_titulo + 3, fila_titulo + 15):
             if r > ws.max_row:
                 break
@@ -1257,8 +1256,8 @@ def replicar_informalidad_excel(
     ruta_excel: Path,
     df_preparado: pd.DataFrame,
     periodo: PeriodoMovil,
-    parametros: Optional[ParametrosValidacion] = None,
-    hojas: Optional[list[str]] = None,
+    parametros: ParametrosValidacion | None = None,
+    hojas: list[str] | None = None,
 ) -> ResultadoReplicacion:
     """API funcional para replicar las hojas de informalidad.
 

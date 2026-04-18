@@ -25,24 +25,24 @@ Autor: Néstor Enrique Forero Herrera
 """
 
 __all__ = [
-    "CalidadEmpleo",
-    "FormalidadSectorial",
-    "VulnerabilidadLaboral",
-    "CompetitividadLaboral",
-    "AnalisisSubempleo",
-    "AnalisisHoras",
-    "Estacionalidad",
-    "FuerzaLaboralJoven",
-    "EtnicoRacial",
-    "BonoDemografico",
-    "CostoLaboral",
     "AnalisisFFT",
+    "AnalisisHoras",
+    "AnalisisSubempleo",
     "AnalisisUrbanoRural",
-    "ProductividadTamano",
+    "BonoDemografico",
+    "CalidadEmpleo",
+    "CompetitividadLaboral",
     "ContribucionSectorial",
-    "MapaTalento",
+    "CostoLaboral",
     "EcuacionMincer",
+    "Estacionalidad",
+    "EtnicoRacial",
+    "FormalidadSectorial",
+    "FuerzaLaboralJoven",
+    "MapaTalento",
+    "ProductividadTamano",
     "ProxyBilinguismo",
+    "VulnerabilidadLaboral",
 ]
 
 
@@ -734,7 +734,7 @@ class EcuacionMincer:
             w = np.sqrt(df_calc["FEX_ADJ"].values)
             Xw = X * w[:, np.newaxis]
             yw = y * w
-            betas, residuals, rank, sv = lstsq(Xw, yw, rcond=None)
+            betas, _residuals, _rank, _sv = lstsq(Xw, yw, rcond=None)
             y_pred = X @ betas
             ss_res = ((y - y_pred) ** 2 * df_calc["FEX_ADJ"].values).sum()
             y_mean = (y * df_calc["FEX_ADJ"].values).sum() / df_calc["FEX_ADJ"].sum()

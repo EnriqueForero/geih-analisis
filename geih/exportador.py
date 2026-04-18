@@ -234,10 +234,10 @@ class Exportador:
 
     def resumen(self) -> None:
         """Imprime un resumen de todos los archivos exportados."""
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print("  RESUMEN DE EXPORTACIÓN")
         print(f"  {self.raiz}")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
         for carpeta, icono in [
             (self.graficas, "📊"),
             (self.tablas, "📋"),

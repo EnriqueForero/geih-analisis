@@ -118,9 +118,7 @@ class AnalisisOcupadosCiudad:
             "df_trabajo": df,
         }
 
-        print(
-            f"\n   ✅ 6 tablas calculadas — {len(df):,} ocupados, " f"{total/1e6:.2f}M expandidos"
-        )
+        print(f"\n   ✅ 6 tablas calculadas — {len(df):,} ocupados, {total / 1e6:.2f}M expandidos")
         return tablas
 
     # ═══════════════════════════════════════════════════════════════
@@ -147,7 +145,7 @@ class AnalisisOcupadosCiudad:
         n_total = df["FEX_ADJ"].sum()
         ref = self.config.referencia_dane
         ref_ocu = f"~{ref.ocupados_anual_m} M" if ref else "N/D"
-        print(f"   Ocupados totales (anual): {n_total/1e6:.2f} M  " f"(ref. DANE: {ref_ocu})")
+        print(f"   Ocupados totales (anual): {n_total / 1e6:.2f} M  (ref. DANE: {ref_ocu})")
 
         # Área geográfica → Ciudad/AM
         df["DPTO_STR"] = ConversorTipos.estandarizar_dpto(df["DPTO"])
@@ -465,45 +463,45 @@ class AnalisisOcupadosCiudad:
 
     def imprimir(self, tablas: dict[str, pd.DataFrame]) -> None:
         """Imprime las 6 tablas en formato legible para el notebook."""
-        print(f"\n{'='*70}")
+        print(f"\n{'=' * 70}")
         print(f"  OCUPADOS POR CIIU Y ÁREA — GEIH {self.config.periodo_etiqueta}")
         print(f"  FEX_C18 / {self.config.n_meses} | Miles de personas")
-        print(f"{'='*70}")
+        print(f"{'=' * 70}")
 
         # Tabla 1
-        print(f"\n{'─'*50}")
+        print(f"\n{'─' * 50}")
         print("  TABLA 1: Total nacional")
-        print(f"{'─'*50}")
+        print(f"{'─' * 50}")
         print(tablas["tabla1"].to_string(index=False))
 
         # Tabla 2
         t2 = tablas["tabla2"]
-        print(f"\n{'─'*70}")
+        print(f"\n{'─' * 70}")
         print("  TABLA 2: Agrupación DANE (8 grupos CIIU)")
-        print(f"{'─'*70}")
+        print(f"{'─' * 70}")
         print(f"  {'Agrupación DANE':<55} {'Miles':>7} {'%':>6}")
-        print(f"  {'─'*55} {'─'*7} {'─'*6}")
+        print(f"  {'─' * 55} {'─' * 7} {'─' * 6}")
         for _, row in t2.iterrows():
             print(
                 f"  {row['AGRUPACION_DANE']!s:<55} "
                 f"{row['Ocupados_miles']:>7,} {row['Pct_%']:>5.1f}%"
             )
-        print(f"  {'─'*55} {'─'*7}")
+        print(f"  {'─' * 55} {'─' * 7}")
         print(f"  {'TOTAL':<55} {t2['Ocupados_miles'].sum():>7,}")
 
         # Tabla 3
-        print(f"\n{'─'*60}")
+        print(f"\n{'─' * 60}")
         print("  TABLA 3: Dominio geográfico DANE")
-        print(f"{'─'*60}")
+        print(f"{'─' * 60}")
         print(tablas["tabla3"][["DOMINIO", "Ocupados_miles", "Pct_%"]].to_string(index=False))
 
         # Tabla 4
         t4 = tablas["tabla4"]
-        print(f"\n{'─'*65}")
+        print(f"\n{'─' * 65}")
         print("  TABLA 4: Top 23 ciudades y áreas metropolitanas")
-        print(f"{'─'*65}")
+        print(f"{'─' * 65}")
         print(f"  {'Ciudad / AM':<35} {'Miles':>7} {'%':>6} {'Dominio'}")
-        print(f"  {'─'*35} {'─'*7} {'─'*6} {'─'*25}")
+        print(f"  {'─' * 35} {'─' * 7} {'─' * 6} {'─' * 25}")
         for _, row in t4.head(23).iterrows():
             print(
                 f"  {row['Ciudad_AM']!s:<35} {row['Ocupados_miles']:>7,} "
@@ -512,7 +510,7 @@ class AnalisisOcupadosCiudad:
 
         # Tablas 5 y 6 (resumen con calidad)
         t5 = tablas["tabla5"]
-        print(f"\n{'─'*50}")
+        print(f"\n{'─' * 50}")
         print("  TABLA 5: Granular (Agrupación × CIIU × Ciudad)")
         print(f"  {len(t5):,} combinaciones únicas")
         if "calidad" in t5.columns:
@@ -521,12 +519,12 @@ class AnalisisOcupadosCiudad:
                 m = t5["calidad"] == cal
                 n, ocu = m.sum(), t5.loc[m, "Ocupados_miles"].sum()
                 if n:
-                    print(f"    {cal}: {n:,} celdas ({ocu/total_ocu5*100:.1f}%)")
-        print(f"{'─'*50}")
+                    print(f"    {cal}: {n:,} celdas ({ocu / total_ocu5 * 100:.1f}%)")
+        print(f"{'─' * 50}")
         print(t5.head(10).to_string(index=False))
 
         t6 = tablas["tabla6"]
-        print(f"\n{'─'*65}")
+        print(f"\n{'─' * 65}")
         print("  TABLA 6: Top 20 actividades CIIU nacional")
         if "calidad" in t6.columns:
             total_ocu6 = t6["Ocupados_miles"].sum()
@@ -534,8 +532,8 @@ class AnalisisOcupadosCiudad:
                 m = t6["calidad"] == cal
                 n, ocu = m.sum(), t6.loc[m, "Ocupados_miles"].sum()
                 if n:
-                    print(f"    {cal}: {n:,} celdas ({ocu/total_ocu6*100:.1f}%)")
-        print(f"{'─'*65}")
+                    print(f"    {cal}: {n:,} celdas ({ocu / total_ocu6 * 100:.1f}%)")
+        print(f"{'─' * 65}")
         print(t6.head(20).to_string(index=False))
 
     # ═══════════════════════════════════════════════════════════════

@@ -52,7 +52,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from pathlib import Path
-from typing import Optional, Union
+from typing import Union
 
 import numpy as np
 import pandas as pd
@@ -110,8 +110,8 @@ class OcupadosDptoRama:
 
     def __init__(
         self,
-        config: Optional[ConfigGEIH] = None,
-        config_muestreo: Optional[ConfigMuestreo] = None,
+        config: ConfigGEIH | None = None,
+        config_muestreo: ConfigMuestreo | None = None,
     ) -> None:
         self.config = config
         self.config_muestreo = config_muestreo
@@ -168,7 +168,7 @@ class OcupadosDptoRama:
             if verbose:
                 n_no_oci = ((oci != 1) & oci.notna()).sum()
                 if n_no_oci:
-                    print(f"   ⓘ Filtro OCI: excluidos {n_no_oci:,} " f"registros no ocupados")
+                    print(f"   ⓘ Filtro OCI: excluidos {n_no_oci:,} registros no ocupados")
 
         df_lim = df.loc[mask].copy()
         descartadas = (~mask).sum()
@@ -449,7 +449,7 @@ class OcupadosDptoRama:
                 "n_base = muestra del departamento (Cochran 1977).",
             ),
             ("Calidad — Confiable", f"CV ≤ {_UMBRAL_CONFIABLE:.0%}"),
-            ("Calidad — Aceptable", f"{_UMBRAL_CONFIABLE:.0%} < CV ≤ " f"{_UMBRAL_ACEPTABLE:.0%}"),
+            ("Calidad — Aceptable", f"{_UMBRAL_CONFIABLE:.0%} < CV ≤ {_UMBRAL_ACEPTABLE:.0%}"),
             ("Calidad — No publicable", f"CV > {_UMBRAL_ACEPTABLE:.0%}"),
             (
                 "Limitación geográfica",
@@ -498,8 +498,7 @@ class OcupadosDptoRama:
         faltantes = requeridas - set(df.columns)
         if faltantes:
             raise KeyError(
-                f"Faltan columnas requeridas: {sorted(faltantes)}. "
-                f"Presentes: {sorted(df.columns)}"
+                f"Faltan columnas requeridas: {sorted(faltantes)}. Presentes: {sorted(df.columns)}"
             )
 
     @staticmethod

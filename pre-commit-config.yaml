@@ -1,0 +1,73 @@
+# ══════════════════════════════════════════════════════════════════════
+# .pre-commit-config.yaml — geih-analisis
+# ══════════════════════════════════════════════════════════════════════
+#
+# INSTALACIÓN LOCAL (una sola vez por máquina/repo):
+#   pip install pre-commit
+#   pre-commit install
+#
+# USO DESDE COLAB (sin instalación persistente):
+#   El notebook de publicación corre `correr_linting()` que ejecuta
+#   ruff directamente contra el clon de inspección. Ver Celda B.
+#
+# QUÉ HACE CADA HOOK:
+#   ruff          → PEP 8, imports ordenados, errores de estilo
+#   ruff-format   → Formato consistente (equivalente a Black)
+#   trailing-whitespace   → Elimina espacios al final de línea
+#   end-of-file-fixer     → Garantiza newline al final de archivo
+#   check-yaml            → Valida sintaxis YAML (workflows, config)
+#   check-toml            → Valida sintaxis TOML (pyproject.toml)
+#   check-added-large-files → Bloquea archivos > 500 KB en git
+#   check-merge-conflict  → Detecta marcadores de merge sin resolver
+#   detect-private-key    → Detecta claves privadas accidentalmente commiteadas
+#
+# POR QUÉ NO mypy AQUÍ:
+#   mypy está aplazado para Semana 5. Activarlo hoy con 26% de cobertura
+#   y tipado incompleto en muchos módulos produciría cientos de errores.
+#   El endurecimiento de tipos es un proceso gradual módulo por módulo.
+#   Cuando llegue Semana 5, se añade el hook de mypy solo para los
+#   4 módulos críticos (config, preparador, utils, informalidad).
+# ══════════════════════════════════════════════════════════════════════
+
+repos:
+  # ── Ruff: linter + formatter ultrarrápido (reemplaza flake8 + isort + Black) ──
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.9.0
+    hooks:
+      - id: ruff
+        name: ruff lint
+        args: [--fix, --exit-non-zero-on-fix]
+        types_or: [python, pyi]
+
+      - id: ruff-format
+        name: ruff format
+        types_or: [python, pyi]
+
+  # ── Hooks generales de calidad de archivos ─────────────────────────
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace
+        name: Eliminar espacios al final de línea
+
+      - id: end-of-file-fixer
+        name: Añadir newline al final de archivo
+
+      - id: check-yaml
+        name: Validar YAML (workflows)
+
+      - id: check-toml
+        name: Validar TOML (pyproject.toml)
+
+      - id: check-added-large-files
+        name: Bloquear archivos grandes (>500 KB)
+        args: ['--maxkb=500']
+        # golden_set.parquet (~MB) está en tests/ pero no se commitea
+        # frecuentemente. Si necesita actualizarse, hacer un commit
+        # explícito con --no-verify solo en ese caso.
+
+      - id: check-merge-conflict
+        name: Detectar marcadores de merge sin resolver
+
+      - id: detect-private-key
+        name: Detectar claves privadas accidentales

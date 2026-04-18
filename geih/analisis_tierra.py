@@ -159,15 +159,15 @@ class AnalisisTierraAgropecuario:
         n_expandido = df_agro["FEX_ADJ"].sum()
         n_con_tenencia = df_agro["TENENCIA"].notna().sum() if "TENENCIA" in df_agro.columns else 0
 
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print(f"  SECTOR AGROPECUARIO — {self.config.periodo_etiqueta}")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
         print(f"  Registros en muestra     : {n_total:,}")
-        print(f"  Personas expandidas      : {n_expandido/1e6:.3f} M")
+        print(f"  Personas expandidas      : {n_expandido / 1e6:.3f} M")
         print(
-            f"  Con dato de tenencia     : {n_con_tenencia:,} ({n_con_tenencia/max(n_total,1)*100:.1f}%)"
+            f"  Con dato de tenencia     : {n_con_tenencia:,} ({n_con_tenencia / max(n_total, 1) * 100:.1f}%)"
         )
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
 
         return df_agro
 
@@ -709,9 +709,9 @@ class AnalisisTierraAgropecuario:
 
     def _imprimir_brecha(self, resultado: pd.DataFrame) -> None:
         """Imprime resumen de brecha de ingresos por tenencia."""
-        print(f"\n{'─'*60}")
+        print(f"\n{'─' * 60}")
         print("  BRECHA DE INGRESOS POR TENENCIA DE TIERRA")
-        print(f"{'─'*60}")
+        print(f"{'─' * 60}")
         for _, r in resultado.iterrows():
             tenencia = r.get("Tenencia", "")
             mediana = r.get("Mediana_COP", np.nan)
@@ -727,4 +727,4 @@ class AnalisisTierraAgropecuario:
             else:
                 adv = r.get("Advertencia", "")
                 print(f"  {tenencia:<20s} — {adv}")
-        print(f"{'─'*60}")
+        print(f"{'─' * 60}")

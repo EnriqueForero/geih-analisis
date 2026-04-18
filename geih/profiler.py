@@ -141,11 +141,11 @@ class PerfilMemoria:
             log.warning("No hay snapshots registrados.")
             return pd.DataFrame()
 
-        log.info(f"\n{'='*70}")
+        log.info(f"\n{'=' * 70}")
         log.info(f"  PERFIL DE MEMORIA — {len(self._snapshots)} snapshots")
-        log.info(f"{'='*70}")
-        log.info(f"  {'Etapa':<25} {'RAM(GB)':>8} {'Δ RAM':>8} " f"{'DF(MB)':>8} {'Tiempo':>10}")
-        log.info(f"  {'─'*25} {'─'*8} {'─'*8} {'─'*8} {'─'*10}")
+        log.info(f"{'=' * 70}")
+        log.info(f"  {'Etapa':<25} {'RAM(GB)':>8} {'Δ RAM':>8} {'DF(MB)':>8} {'Tiempo':>10}")
+        log.info(f"  {'─' * 25} {'─' * 8} {'─' * 8} {'─' * 8} {'─' * 10}")
 
         rows = []
         for i, snap in enumerate(self._snapshots):
@@ -180,14 +180,14 @@ class PerfilMemoria:
         ultimo = self._snapshots[-1]["ram_usada_gb"]
         pct = ultimo / total * 100 if total > 0 else 0
         if pct > 80:
-            log.warning(f"\n  ⚠️  RAM al {pct:.0f}% de capacidad " f"({ultimo:.1f}/{total:.1f} GB)")
-            log.warning("     Considere liberar DataFrames intermedios con " "del df; gc.collect()")
+            log.warning(f"\n  ⚠️  RAM al {pct:.0f}% de capacidad ({ultimo:.1f}/{total:.1f} GB)")
+            log.warning("     Considere liberar DataFrames intermedios con del df; gc.collect()")
         elif pct > 60:
             log.info(f"\n  RAM al {pct:.0f}% ({ultimo:.1f}/{total:.1f} GB)")
         else:
             log.info(f"\n  ✅ RAM al {pct:.0f}% ({ultimo:.1f}/{total:.1f} GB) — holgado")
 
-        log.info(f"{'='*70}")
+        log.info(f"{'=' * 70}")
         return pd.DataFrame(rows)
 
     @property

@@ -105,9 +105,9 @@ class DescargadorDANE:
             return {}
 
         catalog_id = CATALOGO_DANE[anio]["catalog_id"]
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print(f"  DESCARGA GEIH {anio} — Catálogo DANE #{catalog_id}")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
         print(f"  Portal: {_URL_MICRODATOS.format(catalog_id=catalog_id)}")
         print(f"  Meses a descargar: {self.config.n_meses}")
 
@@ -135,13 +135,13 @@ class DescargadorDANE:
 
         # Resumen
         ok_count = sum(1 for v in resultados.values() if v == "ok")
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print(f"  RESUMEN: {ok_count}/{len(carpetas)} meses descargados")
         if ok_count < len(carpetas):
             print("\n  Para los meses faltantes, descargue manualmente desde:")
             print(f"  {_URL_MICRODATOS.format(catalog_id=catalog_id)}")
             print("  y use: descargador.organizar_zips('ruta/a/los/zips')")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
 
         return resultados
 
@@ -156,7 +156,7 @@ class DescargadorDANE:
             f"{mes_nombre}.csv",
             f"{mes_nombre} CSV.zip",
             f"{mes_nombre}.zip",
-            f"mes_{MESES_NOMBRES.index(mes_nombre)+1:02d}.zip",
+            f"mes_{MESES_NOMBRES.index(mes_nombre) + 1:02d}.zip",
         ]
 
         url_page = _URL_MICRODATOS.format(catalog_id=catalog_id)
@@ -223,9 +223,9 @@ class DescargadorDANE:
             print(f"⚠️  No se encontraron archivos {patron} en {ruta}")
             return 0
 
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print(f"  ORGANIZANDO ZIPs GEIH {self.config.anio}")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
         print(f"  ZIPs encontrados: {len(zips)}")
 
         organizados = 0
@@ -307,9 +307,9 @@ class DescargadorDANE:
         anio = self.config.anio
         catalog_id = CATALOGO_DANE.get(anio, {}).get("catalog_id", "???")
 
-        print(f"\n{'='*65}")
+        print(f"\n{'=' * 65}")
         print(f"  📋 INSTRUCCIONES DE DESCARGA MANUAL — GEIH {anio}")
-        print(f"{'='*65}")
+        print(f"{'=' * 65}")
         print("")
         print("  1. Abra el portal de microdatos del DANE:")
         print(f"     https://microdatos.dane.gov.co/index.php/catalog/{catalog_id}/get-microdata")
@@ -333,4 +333,4 @@ class DescargadorDANE:
         print("")
         print("  6. Continúe con el pipeline normal:")
         print(f"     consolidador = ConsolidadorGEIH(ruta_base='{self.ruta_destino}', ...)")
-        print(f"{'='*65}")
+        print(f"{'=' * 65}")

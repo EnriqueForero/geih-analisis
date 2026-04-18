@@ -70,15 +70,14 @@ Autor: Néstor Enrique Forero Herrera (ProColombia)
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Optional
 
 import numpy as np
 import pandas as pd
 
 __all__ = [
-    "clasificar_informalidad_dane",
-    "VARIABLES_REQUERIDAS",
     "VARIABLES_CRITICAS",
+    "VARIABLES_REQUERIDAS",
+    "clasificar_informalidad_dane",
 ]
 
 
@@ -148,7 +147,7 @@ del Excel oficial."""
 def clasificar_informalidad_dane(
     df: pd.DataFrame,
     *,
-    anio_referencia: Optional[int] = None,
+    anio_referencia: int | None = None,
     verbose: bool = True,
 ) -> pd.Series:
     """Clasifica informalidad laboral según sintaxis OFICIAL DANE.
@@ -200,12 +199,12 @@ def clasificar_informalidad_dane(
     cols_presentes = set(df.columns)
     faltantes_criticas = VARIABLES_CRITICAS - cols_presentes
     if faltantes_criticas and verbose:
-        print(f"⚠️  Variables CRÍTICAS faltantes: " f"{sorted(faltantes_criticas)}")
+        print(f"⚠️  Variables CRÍTICAS faltantes: {sorted(faltantes_criticas)}")
         print("    El cálculo será aproximado.")
 
     faltantes_total = VARIABLES_REQUERIDAS - cols_presentes
     if faltantes_total and verbose:
-        print(f"ℹ️  Variables faltantes (se tratan como NA): " f"{sorted(faltantes_total)}")
+        print(f"ℹ️  Variables faltantes (se tratan como NA): {sorted(faltantes_total)}")
 
     # ──────────────────────────────────────────────────────────────
     # 3. Helper: cargar columna como Series numérica, NA si no existe

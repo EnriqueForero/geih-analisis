@@ -50,9 +50,9 @@ def ejecutar_smoke_test(
     inicio = time.time()
     errores = []
 
-    print(f"\n{'='*65}")
+    print(f"\n{'=' * 65}")
     print(f"  🧪 SMOKE TEST — Pipeline GEIH {anio}")
-    print(f"{'='*65}")
+    print(f"{'=' * 65}")
 
     # ── 1. Importar paquete ────────────────────────────────────
     try:
@@ -174,7 +174,8 @@ def ejecutar_smoke_test(
     for nombre, fn in clases_test:
         modulos_total += 1
         try:
-            resultado = fn()
+            # resultado = fn()
+            fn()
             modulos_ok += 1
         except Exception as e:
             errores.append(f"{nombre}: {e}")
@@ -211,18 +212,18 @@ def ejecutar_smoke_test(
 def _resultado_final(errores, inicio):
     """Imprime resultado final del smoke test."""
     elapsed = time.time() - inicio
-    print(f"\n{'─'*65}")
+    print(f"\n{'─' * 65}")
     if not errores:
         print(f"  ✅ SMOKE TEST PASADO en {elapsed:.1f}s")
         print("  → Es seguro ejecutar el pipeline completo.")
-        print(f"{'─'*65}")
+        print(f"{'─' * 65}")
         return True
     else:
         print(f"  ❌ SMOKE TEST FALLIDO — {len(errores)} errores en {elapsed:.1f}s")
         for i, err in enumerate(errores, 1):
             print(f"     {i}. {err}")
         print("\n  → NO proceder con el pipeline hasta corregir los errores.")
-        print(f"{'─'*65}")
+        print(f"{'─' * 65}")
         return False
 
 

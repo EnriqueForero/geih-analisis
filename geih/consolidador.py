@@ -28,7 +28,7 @@ import zipfile
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, Callable, Optional, Union
+from typing import Any, Callable, Union
 
 import pandas as pd
 
@@ -54,9 +54,9 @@ class ConsolidadorGEIH:
     def __init__(
         self,
         ruta_base: str,
-        config: Optional[ConfigGEIH] = None,
+        config: ConfigGEIH | None = None,
         incluir_area: bool = False,
-        modulos_extra: Optional[list[str]] = None,
+        modulos_extra: list[str] | None = None,
     ):
         self.ruta_base = Path(ruta_base)
         self.config = config or ConfigGEIH()
@@ -173,15 +173,15 @@ class ConsolidadorGEIH:
 
     def verificar_estructura(
         self,
-        carpetas: Optional[list[str]] = None,
+        carpetas: list[str] | None = None,
     ) -> dict[str, list[str]]:
         """Pre-flight check en milisegundos (solo consulta índices)."""
         carpetas = carpetas or self.config.carpetas_mensuales
         resultado: dict[str, list[str]] = {"ok": [], "faltantes": []}
 
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print(f"  PRE-FLIGHT CHECK — GEIH {self.config.anio}")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
 
         for mes in carpetas:
             try:
@@ -211,9 +211,9 @@ class ConsolidadorGEIH:
 
     def consolidar(
         self,
-        carpetas: Optional[list[str]] = None,
+        carpetas: list[str] | None = None,
         checkpoint: bool = True,
-        ruta_checkpoints: Optional[str] = None,
+        ruta_checkpoints: str | None = None,
     ) -> pd.DataFrame:
         """Consolida todos los meses. Soporta .zip y carpetas transparentemente."""
         carpetas = carpetas or self.config.carpetas_mensuales
@@ -229,11 +229,11 @@ class ConsolidadorGEIH:
         else:
             ckpt_dir = None
 
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print(f"  CONSOLIDACIÓN GEIH {self.config.anio} — {len(carpetas)} meses")
         if checkpoint:
             print(f"  Checkpointing: ON → {ckpt_dir}")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
 
         for i, mes in enumerate(carpetas, 1):
             if ckpt_dir:
@@ -274,21 +274,21 @@ class ConsolidadorGEIH:
         if ckpt_dir and len(carpetas) == geih["MES_NUM"].nunique():
             self._limpiar_checkpoints(ckpt_dir)
 
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print(f"  ✅ CONSOLIDACIÓN COMPLETA — {self.config.anio}")
         print(f"  {geih.shape[0]:,} filas × {geih.shape[1]} columnas")
         print(
             f"  Meses: {geih['MES_NUM'].nunique()} "
             f"(de {geih['MES_NUM'].min()} a {geih['MES_NUM'].max()})"
         )
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
         return geih
 
     def agregar_mes(
         self,
         mes_carpeta: str,
         parquet_existente: str,
-        numero_mes: Optional[int] = None,
+        numero_mes: int | None = None,
     ) -> pd.DataFrame:
         """Agrega un mes a un Parquet existente sin re-consolidar todo."""
         ruta_parquet = self.ruta_base / parquet_existente
@@ -297,7 +297,7 @@ class ConsolidadorGEIH:
             print(f"📂 Cargando base existente: {parquet_existente}")
             df_existente = pd.read_parquet(ruta_parquet)
             meses_existentes = sorted(df_existente["MES_NUM"].unique().tolist())
-            print(f"   Meses existentes: {meses_existentes} " f"({df_existente.shape[0]:,} filas)")
+            print(f"   Meses existentes: {meses_existentes} ({df_existente.shape[0]:,} filas)")
         else:
             print(f"📂 No existe {parquet_existente} — se creará desde cero.")
             df_existente = None
@@ -312,7 +312,7 @@ class ConsolidadorGEIH:
 
         print(f"\n🔄 Procesando {mes_carpeta} (MES_NUM={numero_mes})...")
         df_nuevo = self._procesar_mes(mes_carpeta, numero_mes=numero_mes)
-        print(f"   ✅ {mes_carpeta}: {df_nuevo.shape[0]:,} filas × " f"{df_nuevo.shape[1]} cols")
+        print(f"   ✅ {mes_carpeta}: {df_nuevo.shape[0]:,} filas × {df_nuevo.shape[1]} cols")
 
         if df_existente is not None:
             geih = pd.concat([df_existente, df_nuevo], ignore_index=True)
@@ -323,7 +323,7 @@ class ConsolidadorGEIH:
         gc.collect()
 
         meses_final = sorted(geih["MES_NUM"].unique().tolist())
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print(f"  ✅ MES AGREGADO — {mes_carpeta}")
         print(f"  {geih.shape[0]:,} filas × {geih.shape[1]} columnas")
         print(f"  Meses: {meses_final}")
@@ -331,13 +331,13 @@ class ConsolidadorGEIH:
             f"  ⚠️  Recuerde actualizar config.n_meses={len(meses_final)} "
             f"para que FEX_ADJ se divida correctamente."
         )
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
         return geih
 
     def exportar(
         self,
         df: pd.DataFrame,
-        nombre: Optional[str] = None,
+        nombre: str | None = None,
         formato: str = "parquet",
     ) -> None:
         """Exporta a Parquet (recomendado) o CSV."""
@@ -385,7 +385,7 @@ class ConsolidadorGEIH:
             df_mes = lector("caracteristicas")
             if df_mes is None:
                 raise FileNotFoundError(
-                    f"Módulo ancla no encontrado en {mes}: " f"{MODULOS_CSV['caracteristicas']}"
+                    f"Módulo ancla no encontrado en {mes}: {MODULOS_CSV['caracteristicas']}"
                 )
 
             modulos_secundarios: dict[str, list[str]] = {

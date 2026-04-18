@@ -30,7 +30,7 @@ __all__ = [
     "validar_serie_mensual",
 ]
 
-from typing import Literal, Optional
+from typing import Literal
 
 import numpy as np
 import pandas as pd
@@ -157,7 +157,7 @@ def desestacionalizar_td_mensual(
     df_anual: pd.DataFrame,
     columna_mes: str = "MES_NUM",
     anio: int = 2025,
-    incluir_historico: Optional[pd.Series] = None,
+    incluir_historico: pd.Series | None = None,
 ) -> pd.DataFrame:
     """Helper de alto nivel: calcula TD mensual + TD desestacionalizada.
 

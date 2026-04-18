@@ -13,9 +13,9 @@ Autor: Néstor Enrique Forero Herrera
 """
 
 __all__ = [
-    "GestorMemoria",
     "ConversorTipos",
     "EstadisticasPonderadas",
+    "GestorMemoria",
 ]
 
 

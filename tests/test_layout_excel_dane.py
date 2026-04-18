@@ -64,7 +64,7 @@ class TestLayoutExcel:
             layout = parser.parsear_bloques_por_dominio("Total nacional")
         for b in layout.bloques:
             assert len(b.categorias) == 3, (
-                f"{b.dominio}: esperaba 3 cats (Pob, Formal, Informal), " f"got {len(b.categorias)}"
+                f"{b.dominio}: esperaba 3 cats (Pob, Formal, Informal), got {len(b.categorias)}"
             )
 
     def test_grandes_dominios_tiene_5_dominios(self):
@@ -79,9 +79,9 @@ class TestLayoutExcel:
             layout = parser.parsear_bloques_por_dominio_y_condicion("Educación ")
         assert len(layout.bloques) == 9
         for b in layout.bloques:
-            assert (
-                len(b.categorias) == 7
-            ), f"{b.dominio}/{b.condicion}: esperaba 7 niveles, got {len(b.categorias)}"
+            assert len(b.categorias) == 7, (
+                f"{b.dominio}/{b.condicion}: esperaba 7 niveles, got {len(b.categorias)}"
+            )
 
     def test_posicion_ocupacional_listas_distintas_por_condicion(self):
         """Plan v2 riesgo 7: Formal/Informal tienen distintos listados."""
@@ -112,7 +112,7 @@ class TestLayoutExcel:
     def test_ultima_etiqueta_trim_es_dic25_feb26(self):
         """El Excel vigente (abril 2026) termina en 'Dic 25 - feb 26'."""
         with ExcelLayoutParser(EXCEL_OFICIAL) as parser:
-            col, etiqueta, ano = parser.encontrar_ultima_columna("Total nacional")
+            _col, etiqueta, _ano = parser.encontrar_ultima_columna("Total nacional")
         assert "dic" in etiqueta.lower() and "feb" in etiqueta.lower()
 
 

@@ -22,16 +22,16 @@ Autor: Néstor Enrique Forero Herrera
 """
 
 __all__ = [
+    "AnalisisAlcanceMercado",
+    "AnalisisAutonomia",
     "AnalisisCampesino",
+    "AnalisisContractual",
+    "AnalisisDesanimados",
     "AnalisisDiscapacidad",
     "AnalisisMigracion",
     "AnalisisOtrasFormas",
     "AnalisisOtrosIngresos",
     "AnalisisSobrecalificacion",
-    "AnalisisContractual",
-    "AnalisisAutonomia",
-    "AnalisisAlcanceMercado",
-    "AnalisisDesanimados",
 ]
 
 

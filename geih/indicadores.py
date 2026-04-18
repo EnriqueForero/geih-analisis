@@ -15,14 +15,14 @@ Autor: Néstor Enrique Forero Herrera
 """
 
 __all__ = [
-    "IndicadoresLaborales",
-    "DistribucionIngresos",
+    "AnalisisArea",
+    "AnalisisCruzado",
     "AnalisisRamaSexo",
     "AnalisisSalarios",
     "BrechaGenero",
-    "AnalisisCruzado",
+    "DistribucionIngresos",
+    "IndicadoresLaborales",
     "IndicesCompuestos",
-    "AnalisisArea",
 ]
 
 
@@ -125,9 +125,9 @@ class IndicadoresLaborales:
         ref = self.config.referencia_dane
         is_anual = "anual" in periodo.lower()
 
-        print(f"\n{'─'*55}")
+        print(f"\n{'─' * 55}")
         print(f"  SANITY CHECK — {periodo} ({self.config.anio})")
-        print(f"{'─'*55}")
+        print(f"{'─' * 55}")
 
         ok = True
 
@@ -221,9 +221,9 @@ class DistribucionIngresos:
         n_total = df.loc[df["OCI"] == 1, "FEX_ADJ"].sum()
         n_pos = df_ocu["FEX_ADJ"].sum()
 
-        print(f"   Ocupados totales      : {n_total/1e6:.2f} M")
-        print(f"   Con ingreso > 0       : {n_pos/1e6:.2f} M")
-        print(f"   Sin ingreso / especie : {(n_total-n_pos)/1e6:.2f} M")
+        print(f"   Ocupados totales      : {n_total / 1e6:.2f} M")
+        print(f"   Con ingreso > 0       : {n_pos / 1e6:.2f} M")
+        print(f"   Sin ingreso / especie : {(n_total - n_pos) / 1e6:.2f} M")
 
         # Clasificar en rangos (vectorizado con pd.cut)
         limites_cop = [lim * self.config.smmlv for lim in RANGOS_SMMLV_LIMITES]
@@ -270,12 +270,12 @@ class DistribucionIngresos:
         dist = resultado["total"]
         resultado["por_sexo"]
 
-        print(f"\n{'─'*70}")
+        print(f"\n{'─' * 70}")
         print(f"  DISTRIBUCIÓN DE INGRESOS LABORALES — {titulo}")
         print(f"  SMMLV 2025 = ${self.config.smmlv:,} COP")
-        print(f"{'─'*70}")
+        print(f"{'─' * 70}")
         print(f"  {'Rango':<22} {'Personas':>10} {'%':>7}  {'Acum%':>7}")
-        print(f"  {'─'*22} {'─'*10} {'─'*7}  {'─'*7}")
+        print(f"  {'─' * 22} {'─' * 10} {'─' * 7}  {'─' * 7}")
 
         for _, row in dist.iterrows():
             print(
@@ -396,7 +396,7 @@ class AnalisisSalarios:
         df_calc = df[(df["INGLABO"] > 0) & df["P6040"].between(edad_min, edad_max)].copy()
 
         bins = [*list(range(edad_min, edad_max + 1, bin_size)), edad_max + 1]
-        labels = [f"{b}–{b+bin_size-1}" for b in bins[:-1]]
+        labels = [f"{b}–{b + bin_size - 1}" for b in bins[:-1]]
         df_calc["GRUPO_EDAD"] = pd.cut(
             df_calc["P6040"],
             bins=bins,
