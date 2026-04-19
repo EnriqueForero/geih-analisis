@@ -236,8 +236,16 @@ class ConsolidadorGEIH:
         print(f"{'=' * 60}")
 
         for i, mes in enumerate(carpetas, 1):
+            # FIX: el número de mes real se infiere del nombre de la carpeta
+            # ('Diciembre 2025' → 12), no del índice de enumeración. El índice
+            # (i) sigue usándose solo para logs y para nombrar checkpoints.
+            try:
+                numero_mes_real = self._inferir_numero_mes(mes)
+            except ValueError:
+                numero_mes_real = i  # fallback legacy para carpetas no-estándar
+
             if ckpt_dir:
-                ckpt_file = ckpt_dir / f"mes_{i:02d}.parquet"
+                ckpt_file = ckpt_dir / f"mes_{numero_mes_real:02d}.parquet"
                 if ckpt_file.exists():
                     print(f"\n♻️  [{i}/{len(carpetas)}] {mes} — checkpoint recuperado")
                     bases_mensuales.append(pd.read_parquet(ckpt_file))
@@ -245,7 +253,7 @@ class ConsolidadorGEIH:
 
             print(f"\n🔄 [{i}/{len(carpetas)}] Procesando {mes}...")
             try:
-                df_mes = self._procesar_mes(mes, numero_mes=i)
+                df_mes = self._procesar_mes(mes, numero_mes=numero_mes_real)
                 bases_mensuales.append(df_mes)
                 print(f"   ✅ {mes}: {df_mes.shape[0]:,} filas × {df_mes.shape[1]} cols")
                 if ckpt_dir:
@@ -439,8 +447,3 @@ class ConsolidadorGEIH:
             print("   🗑️  Checkpoints eliminados (consolidación exitosa)")
         except Exception:
             pass  # No crítico: el proceso ya terminó bien.
-
-
-# ════════════════════════════════════════════════════════════════════════════
-# 📄 geih/dashboard.py
-#    Categoría: codigo

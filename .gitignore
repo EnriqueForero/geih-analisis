@@ -193,5 +193,6 @@ secrets.json
 # Estas reglas DEBEN ser las últimas del archivo.
 # En .gitignore la última coincidencia gana; si una regla
 # de exclusión aparece después de una excepción, la anula.
+!notebooks/Verificacion_GEIH_Feb2026_vs_Boletin_DANE.ipynb
 !requirements.txt
 !tests/golden_set.parquet
